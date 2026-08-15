@@ -1,0 +1,7 @@
+{
+  "name": "LanguageTwin",
+  "description": "Frequency-ranked spaced repetition language learning with active sentence production verification, verb conjugation form dropdown lookup, reading and listening practice with concept extraction, CEFR standardized level estimation, and error remediation.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
+
