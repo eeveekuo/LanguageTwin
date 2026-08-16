@@ -35,6 +35,8 @@ import {
   WifiOff,
   Table,
 } from "lucide-react";
+import { formatPronunciation } from "../utils/pronunciation";
+import { PronunciationAidSelector } from "./PronunciationAidSelector";
 
 interface StudySessionProps {
   cards: Flashcard[];
@@ -50,6 +52,8 @@ interface StudySessionProps {
   onUnlockNextBatch?: (startRank: number, endRank: number) => void;
   isGeneratingBatch?: boolean;
   isOnline?: boolean;
+  pronunciationAid?: string;
+  onChangePronunciationAid?: (aidId: string) => void;
 }
 
 export const StudySession: React.FC<StudySessionProps> = ({
@@ -66,6 +70,8 @@ export const StudySession: React.FC<StudySessionProps> = ({
   onUnlockNextBatch,
   isGeneratingBatch = false,
   isOnline = true,
+  pronunciationAid = "none",
+  onChangePronunciationAid,
 }) => {
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [userSentence, setUserSentence] = useState<string>("");

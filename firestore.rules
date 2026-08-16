@@ -1,0 +1,21 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Shared decks library: all users (including guests) can read shared decks; creation allowed.
+    match /decks/{deckId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if request.auth != null || true;
+      allow delete: if request.auth != null && (resource.data.creatorId == request.auth.uid || !('creatorId' in resource.data));
+    }
+
+    // User profiles & sync data: private to the owner
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+      
+      match /{allSubcollections=**} {
+        allow read, write: if request.auth != null && request.auth.uid == userId;
+      }
+    }
+  }
+}

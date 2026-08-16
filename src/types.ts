@@ -67,6 +67,9 @@ export interface Deck {
   cards: Flashcard[];
   createdAt: string;
   isCustom?: boolean;
+  creatorId?: string;
+  creatorName?: string;
+  creatorPhoto?: string;
 }
 
 export interface SupportedLanguage {

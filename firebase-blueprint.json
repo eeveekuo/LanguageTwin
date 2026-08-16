@@ -1,0 +1,49 @@
+{
+  "entities": {
+    "Deck": {
+      "title": "Shared and Generated Decks",
+      "description": "Shared library of AI generated and custom decks available for all users to study and reuse",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "targetLang": { "type": "string" },
+        "targetLangCode": { "type": "string" },
+        "knownLang": { "type": "string" },
+        "knownLangCode": { "type": "string" },
+        "level": { "type": "string" },
+        "cards": { "type": "array" },
+        "createdAt": { "type": "string" },
+        "creatorId": { "type": "string" },
+        "creatorName": { "type": "string" },
+        "creatorPhoto": { "type": "string" },
+        "isCustom": { "type": "boolean" },
+        "usageCount": { "type": "number" }
+      },
+      "required": ["id", "title", "targetLangCode", "cards"]
+    },
+    "UserProfile": {
+      "title": "User Study Progress",
+      "description": "Individual learner profile, daily streak, active deck, and SM-2 spaced repetition state",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "displayName": { "type": "string" },
+        "email": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "targetLangCode": { "type": "string" },
+        "knownLangCode": { "type": "string" },
+        "activeDeckId": { "type": "string" },
+        "dailyProgress": { "type": "object" },
+        "progressHistory": { "type": "array" },
+        "errorRemedyDeck": { "type": "object" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["uid"]
+    }
+  },
+  "firestore": {
+    "rules": "firestore.rules"
+  }
+}
