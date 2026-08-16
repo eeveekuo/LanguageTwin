@@ -469,6 +469,8 @@ export default function App() {
             knownLang={knownLang}
             isOnline={isOnline}
             onAddCardToDeck={handleAddCard}
+            learnerErrors={learnerErrors}
+            onNavigateTab={(tab) => setActiveTab(tab as any)}
           />
         )}
 

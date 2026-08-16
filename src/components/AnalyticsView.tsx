@@ -93,6 +93,9 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
   const stats = getDeckStats(deck.cards);
 
+  const { currentBracket, nextBracketStart, nextBracketEnd, isCurrentTierMastered, needsNextBatchGeneration } =
+    getActiveFrequencyBracket(deck.cards, 10);
+
   // Standardized Proficiency Assessment
   const proficiency = estimateStandardizedProficiency(deck, targetLang, learnerErrors);
 

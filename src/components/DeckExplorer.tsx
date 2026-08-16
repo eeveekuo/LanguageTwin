@@ -1,7 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Deck, Flashcard, SupportedLanguage, CardType } from "../types";
 import { playTextAloud } from "../utils/speech";
-import { getFrequencyBrackets, getActiveFrequencyBracket } from "../utils/frequencyProgression";
 import { ConjugationLookup } from "./ConjugationLookup";
 import { IS_CONJUGATION_LANGUAGE } from "../data/conjugations";
 import {
@@ -20,7 +19,11 @@ import {
   Layers,
   BrainCircuit,
   Table,
-  ArrowRight,
+  ArrowUpDown,
+  Filter,
+  ListFilter,
+  Check,
+  Languages,
 } from "lucide-react";
 
 interface DeckExplorerProps {
@@ -50,8 +53,9 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
 }) => {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [tierFilter, setTierFilter] = useState<number | "all">("all");
-  const [deckViewMode, setDeckViewMode] = useState<"catalog" | "tiers">("catalog");
+  const [typeFilter, setTypeFilter] = useState<string>("all");
+  const [freqRangeFilter, setFreqRangeFilter] = useState<string>("all");
+  const [sortOrder, setSortOrder] = useState<"rank-asc" | "rank-desc" | "alpha-asc" | "mastery-desc" | "mastery-asc">("rank-asc");
   const [expandedCardId, setExpandedCardId] = useState<string | null>(null);
   const [showAddCardModal, setShowAddCardModal] = useState<boolean>(false);
   const [showConjugationExplorer, setShowConjugationExplorer] = useState<boolean>(false);
@@ -70,45 +74,138 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
 
   const isConjugationLang = IS_CONJUGATION_LANGUAGE[targetLang.code] ?? false;
 
-  const brackets = getFrequencyBrackets(deck.cards, 10);
-  const { currentBracket, nextBracketStart, nextBracketEnd, isCurrentTierMastered, needsNextBatchGeneration } =
-    getActiveFrequencyBracket(deck.cards, 10);
+  // Deck Stats Calculation
+  const totalCards = deck.cards.length;
+  const masteredCardsCount = deck.cards.filter(
+    (c) => c.srs.status === "mastered" || c.srs.masteryScore >= 85
+  ).length;
+  const activeReviewCardsCount = deck.cards.filter(
+    (c) =>
+      c.srs.status === "learning" ||
+      c.srs.status === "review" ||
+      (c.srs.masteryScore >= 40 && c.srs.masteryScore < 85)
+  ).length;
+  const newCardsCount = deck.cards.filter(
+    (c) => c.srs.status === "new" && (c.srs.masteryScore || 0) < 40
+  ).length;
+  const dueCardsCount = deck.cards.filter(
+    (c) => c.srs.history && c.srs.history.length > 0 && new Date(c.srs.dueDate) <= new Date()
+  ).length;
 
-  const filteredCards = deck.cards
-    .filter((card) => {
-      // Tier filter
-      if (tierFilter !== "all") {
-        const startRank = (tierFilter - 1) * 10 + 1;
-        const endRank = tierFilter * 10;
-        if (card.frequencyRank < startRank || card.frequencyRank > endRank) {
-          return false;
+  // Filtered & Sorted Cards
+  const filteredCards = useMemo(() => {
+    return deck.cards
+      .filter((card) => {
+        // 1. Search filter
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          const matches =
+            card.targetItem.toLowerCase().includes(q) ||
+            card.definition.toLowerCase().includes(q) ||
+            card.partOfSpeech.toLowerCase().includes(q) ||
+            (card.usageNotes && card.usageNotes.toLowerCase().includes(q)) ||
+            (card.correctedForm && card.correctedForm.toLowerCase().includes(q));
+          if (!matches) return false;
         }
-      }
 
-      // Search filter
-      const matchesSearch =
-        card.targetItem.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        card.definition.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        card.partOfSpeech.toLowerCase().includes(searchQuery.toLowerCase());
+        // 2. Mastery status filter
+        if (statusFilter !== "all") {
+          if (statusFilter === "mastered") {
+            if (card.srs.status !== "mastered" && card.srs.masteryScore < 85) return false;
+          } else if (statusFilter === "active_review") {
+            if (
+              card.srs.status !== "learning" &&
+              card.srs.status !== "review" &&
+              (card.srs.masteryScore < 40 || card.srs.masteryScore >= 85)
+            ) {
+              return false;
+            }
+          } else if (statusFilter === "new") {
+            if (card.srs.status !== "new" && (card.srs.history?.length || 0) > 0) return false;
+          } else if (statusFilter === "due") {
+            const isDue =
+              card.srs.history &&
+              card.srs.history.length > 0 &&
+              new Date(card.srs.dueDate) <= new Date();
+            if (!isDue) return false;
+          } else if (statusFilter === "common_error") {
+            if (!card.isCommonError && card.type !== "common_error") return false;
+          }
+        }
 
-      // Status filter
-      if (statusFilter === "all") return matchesSearch;
-      if (statusFilter === "common_error") {
-        return matchesSearch && (card.isCommonError || card.type === "common_error");
-      }
-      if (statusFilter === "due") {
-        const isDue =
-          card.srs.history.length > 0 && new Date(card.srs.dueDate) <= new Date();
-        return matchesSearch && isDue;
-      }
-      return matchesSearch && card.srs.status === statusFilter;
-    })
-    .sort((a, b) => {
-      // Show common errors appropriately or sort by frequency rank
-      if (a.isCommonError && !b.isCommonError) return -1;
-      if (!a.isCommonError && b.isCommonError) return 1;
-      return a.frequencyRank - b.frequencyRank;
-    });
+        // 3. Item type filter
+        if (typeFilter !== "all") {
+          const pos = (card.partOfSpeech || "").toLowerCase();
+          const cardType = (card.type || "").toLowerCase();
+
+          if (typeFilter === "vocab") {
+            // Standard words, nouns, verbs, adjs
+            const isParticleOrGrammar =
+              pos.includes("particle") ||
+              pos.includes("connector") ||
+              pos.includes("grammar") ||
+              pos.includes("formula") ||
+              cardType === "grammar_concept" ||
+              cardType === "connector";
+            if (isParticleOrGrammar && cardType !== "vocabulary") return false;
+          } else if (typeFilter === "particle") {
+            // Particles and connectors
+            const isParticle =
+              pos.includes("particle") ||
+              pos.includes("connector") ||
+              pos.includes("preposition") ||
+              pos.includes("postposition") ||
+              pos.includes("conjunction") ||
+              cardType === "connector";
+            if (!isParticle) return false;
+          } else if (typeFilter === "grammar") {
+            // Grammar concepts and formula structures
+            const isGrammar =
+              pos.includes("grammar") ||
+              pos.includes("formula") ||
+              pos.includes("pattern") ||
+              pos.includes("rule") ||
+              pos.includes("conjugation") ||
+              cardType === "grammar_concept";
+            if (!isGrammar) return false;
+          } else if (typeFilter === "phrase") {
+            const isPhrase =
+              pos.includes("phrase") ||
+              pos.includes("idiom") ||
+              pos.includes("expression") ||
+              cardType === "phrase";
+            if (!isPhrase) return false;
+          }
+        }
+
+        // 4. Frequency range filter
+        if (freqRangeFilter !== "all") {
+          const rank = card.frequencyRank || 9999;
+          if (freqRangeFilter === "1-10" && (rank < 1 || rank > 10)) return false;
+          if (freqRangeFilter === "11-20" && (rank < 11 || rank > 20)) return false;
+          if (freqRangeFilter === "21-30" && (rank < 21 || rank > 30)) return false;
+          if (freqRangeFilter === "31-50" && (rank < 31 || rank > 50)) return false;
+          if (freqRangeFilter === "51-100" && (rank < 51 || rank > 100)) return false;
+          if (freqRangeFilter === "101+" && rank < 101) return false;
+        }
+
+        return true;
+      })
+      .sort((a, b) => {
+        if (sortOrder === "rank-asc") {
+          return (a.frequencyRank || 9999) - (b.frequencyRank || 9999);
+        } else if (sortOrder === "rank-desc") {
+          return (b.frequencyRank || 0) - (a.frequencyRank || 0);
+        } else if (sortOrder === "alpha-asc") {
+          return a.targetItem.localeCompare(b.targetItem);
+        } else if (sortOrder === "mastery-desc") {
+          return (b.srs.masteryScore || 0) - (a.srs.masteryScore || 0);
+        } else if (sortOrder === "mastery-asc") {
+          return (a.srs.masteryScore || 0) - (b.srs.masteryScore || 0);
+        }
+        return 0;
+      });
+  }, [deck.cards, searchQuery, statusFilter, typeFilter, freqRangeFilter, sortOrder]);
 
   const handlePlayAudio = (text: string) => {
     playTextAloud(text, targetLang.code);
@@ -163,62 +260,84 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
       {/* Header Bento Tile */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 shadow-sm">
         <div>
+          {/* Target & Known Language Display */}
           <div className="flex items-center gap-3">
-            <span className="text-3xl">{targetLang.flag}</span>
+            <span className="text-3xl sm:text-4xl">{targetLang.flag}</span>
             <div>
-              <h2 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight">
-                {deck.title}
-              </h2>
-              <p className="text-xs sm:text-sm text-slate-500 mt-0.5">{deck.description}</p>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                  {targetLang.name}
+                </h2>
+                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
+                  from {knownLang.name} {knownLang.flag}
+                </span>
+                {deck.level && (
+                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                    {deck.level}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs sm:text-sm text-slate-500 mt-1">{deck.description || "Active Vocabulary and Grammar Formulas"}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2.5 mt-3 text-xs text-slate-500 font-semibold flex-wrap">
-            <span className="bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full border border-indigo-100">
-              {deck.cards.length} Frequency Items
+
+          {/* Current Deck Stats Chips */}
+          <div className="flex items-center gap-2 mt-4 text-xs font-bold flex-wrap">
+            <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-800 px-3 py-1 rounded-full border border-slate-200">
+              <BookOpen className="w-3.5 h-3.5 text-slate-500" />
+              <span>{totalCards} Total Items</span>
             </span>
-            <span>•</span>
-            <span>Target: {targetLang.name}</span>
-            <span>•</span>
-            <span>Known: {knownLang.name}</span>
+
+            <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 px-3 py-1 rounded-full border border-emerald-200">
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+              <span>{masteredCardsCount} Mastered</span>
+            </span>
+
+            <span className="inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-800 px-3 py-1 rounded-full border border-indigo-200">
+              <Flame className="w-3.5 h-3.5 text-indigo-600 fill-indigo-600" />
+              <span>{activeReviewCardsCount} Active Review</span>
+            </span>
+
+            {newCardsCount > 0 && (
+              <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 px-3 py-1 rounded-full border border-amber-200">
+                <span className="w-2 h-2 rounded-full bg-amber-500" />
+                <span>{newCardsCount} New</span>
+              </span>
+            )}
+
+            {dueCardsCount > 0 && (
+              <span className="inline-flex items-center gap-1.5 bg-orange-50 text-orange-800 px-3 py-1 rounded-full border border-orange-200">
+                <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                <span>{dueCardsCount} Due</span>
+              </span>
+            )}
           </div>
         </div>
 
+        {/* Action Buttons */}
         <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-          {needsNextBatchGeneration && (
-            <button
-              onClick={() => {
-                if (isOnline) {
-                  onGenerateNextBatch?.(nextBracketStart, nextBracketEnd);
-                }
-              }}
-              disabled={!isOnline || isGeneratingBatch}
-              title={
-                !isOnline
-                  ? "Requires online connection to generate cards with AI"
-                  : "Generate next frequency batch"
+          <button
+            id="deck-generate-more-btn"
+            onClick={() => {
+              if (isOnline) {
+                onOpenGenerateModal();
               }
-              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs font-bold transition ${
-                isOnline
-                  ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-100 cursor-pointer"
-                  : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
-              }`}
-            >
-              {isGeneratingBatch ? (
-                <>
-                  <BrainCircuit className="w-4 h-4 animate-spin" />
-                  <span>Generating #{nextBracketStart}–#{nextBracketEnd}...</span>
-                </>
-              ) : (
-                <>
-                  <Zap className="w-4 h-4" />
-                  <span>
-                    Unlock Next Batch (#{nextBracketStart}–#{nextBracketEnd})
-                    {!isOnline && " (Online Only)"}
-                  </span>
-                </>
-              )}
-            </button>
-          )}
+            }}
+            disabled={!isOnline || isGeneratingBatch}
+            title={
+              !isOnline
+                ? "Requires online connection to generate cards with AI"
+                : "Generate more frequency cards and grammar concepts"
+            }
+            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs font-bold transition shadow-xs ${
+              isOnline
+                ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-100 active:scale-95 cursor-pointer"
+                : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
+            }`}
+          >
+            <Sparkles className="w-4 h-4" />
+            <span>Generate More Items</span>
+          </button>
 
           <button
             id="open-add-card-modal-btn"
@@ -246,263 +365,8 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
               <span>Conjugation Tables</span>
             </button>
           )}
-
-          <button
-            id="deck-explorer-generate-btn"
-            onClick={() => {
-              if (isOnline) {
-                onOpenGenerateModal();
-              }
-            }}
-            disabled={!isOnline}
-            title={
-              !isOnline
-                ? "Requires online connection to generate AI decks"
-                : "Create or calibrate a new deck"
-            }
-            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs font-bold border transition ${
-              isOnline
-                ? "bg-slate-100 hover:bg-slate-200 text-slate-700 border-slate-200 cursor-pointer"
-                : "bg-slate-100 text-slate-400 border-slate-200 cursor-not-allowed opacity-60"
-            }`}
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>New Deck {!isOnline && "(Online)"}</span>
-          </button>
         </div>
       </div>
-
-      {/* Deck Sub-Tabs Navigation */}
-      <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3 text-xs sm:text-sm font-bold">
-        <button
-          id="deck-view-catalog-btn"
-          onClick={() => setDeckViewMode("catalog")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-2xl transition cursor-pointer ${
-            deckViewMode === "catalog"
-              ? "bg-indigo-600 text-white shadow-xs"
-              : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
-          }`}
-        >
-          <BookOpen className="w-4 h-4 shrink-0" />
-          <span>Cards Catalog ({deck.cards.length})</span>
-        </button>
-
-        <button
-          id="deck-view-tiers-btn"
-          onClick={() => setDeckViewMode("tiers")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-2xl transition cursor-pointer ${
-            deckViewMode === "tiers"
-              ? "bg-indigo-600 text-white shadow-xs"
-              : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
-          }`}
-        >
-          <Flame className="w-4 h-4 shrink-0 text-orange-500 fill-orange-500" />
-          <span>Frequency Tiers Breakdown ({brackets.length} Tiers)</span>
-        </button>
-      </div>
-
-      {/* VIEW MODE: FREQUENCY TIERS BREAKDOWN */}
-      {deckViewMode === "tiers" && (
-        <div className="space-y-4">
-          <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-5">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                  <Flame className="w-5 h-5 text-orange-500 fill-orange-500" />
-                  <span>Frequency-Ordered Progression Hierarchy</span>
-                </h3>
-                <p className="text-xs text-slate-500 mt-0.5">
-                  Ordered by natural occurrence in {targetLang.name}. Mastering each 10-word tier builds rapid fluency.
-                </p>
-              </div>
-
-              {needsNextBatchGeneration && (
-                <button
-                  onClick={() => {
-                    if (isOnline) {
-                      onGenerateNextBatch?.(nextBracketStart, nextBracketEnd);
-                    }
-                  }}
-                  disabled={!isOnline || isGeneratingBatch}
-                  className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold shadow-md shadow-indigo-100 transition active:scale-95 disabled:opacity-50 cursor-pointer"
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>Unlock Next Batch (#{nextBracketStart}–#{nextBracketEnd})</span>
-                </button>
-              )}
-            </div>
-
-            <div className="space-y-4">
-              {brackets.map((bracket, idx) => {
-                const masteryPercent =
-                  bracket.totalCards > 0
-                    ? Math.round((bracket.masteredCards / bracket.totalCards) * 100)
-                    : 0;
-
-                return (
-                  <div
-                    key={idx}
-                    className={`p-5 rounded-3xl border transition shadow-xs space-y-3 ${
-                      bracket.isMastered
-                        ? "bg-emerald-50/30 border-emerald-200"
-                        : bracket.cards.length > 0
-                        ? "bg-white border-slate-200"
-                        : "bg-slate-50/60 border-dashed border-slate-300"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-3 flex-wrap">
-                      <div className="flex items-center gap-2.5">
-                        <span className="w-8 h-8 rounded-xl bg-indigo-50 border border-indigo-100 text-indigo-700 font-extrabold text-xs flex items-center justify-center">
-                          T{idx + 1}
-                        </span>
-                        <div>
-                          <h4 className="text-sm font-bold text-slate-900">
-                            Tier {idx + 1}: Ranks #{bracket.startRank} – #{bracket.endRank}
-                          </h4>
-                          <p className="text-[11px] text-slate-400 font-medium">
-                            {bracket.totalCards} cards • {bracket.masteredCards} mastered
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-3">
-                        <span
-                          className={`text-xs font-bold px-2.5 py-1 rounded-full ${
-                            bracket.isMastered
-                              ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
-                              : bracket.totalCards > 0
-                              ? "bg-indigo-50 text-indigo-700 border border-indigo-100"
-                              : "bg-slate-100 text-slate-500"
-                          }`}
-                        >
-                          {bracket.isMastered
-                            ? "Tier Mastered 🎉"
-                            : bracket.totalCards > 0
-                            ? `${masteryPercent}% Complete`
-                            : "Not Generated Yet"}
-                        </span>
-
-                        {bracket.totalCards > 0 && (
-                          <div className="flex items-center gap-2">
-                            <button
-                              onClick={() => {
-                                setTierFilter(idx + 1);
-                                setDeckViewMode("catalog");
-                              }}
-                              className="px-3 py-1 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold transition cursor-pointer"
-                            >
-                              Filter in Catalog
-                            </button>
-                            <button
-                              onClick={() => onStudyBracket?.(bracket.startRank, bracket.endRank)}
-                              className="flex items-center gap-1 px-3 py-1 rounded-xl bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 text-xs font-bold transition cursor-pointer"
-                            >
-                              <span>Study Tier</span>
-                              <ArrowRight className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Progress Bar */}
-                    {bracket.totalCards > 0 && (
-                      <div className="w-full bg-slate-100 h-2.5 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-500 ${
-                            bracket.isMastered ? "bg-emerald-500" : "bg-indigo-600"
-                          }`}
-                          style={{ width: `${masteryPercent}%` }}
-                        />
-                      </div>
-                    )}
-
-                    {/* Words Chips */}
-                    {bracket.cards.length > 0 && (
-                      <div className="flex items-center gap-1.5 flex-wrap pt-1">
-                        {bracket.cards.map((c) => (
-                          <span
-                            key={c.id}
-                            onClick={() => handlePlayAudio(c.targetItem)}
-                            className={`px-2.5 py-1 rounded-xl text-xs font-semibold flex items-center gap-1 cursor-pointer transition hover:scale-105 active:scale-95 ${
-                              c.srs.status === "mastered"
-                                ? "bg-emerald-50 text-emerald-800 border border-emerald-100 hover:bg-emerald-100"
-                                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                            }`}
-                            title="Click to pronounce"
-                          >
-                            <span className="text-[10px] text-slate-400 font-mono">#{c.frequencyRank}</span>
-                            <span>{c.targetItem}</span>
-                            <Volume2 className="w-3 h-3 opacity-50 ml-0.5" />
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* VIEW MODE: CARDS CATALOG */}
-      {deckViewMode === "catalog" && (
-        <div className="space-y-6">
-          {/* Frequency Tiers Quick Strip */}
-          {brackets.length > 0 && (
-            <div className="bg-white p-4 rounded-3xl border border-slate-200 shadow-xs space-y-3">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5 text-indigo-600" />
-                  <span>Frequency Progression Tiers</span>
-                </span>
-                <button
-                  onClick={() => setDeckViewMode("tiers")}
-                  className="text-[11px] text-indigo-600 hover:text-indigo-800 font-semibold hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  <span>View All Tiers Hierarchy</span>
-                  <ArrowRight className="w-3 h-3" />
-                </button>
-              </div>
-
-              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
-                <button
-                  onClick={() => setTierFilter("all")}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap cursor-pointer ${
-                    tierFilter === "all"
-                      ? "bg-indigo-600 text-white"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  }`}
-                >
-                  All Tiers ({deck.cards.length})
-                </button>
-
-                {brackets.map((b, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setTierFilter(idx + 1)}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition whitespace-nowrap flex items-center gap-1.5 cursor-pointer ${
-                      tierFilter === idx + 1
-                        ? "bg-indigo-600 text-white"
-                        : b.isMastered
-                        ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
-                        : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                    }`}
-                  >
-                    <span>Tier {idx + 1} (#{b.startRank}–#{b.endRank})</span>
-                    {b.isMastered ? (
-                      <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                    ) : (
-                      <span className="text-[10px] opacity-75">
-                        {b.masteredCards}/{b.totalCards}
-                      </span>
-                    )}
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
 
       {/* Conjugation Tables Explorer (Dropdown & Verb Forms) */}
       {isConjugationLang && showConjugationExplorer && (
@@ -517,52 +381,153 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
         </div>
       )}
 
-      {/* Filter & Search Bar Bento Strip */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            id="deck-search-input"
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search word, concept, definition..."
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:bg-white transition"
-          />
+      {/* Filters and Search Controls Strip */}
+      <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-200 shadow-xs space-y-4">
+        {/* Top Row: Search and Sort */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+          {/* Search Input */}
+          <div className="relative w-full sm:w-80">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+            <input
+              id="deck-search-input"
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search word, grammar concept, definition..."
+              className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-10 pr-4 py-2 text-xs font-medium text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-400 focus:bg-white transition"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xs font-bold"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* Sort By Selector */}
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+            <span className="text-xs font-semibold text-slate-400 flex items-center gap-1">
+              <ArrowUpDown className="w-3.5 h-3.5" />
+              <span>Sort:</span>
+            </span>
+            <select
+              id="deck-sort-select"
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as any)}
+              className="bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-2xl px-3 py-2 focus:outline-none cursor-pointer"
+            >
+              <option value="rank-asc">Frequency: Lowest Rank (#1 First)</option>
+              <option value="rank-desc">Frequency: Highest Rank</option>
+              <option value="alpha-asc">Alphabetical (A → Z)</option>
+              <option value="mastery-desc">Mastery: High to Low</option>
+              <option value="mastery-asc">Mastery: Low to High</option>
+            </select>
+          </div>
         </div>
 
-        {/* Status Filter Pills */}
-        <div className="flex items-center gap-1.5 overflow-x-auto w-full sm:w-auto text-xs font-bold no-scrollbar">
-          {[
-            { id: "all", label: "All Items" },
-            { id: "common_error", label: "⚠️ Error Remedies" },
-            { id: "due", label: "Due for Review" },
-            { id: "mastered", label: "Mastered" },
-            { id: "learning", label: "Learning" },
-            { id: "new", label: "New" },
-          ].map((f) => (
-            <button
-              key={f.id}
-              onClick={() => setStatusFilter(f.id)}
-              className={`px-3 py-1.5 rounded-xl transition whitespace-nowrap cursor-pointer ${
-                statusFilter === f.id
-                  ? f.id === "common_error"
-                    ? "bg-amber-600 text-white shadow-xs"
-                    : "bg-indigo-600 text-white shadow-xs"
-                  : "bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200"
-              }`}
-            >
-              {f.label}
-            </button>
-          ))}
+        {/* Second Row: Mastery Filter, Item Type Filter, and Frequency Range Filter */}
+        <div className="pt-3 border-t border-slate-100 flex flex-col lg:flex-row items-start lg:items-center justify-between gap-3 text-xs">
+          {/* Mastery Status Filter Pills */}
+          <div className="space-y-1.5 w-full lg:w-auto">
+            <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block">
+              Filter by Mastery:
+            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {[
+                { id: "all", label: `All (${totalCards})` },
+                { id: "mastered", label: `Mastered (${masteredCardsCount})` },
+                { id: "active_review", label: `Active Review (${activeReviewCardsCount})` },
+                { id: "new", label: `New (${newCardsCount})` },
+                { id: "due", label: `Due (${dueCardsCount})` },
+                { id: "common_error", label: "⚠️ Error Remedies" },
+              ].map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => setStatusFilter(f.id)}
+                  className={`px-3 py-1.5 rounded-xl font-bold transition whitespace-nowrap cursor-pointer ${
+                    statusFilter === f.id
+                      ? f.id === "common_error"
+                        ? "bg-amber-600 text-white shadow-xs"
+                        : "bg-indigo-600 text-white shadow-xs"
+                      : "bg-slate-100 text-slate-600 hover:text-slate-900 hover:bg-slate-200"
+                  }`}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Right Side: Type and Frequency Range Selectors */}
+          <div className="flex items-center gap-3 flex-wrap w-full lg:w-auto pt-1 lg:pt-0">
+            {/* Item Type Filter */}
+            <div>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                Item Type:
+              </span>
+              <select
+                id="deck-type-filter"
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-xl px-3 py-1.5 focus:outline-none cursor-pointer"
+              >
+                <option value="all">All Item Types</option>
+                <option value="vocab">Vocabulary / Core Words</option>
+                <option value="particle">Particles & Connectors</option>
+                <option value="grammar">Grammar Concepts & Formulas</option>
+                <option value="phrase">Phrases & Expressions</option>
+              </select>
+            </div>
+
+            {/* Frequency Range Filter */}
+            <div>
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                Frequency Range:
+              </span>
+              <select
+                id="deck-frequency-range-filter"
+                value={freqRangeFilter}
+                onChange={(e) => setFreqRangeFilter(e.target.value)}
+                className="bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-xl px-3 py-1.5 focus:outline-none cursor-pointer"
+              >
+                <option value="all">All Frequency Ranks</option>
+                <option value="1-10">Top 10 (#1 – #10)</option>
+                <option value="11-20">Ranks #11 – #20</option>
+                <option value="21-30">Ranks #21 – #30</option>
+                <option value="31-50">Ranks #31 – #50</option>
+                <option value="51-100">Ranks #51 – #100</option>
+                <option value="101+">Ranks #101+</option>
+              </select>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* FREQUENCY-ORDERED CARD LIST */}
+      {/* Cards Catalog List */}
       <div className="space-y-3">
+        <div className="flex items-center justify-between text-xs font-bold text-slate-500 px-1">
+          <span>Showing {filteredCards.length} of {totalCards} items</span>
+          {(statusFilter !== "all" || typeFilter !== "all" || freqRangeFilter !== "all" || searchQuery) && (
+            <button
+              onClick={() => {
+                setStatusFilter("all");
+                setTypeFilter("all");
+                setFreqRangeFilter("all");
+                setSearchQuery("");
+              }}
+              className="text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer"
+            >
+              Reset all filters
+            </button>
+          )}
+        </div>
+
         {filteredCards.length === 0 ? (
-          <div className="p-12 text-center bg-white rounded-3xl border border-slate-200 text-slate-400 text-sm">
-            No cards found matching your filter criteria.
+          <div className="p-12 text-center bg-white rounded-3xl border border-slate-200 text-slate-400 text-sm space-y-2">
+            <p className="font-semibold text-slate-600">No cards found matching your current filter criteria.</p>
+            <p className="text-xs text-slate-400">Try adjusting your filters, search term, or click "Generate More Items" to expand the deck.</p>
           </div>
         ) : (
           filteredCards.map((card) => {
@@ -613,7 +578,7 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
                               : "bg-slate-100 text-slate-600"
                           }`}
                         >
-                          {card.isCommonError ? "Tailored Error Remedy" : card.type}
+                          {card.isCommonError ? "Error Remedy" : card.type}
                         </span>
                         <span className="px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 text-[10px] font-bold">
                           {card.partOfSpeech}
@@ -643,16 +608,20 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
                   <div className="flex items-center gap-2 shrink-0">
                     <span
                       className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                        card.srs.status === "mastered"
+                        card.srs.status === "mastered" || card.srs.masteryScore >= 85
                           ? "bg-emerald-50 text-emerald-700 border border-emerald-200"
                           : card.srs.status === "review"
                           ? "bg-indigo-50 text-indigo-700 border border-indigo-200"
-                          : card.srs.status === "learning"
+                          : card.srs.status === "learning" || card.srs.masteryScore >= 40
                           ? "bg-amber-50 text-amber-700 border border-amber-200"
                           : "bg-slate-100 text-slate-600"
                       }`}
                     >
-                      {card.srs.status === "mastered" ? "Mastered" : card.srs.status}
+                      {card.srs.status === "mastered" || card.srs.masteryScore >= 85
+                        ? "Mastered"
+                        : card.srs.status === "new"
+                        ? "New"
+                        : "Active Review"}
                     </span>
 
                     {/* Conjugation Form Lookup Button for Verbs */}
@@ -771,6 +740,8 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
                   >
                     <option value="vocabulary">Vocabulary</option>
                     <option value="grammar">Grammar Formula</option>
+                    <option value="connector">Particle / Connector</option>
+                    <option value="phrase">Phrase / Idiom</option>
                   </select>
                 </div>
 
@@ -791,7 +762,7 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
                   type="text"
                   value={newPartOfSpeech}
                   onChange={(e) => setNewPartOfSpeech(e.target.value)}
-                  placeholder="e.g. Irregular Verb, Preposition"
+                  placeholder="e.g. Irregular Verb, Particle, Preposition"
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:outline-none focus:border-indigo-500"
                 />
               </div>
@@ -808,17 +779,28 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
                 />
               </div>
 
+              <div>
+                <label className="block font-bold text-slate-700 mb-1">Usage Notes & Patterns (Optional)</label>
+                <textarea
+                  value={newUsageNotes}
+                  onChange={(e) => setNewUsageNotes(e.target.value)}
+                  placeholder="How to use this word in a sentence..."
+                  rows={2}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
               <div className="flex justify-end gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setShowAddCardModal(false)}
-                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition"
+                  className="px-4 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold transition cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition"
+                  className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition cursor-pointer"
                 >
                   Add Card
                 </button>

@@ -8,12 +8,14 @@ import {
   ReadingArticleConcept,
   ReadingFollowUpQuestion,
   ReadingQuestionEvaluation,
+  LearnerError,
 } from "../types";
 import { DEFAULT_READING_ARTICLES } from "../data/defaultArticles";
 import { playTextAloud, stopSpeech } from "../utils/speech";
 import { ConjugationLookup } from "./ConjugationLookup";
 import { IS_CONJUGATION_LANGUAGE } from "../data/conjugations";
 import { lookupBuiltinDictionary } from "../data/builtinDictionary";
+import { estimateStandardizedProficiency } from "../utils/proficiencyEstimation";
 import {
   BookOpen,
   Headphones,
@@ -43,6 +45,7 @@ import {
   Send,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   Award,
   Sparkle,
 } from "lucide-react";
@@ -53,6 +56,8 @@ interface ReadingListeningPracticeProps {
   knownLang: SupportedLanguage;
   isOnline?: boolean;
   onAddCardToDeck: (card: Flashcard) => void;
+  learnerErrors?: LearnerError[];
+  onNavigateTab?: (tab: string) => void;
 }
 
 export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> = ({
@@ -61,7 +66,14 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
   knownLang,
   isOnline = true,
   onAddCardToDeck,
+  learnerErrors = [],
+  onNavigateTab,
 }) => {
+  const [showLevelWarningDismissed, setShowLevelWarningDismissed] = useState<boolean>(false);
+
+  // Evaluated user proficiency
+  const userAssessment = estimateStandardizedProficiency(deck, targetLang, learnerErrors);
+  const isLevelTooLow = userAssessment.cefrLevel === "A1" || userAssessment.masteredCount < 8;
   // Current active article
   const [article, setArticle] = useState<ReadingArticle>(() => {
     return (
@@ -629,6 +641,52 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
         <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-2xl shadow-xl border border-slate-700 text-xs font-bold flex items-center gap-2 animate-bounce">
           <Check className="w-4 h-4 text-emerald-400" />
           <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* Evaluated Level Advisory Banner */}
+      {isLevelTooLow && !showLevelWarningDismissed && (
+        <div
+          id="reading-level-warning-banner"
+          className="p-5 rounded-3xl bg-gradient-to-r from-amber-500/10 via-amber-50 to-orange-50/50 border border-amber-300 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-2 duration-300"
+        >
+          <div className="flex items-start gap-3.5">
+            <div className="p-2.5 rounded-2xl bg-amber-500 text-white shrink-0 mt-0.5 shadow-xs">
+              <AlertTriangle className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h4 className="text-sm font-black text-amber-950">
+                  Beginner Level Notice (Evaluated Level: {userAssessment.cefrTitle})
+                </h4>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-900 border border-amber-300">
+                  {userAssessment.masteredCount} Items Mastered
+                </span>
+              </div>
+              <p className="text-xs text-amber-900/90 leading-relaxed max-w-3xl">
+                Because your current evaluated proficiency is at an introductory stage, reading and listening immersion articles may feel challenging due to limited vocabulary recall or unfamiliar grammar concepts. We suggest strengthening your core vocabulary and sentence construction in the <strong>Deck</strong> and <strong>Study</strong> tabs, then returning here once your level is higher!
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+            {onNavigateTab && (
+              <button
+                onClick={() => onNavigateTab("deck")}
+                className="px-3.5 py-2 rounded-2xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <span>Go to Deck</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            )}
+            <button
+              onClick={() => setShowLevelWarningDismissed(true)}
+              className="p-2 rounded-2xl hover:bg-amber-200/60 text-amber-800 text-xs font-bold transition cursor-pointer"
+              title="Dismiss warning"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 

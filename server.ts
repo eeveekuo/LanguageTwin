@@ -429,6 +429,7 @@ app.post("/api/ai-tutor-chat", async (req, res) => {
       activeDeckTitle,
       recentTargetWords, // Array of target words currently in the deck
       userProficiency,
+      scenarioPrompt,
     } = req.body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -438,14 +439,20 @@ app.post("/api/ai-tutor-chat", async (req, res) => {
     const ai = getGeminiClient();
     const lastUserMessage = messages[messages.length - 1]?.text || "";
 
+    const scenarioInstruction = scenarioPrompt && scenarioPrompt.trim()
+      ? `\n\nACTIVE CONVERSATION SCENARIO & ROLEPLAY OBJECTIVE:
+"${scenarioPrompt.trim()}"
+You MUST strictly stay in character according to this scenario! Frame the context, conversational tone, setting, and persona naturally around this objective, while helping the learner practice.`
+      : "";
+
     const systemInstruction = `You are a supportive, conversational AI Language Partner and master Tutor for a student learning ${targetLanguage} (native language: ${knownLanguage}).
 Proficiency level: ${userProficiency || "Intermediate A2/B1"}.
 The student is currently mastering this deck: "${activeDeckTitle || "Frequency Vocabulary"}".
-Deck flashcard items / target words available: ${recentTargetWords?.slice(0, 35)?.join(", ") || "core vocabulary"}.
+Deck flashcard items / target words available: ${recentTargetWords?.slice(0, 35)?.join(", ") || "core vocabulary"}.${scenarioInstruction}
 
 Your dual tasks for every response:
 1. CONVERSATIONAL REPLY:
-   - Respond warmly and naturally in ${targetLanguage} with engaging dialogue (and ask natural follow-up questions).
+   - Respond warmly and naturally in ${targetLanguage} with engaging dialogue (and ask natural follow-up questions in character with the scenario if one is active).
    - Weave in 1-2 relevant vocabulary words or phrases from the learner's deck where appropriate.
    - If the student made any grammar or vocabulary slip, provide a gentle, brief correction tip in ${knownLanguage} alongside your response.
    - Also provide an English (${knownLanguage}) translation of your response.
@@ -525,6 +532,147 @@ Respond to the student's latest message and return structured JSON with your con
   } catch (error: any) {
     console.error("Tutor chat error:", error);
     res.status(500).json({ error: error.message || "Tutor chat failed" });
+  }
+});
+
+// Quick Lookup & Linguistic Co-Pilot for Side Tab Assistant
+app.post("/api/quick-assist", async (req, res) => {
+  try {
+    const { query, targetLanguage, knownLanguage, queryType = "general" } = req.body;
+
+    if (!query || !targetLanguage) {
+      return res.status(400).json({ error: "Missing query or target language." });
+    }
+
+    const ai = getGeminiClient();
+
+    const systemInstruction = `You are a real-time Linguistic Co-Pilot and Translation Assistant for a student learning ${targetLanguage} (native language: ${knownLanguage}).
+The student is in the middle of a live conversation and is asking a quick query in a side lookup drawer: "${query}".
+
+Query Type: ${queryType} (e.g. 'how_to_say', 'lookup_word', 'grammar_check', 'polite_vs_casual', 'general').
+
+Provide a fast, highly accurate, pedagogical response formatted with:
+1. Target translation or expression in ${targetLanguage}.
+2. Phonetic / Romanization / Furigana / Pinyin pronunciation guide if applicable.
+3. Natural variation alternatives (e.g. Casual, Polite, Formal / Written).
+4. Literal word-by-word breakdown.
+5. 1 practical example sentence with translation.
+6. A short tip on nuance or usage context.`;
+
+    const prompt = `Student query: "${query}"
+Target language: ${targetLanguage}
+Known language: ${knownLanguage}
+Query intention: ${queryType}`;
+
+    const response = await generateWithFallback(ai, {
+      primaryModel: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        systemInstruction,
+        temperature: 0.3,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            targetExpression: { type: Type.STRING, description: "Primary recommended translation or phrase in target language" },
+            phonetic: { type: Type.STRING, description: "Pronunciation or romanization" },
+            meaningInKnown: { type: Type.STRING, description: "Clear meaning in known language" },
+            formalityVariants: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  register: { type: Type.STRING, description: "'Casual/Informal', 'Polite/Standard', 'Formal/Honorific'" },
+                  phrase: { type: Type.STRING },
+                  note: { type: Type.STRING },
+                },
+                required: ["register", "phrase", "note"],
+              },
+            },
+            wordBreakdown: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  word: { type: Type.STRING },
+                  meaning: { type: Type.STRING },
+                  partOfSpeech: { type: Type.STRING },
+                },
+                required: ["word", "meaning"],
+              },
+            },
+            exampleSentence: {
+              type: Type.OBJECT,
+              properties: {
+                target: { type: Type.STRING },
+                translation: { type: Type.STRING },
+              },
+              required: ["target", "translation"],
+            },
+            nuanceTip: { type: Type.STRING, description: "1-2 sentence tip on cultural context or nuances" },
+          },
+          required: ["targetExpression", "phonetic", "meaningInKnown", "formalityVariants", "wordBreakdown", "exampleSentence", "nuanceTip"],
+        },
+      },
+    });
+
+    const parsed = JSON.parse(response.text || "{}");
+    res.json(parsed);
+  } catch (error: any) {
+    console.error("Quick assist error:", error);
+    res.status(500).json({ error: error.message || "Quick assist lookup failed" });
+  }
+});
+
+// Generate Random Conversation Scenario
+app.post("/api/generate-scenario", async (req, res) => {
+  try {
+    const { targetLanguage, knownLanguage, theme = "any", level = "A2/B1" } = req.body;
+
+    const ai = getGeminiClient();
+
+    const systemInstruction = `You are a language learning curriculum designer. Generate a fun, realistic, roleplay conversation scenario for a student learning ${targetLanguage} (native: ${knownLanguage}, level: ${level}).
+Theme requested: ${theme}.
+
+Provide:
+1. Scenario Title (e.g. "Ordering at a Traditional Teahouse in Insadong", "Asking for Train Platform Change in Kyoto", "Debating Movie Choices with a Roommate in Madrid").
+2. Scenario Prompt / Roleplay Context for the AI tutor to act out (describing who the AI is, who the student is, where they are, and what the goal of the conversation is).
+3. 3-4 Suggested vocabulary/phrases to try using in this scenario.
+4. An engaging opening message for the AI tutor to kick off the conversation in character.`;
+
+    const prompt = `Generate a realistic conversation scenario for ${targetLanguage} (${level}) with theme '${theme}'.`;
+
+    const response = await generateWithFallback(ai, {
+      primaryModel: "gemini-2.5-flash",
+      contents: prompt,
+      config: {
+        systemInstruction,
+        temperature: 0.7,
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            category: { type: Type.STRING, description: "Category like 'Dining', 'Travel', 'Work', 'Social', 'Emergency', 'Hobbies'" },
+            scenarioPrompt: { type: Type.STRING, description: "Detailed roleplay instruction and setting for the AI to adopt" },
+            targetWordsToUse: {
+              type: Type.ARRAY,
+              items: { type: Type.STRING },
+              description: "3-4 recommended vocabulary or grammar patterns to attempt",
+            },
+            openingGreeting: { type: Type.STRING, description: "Opening line in target language spoken by the AI in character" },
+            openingGreetingTranslation: { type: Type.STRING, description: "Opening line translated into known language" },
+          },
+          required: ["title", "category", "scenarioPrompt", "targetWordsToUse", "openingGreeting", "openingGreetingTranslation"],
+        },
+      },
+    });
+
+    const parsed = JSON.parse(response.text || "{}");
+    res.json(parsed);
+  } catch (error: any) {
+    console.error("Scenario generation error:", error);
+    res.status(500).json({ error: error.message || "Scenario generation failed" });
   }
 });
 
