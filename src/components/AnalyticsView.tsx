@@ -5,6 +5,7 @@ import { getFrequencyBrackets, getActiveFrequencyBracket } from "../utils/freque
 import { estimateStandardizedProficiency } from "../utils/proficiencyEstimation";
 import { playTextAloud } from "../utils/speech";
 import { loadDiagnosticHistory, DiagnosticTestRecord } from "../utils/diagnosticHistory";
+import { MasteryProgressionChart } from "./MasteryProgressionChart";
 import {
   Flame,
   Award,
@@ -32,6 +33,7 @@ import {
   Plus,
   XCircle,
   HelpCircle,
+  LineChart as LineChartIcon,
 } from "lucide-react";
 
 interface AnalyticsViewProps {
@@ -66,7 +68,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   onAddCardToDeck,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    "proficiency" | "diagnosticHistory" | "mastered" | "errors" | "srs"
+    "proficiency" | "progression" | "diagnosticHistory" | "mastered" | "errors" | "srs"
   >("proficiency");
   const [masteredSearch, setMasteredSearch] = useState<string>("");
   const [errorFilter, setErrorFilter] = useState<"active" | "resolved" | "all">("active");
@@ -398,6 +400,19 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         </button>
 
         <button
+          id="analytics-tab-progression"
+          onClick={() => setActiveTab("progression")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-2xl transition cursor-pointer ${
+            activeTab === "progression"
+              ? "bg-indigo-600 text-white shadow-xs"
+              : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+          }`}
+        >
+          <TrendingUp className="w-4 h-4 shrink-0" />
+          <span>30-Day Mastery Progression</span>
+        </button>
+
+        <button
           id="analytics-tab-diagnostic-history"
           onClick={() => setActiveTab("diagnosticHistory")}
           className={`flex items-center gap-2 px-4 py-2 rounded-2xl transition cursor-pointer ${
@@ -566,6 +581,13 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               </p>
             </div>
           </div>
+
+          {/* 30-Day Mastery Score Progression Chart */}
+          <MasteryProgressionChart
+            deck={deck}
+            dailyProgress={dailyProgress}
+            learnerErrors={learnerErrors}
+          />
 
           {/* Active Lexical Horizon & Dedicated Grammar Concept Grasp Sections */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -756,6 +778,65 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: 30-DAY MASTERY PROGRESSION & RETENTION DYNAMICS */}
+      {activeTab === "progression" && (
+        <div className="space-y-6">
+          <MasteryProgressionChart
+            deck={deck}
+            dailyProgress={dailyProgress}
+            learnerErrors={learnerErrors}
+          />
+
+          {/* Additional Deep Progression Insights */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="p-2 rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100">
+                  <TrendingUp className="w-5 h-5" />
+                </span>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700">
+                  SM-2 ALGORITHM
+                </span>
+              </div>
+              <h4 className="text-sm font-extrabold text-slate-900">Mastery Score Dynamics</h4>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Scores reflect weighted active sentence production accuracy combined with SM-2 ease factor expansions. Every successful production increases interval spacing exponentially.
+              </p>
+            </div>
+
+            <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="p-2 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-100">
+                  <Award className="w-5 h-5" />
+                </span>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
+                  LONG-TERM MEMORY
+                </span>
+              </div>
+              <h4 className="text-sm font-extrabold text-slate-900">Mastery Criteria</h4>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                An item enters the <strong>Mastered</strong> tier upon achieving &ge;85% retention score across 3+ consecutive successful sentence evaluations with an interval of &ge;6 days.
+              </p>
+            </div>
+
+            <div className="p-6 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="p-2 rounded-2xl bg-amber-50 text-amber-600 border border-amber-100">
+                  <Zap className="w-5 h-5" />
+                </span>
+                <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-50 text-amber-700">
+                  ACTIVE PRODUCTION
+                </span>
+              </div>
+              <h4 className="text-sm font-extrabold text-slate-900">Sentence Velocity</h4>
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Active recall through original sentence formation produces up to 3.4x higher long-term neural retention compared to passive flashcard flipping.
+              </p>
             </div>
           </div>
         </div>

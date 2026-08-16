@@ -17,6 +17,7 @@ import {
   WifiOff,
   Headphones,
   BookOpen,
+  ChevronDown,
 } from "lucide-react";
 
 interface HeaderProps {
@@ -89,47 +90,43 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Language Pair Selector & Deck Switcher */}
-          <div className="hidden lg:flex items-center gap-3">
-            <div className="flex items-center bg-slate-50 rounded-full px-4 py-1.5 border border-slate-200 shadow-xs gap-2 text-xs font-medium">
-              <span className="text-slate-400">Learning</span>
-              <span className="text-slate-900 font-bold uppercase flex items-center gap-1">
-                <span>{targetLang.flag}</span>
-                <span>{targetLang.name}</span>
-              </span>
-              <span className="text-slate-300">|</span>
-              <span className="text-slate-400">From</span>
-              <span className="text-slate-900 font-bold uppercase flex items-center gap-1">
-                <span>{knownLang.flag}</span>
-                <span>{knownLang.name}</span>
-              </span>
-              <button
-                onClick={onOpenLanguageModal}
-                className="p-1 rounded-full hover:bg-slate-200 text-slate-500 transition ml-0.5 cursor-pointer"
-                title="Change language pair"
-              >
-                <Languages className="w-3.5 h-3.5 text-indigo-600" />
-              </button>
-            </div>
+          {/* Unified Language Pair & Active Deck Switcher */}
+          <div className="hidden md:flex items-center">
+            <button
+              id="header-lang-deck-btn"
+              type="button"
+              onClick={onOpenLanguageModal}
+              className="group flex items-center bg-slate-50 hover:bg-slate-100/90 text-slate-800 rounded-full px-3.5 py-1.5 border border-slate-200 shadow-xs gap-2.5 text-xs transition cursor-pointer"
+              title="Click to adjust language pair or switch decks"
+            >
+              {/* Language Pair */}
+              <div className="flex items-center gap-1.5 font-semibold">
+                <span className="text-slate-400 text-[11px] font-medium">Learning</span>
+                <span className="text-slate-900 font-bold flex items-center gap-1">
+                  <span>{targetLang.flag}</span>
+                  <span>{targetLang.name}</span>
+                </span>
+                <span className="text-slate-300 font-normal">·</span>
+                <span className="text-slate-400 text-[11px] font-medium">From</span>
+                <span className="text-slate-900 font-bold flex items-center gap-1">
+                  <span>{knownLang.flag}</span>
+                  <span>{knownLang.name}</span>
+                </span>
+              </div>
 
-            {/* Deck selector dropdown */}
-            <div className="flex items-center bg-white rounded-full px-3 py-1.5 border border-slate-200 shadow-xs text-xs font-medium text-slate-700">
-              <select
-                id="deck-selector"
-                value={activeDeck.id}
-                onChange={(e) => {
-                  const found = allDecks.find((d) => d.id === e.target.value);
-                  if (found) onSelectDeck(found);
-                }}
-                className="bg-transparent text-slate-800 font-semibold focus:outline-none cursor-pointer max-w-[180px] truncate"
-              >
-                {allDecks.map((d) => (
-                  <option key={d.id} value={d.id}>
-                    {d.title} ({d.cards.length})
-                  </option>
-                ))}
-              </select>
-            </div>
+              <span className="h-3.5 w-px bg-slate-200" />
+
+              {/* Current Active Deck */}
+              <div className="flex items-center gap-1.5 text-indigo-700 font-semibold max-w-[210px]">
+                <BookOpen className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+                <span className="truncate">{activeDeck.title}</span>
+                <span className="text-[10px] bg-indigo-100/80 text-indigo-800 font-bold px-1.5 py-0.5 rounded-full shrink-0">
+                  {activeDeck.cards.length}
+                </span>
+              </div>
+
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 group-hover:text-slate-600 transition shrink-0" />
+            </button>
           </div>
 
           {/* Daily Goal & Actions */}
@@ -163,10 +160,12 @@ export const Header: React.FC<HeaderProps> = ({
             {/* Mobile Lang Button */}
             <button
               onClick={onOpenLanguageModal}
-              className="lg:hidden p-2 rounded-2xl bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 cursor-pointer"
-              title="Language Settings"
+              className="md:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200 text-xs font-bold cursor-pointer"
+              title="Language & Deck Hub"
             >
-              <Languages className="w-4 h-4" />
+              <span>{targetLang.flag}</span>
+              <span className="truncate max-w-[80px]">{targetLang.name}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-slate-500" />
             </button>
           </div>
         </div>

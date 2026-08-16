@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Deck, Flashcard, SupportedLanguage } from "../types";
 import {
   SUPPORTED_TARGET_LANGUAGES,
@@ -33,6 +33,13 @@ export const GenerateDeckModal: React.FC<GenerateDeckModalProps> = ({
   const [startRank, setStartRank] = useState<number>(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedTargetCode(initialTarget.code);
+      setSelectedKnownCode(initialKnown.code);
+    }
+  }, [isOpen, initialTarget.code, initialKnown.code]);
 
   if (!isOpen) return null;
 

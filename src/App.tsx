@@ -385,20 +385,36 @@ export default function App() {
 
   // Handle switching language pairs
   const handleSelectLanguagePair = (targetCode: string, knownCode: string) => {
+    // 1. Look for matching deck in active decks
     const matchingDeck = decks.find(
       (d) => d.targetLangCode === targetCode && d.knownLangCode === knownCode
     );
 
     if (matchingDeck) {
       setActiveDeckId(matchingDeck.id);
-    } else {
-      const targetMatch = decks.find((d) => d.targetLangCode === targetCode);
-      if (targetMatch) {
-        setActiveDeckId(targetMatch.id);
-      } else {
-        setIsGenerateModalOpen(true);
-      }
+      setStudyFilter({ mode: "auto" });
+      return;
     }
+
+    // 2. Look for any deck in active decks with matching target language
+    const targetMatch = decks.find((d) => d.targetLangCode === targetCode);
+    if (targetMatch) {
+      setActiveDeckId(targetMatch.id);
+      setStudyFilter({ mode: "auto" });
+      return;
+    }
+
+    // 3. Look in DEFAULT_DECKS catalog for pre-built starter decks
+    const defaultMatch = DEFAULT_DECKS.find(
+      (d) => d.targetLangCode === targetCode
+    );
+    if (defaultMatch) {
+      setDecks((prev) => [defaultMatch, ...prev.filter((d) => d.id !== defaultMatch.id)]);
+      setActiveDeckId(defaultMatch.id);
+      setStudyFilter({ mode: "auto" });
+      return;
+    }
+
     setStudyFilter({ mode: "auto" });
   };
 
@@ -536,12 +552,14 @@ export default function App() {
         targetLang={targetLang}
         knownLang={knownLang}
         allDecks={decks}
+        activeDeckId={activeDeck.id}
         onSelectLanguagePair={handleSelectLanguagePair}
         onOpenGenerateModal={() => setIsGenerateModalOpen(true)}
         onSelectDeck={(deck) => {
           setActiveDeckId(deck.id);
           setStudyFilter({ mode: "auto" });
         }}
+        onOpenPlacementModal={() => setIsPlacementModalOpen(true)}
       />
 
       <LanguagePlacementModal
