@@ -3,6 +3,8 @@ import { Deck, Flashcard, SupportedLanguage, CardType } from "../types";
 import { playTextAloud } from "../utils/speech";
 import { ConjugationLookup } from "./ConjugationLookup";
 import { IS_CONJUGATION_LANGUAGE } from "../data/conjugations";
+import { formatPronunciation } from "../utils/pronunciation";
+import { PronunciationAidSelector } from "./PronunciationAidSelector";
 import {
   Search,
   Plus,
@@ -37,6 +39,8 @@ interface DeckExplorerProps {
   onGenerateNextBatch?: (startRank: number, endRank: number) => void;
   isGeneratingBatch?: boolean;
   isOnline?: boolean;
+  pronunciationAid?: string;
+  onChangePronunciationAid?: (aidId: string) => void;
 }
 
 export const DeckExplorer: React.FC<DeckExplorerProps> = ({
@@ -50,6 +54,8 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
   onGenerateNextBatch,
   isGeneratingBatch = false,
   isOnline = true,
+  pronunciationAid = "none",
+  onChangePronunciationAid,
 }) => {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -501,6 +507,21 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
                 <option value="101+">Ranks #101+</option>
               </select>
             </div>
+
+            {/* Pronunciation Aid Option Selector */}
+            {onChangePronunciationAid && (
+              <div>
+                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
+                  Pronunciation Aid:
+                </span>
+                <PronunciationAidSelector
+                  langCode={targetLang.code}
+                  langName={targetLang.name}
+                  currentAid={pronunciationAid}
+                  onChangeAid={onChangePronunciationAid}
+                />
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -532,6 +553,13 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
         ) : (
           filteredCards.map((card) => {
             const isExpanded = expandedCardId === card.id;
+            const formattedAid = formatPronunciation(
+              card.targetItem,
+              card.phonetic,
+              targetLang.code,
+              pronunciationAid
+            );
+
             return (
               <div
                 key={card.id}
@@ -597,9 +625,13 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
                         </div>
                       )}
 
-                      <p className="text-xs text-slate-600 mt-1 font-medium">
-                        {card.phonetic && <span className="font-serif text-slate-400 mr-2">{card.phonetic}</span>}
-                        {card.definition}
+                      <p className="text-xs text-slate-600 mt-1 font-medium flex items-center gap-2 flex-wrap">
+                        {formattedAid && (
+                          <span className="font-serif text-indigo-600 font-semibold bg-indigo-50/70 px-2 py-0.5 rounded-md border border-indigo-100">
+                            {formattedAid}
+                          </span>
+                        )}
+                        <span>{card.definition}</span>
                       </p>
                     </div>
                   </div>

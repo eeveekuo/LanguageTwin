@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Deck, SupportedLanguage, ChatMessage, EvaluatedItemInChat, Flashcard } from "../types";
 import { playTextAloud, stopSpeech, isSpeechRecognitionSupported, createSpeechRecognizer } from "../utils/speech";
+import { formatPronunciation } from "../utils/pronunciation";
+import { PronunciationAidSelector } from "./PronunciationAidSelector";
 import {
   Send,
   Mic,
@@ -33,6 +35,8 @@ interface AITutorChatProps {
   targetLang: SupportedLanguage;
   knownLang: SupportedLanguage;
   onTutorItemsEvaluated?: (evaluatedItems: EvaluatedItemInChat[], userMessage: string) => void;
+  pronunciationAid?: string;
+  onChangePronunciationAid?: (aidId: string) => void;
 }
 
 interface QuickAssistResult {
@@ -59,6 +63,8 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
   targetLang,
   knownLang,
   onTutorItemsEvaluated,
+  pronunciationAid = "none",
+  onChangePronunciationAid,
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputVal, setInputVal] = useState("");
@@ -328,6 +334,17 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
         </div>
 
         <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+          {/* Pronunciation Aid Selector */}
+          {onChangePronunciationAid && (
+            <PronunciationAidSelector
+              langCode={targetLang.code}
+              langName={targetLang.name}
+              currentAid={pronunciationAid}
+              onChangeAid={onChangePronunciationAid}
+              variant="compact"
+            />
+          )}
+
           {/* Side Tab / Co-Pilot Toggle Button */}
           <button
             id="toggle-side-copilot-btn"
@@ -742,8 +759,10 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
                       <h4 className="text-base font-extrabold text-indigo-950 mt-0.5">
                         {assistResult.targetExpression}
                       </h4>
-                      {assistResult.phonetic && (
-                        <p className="text-xs font-serif text-indigo-700/80">{assistResult.phonetic}</p>
+                      {formatPronunciation(assistResult.targetExpression, assistResult.phonetic, targetLang.code, pronunciationAid) && (
+                        <p className="text-xs font-serif text-indigo-700/80">
+                          {formatPronunciation(assistResult.targetExpression, assistResult.phonetic, targetLang.code, pronunciationAid)}
+                        </p>
                       )}
                       <p className="text-xs text-slate-600 mt-1 font-medium">
                         {assistResult.meaningInKnown}

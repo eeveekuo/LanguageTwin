@@ -753,6 +753,17 @@ export const StudySession: React.FC<StudySessionProps> = ({
                 <CheckCircle2 className="w-3 h-3" /> Mastered
               </span>
             )}
+
+            {/* In-Card Pronunciation Aid Switcher */}
+            {onChangePronunciationAid && (
+              <PronunciationAidSelector
+                langCode={targetLang.code}
+                langName={targetLang.name}
+                currentAid={pronunciationAid}
+                onChangeAid={onChangePronunciationAid}
+                variant="compact"
+              />
+            )}
           </div>
 
           {/* Center Presentation: Only shows Word or Meaning at first (definition & examples hidden) */}
@@ -818,26 +829,40 @@ export const StudySession: React.FC<StudySessionProps> = ({
               <div className="my-2">
                 {promptMode === "target_word" ? (
                   /* DIRECT TARGET WORD DISPLAY */
-                  <div className="flex items-center justify-center gap-4 mb-2">
-                    <h2
-                      id="target-item-heading"
-                      className="text-4xl sm:text-6xl font-black tracking-tight text-slate-900"
-                    >
-                      {activeCard.targetItem}
-                    </h2>
+                  <div className="flex flex-col items-center justify-center gap-1 mb-2">
+                    <div className="flex items-center justify-center gap-4">
+                      <h2
+                        id="target-item-heading"
+                        className="text-4xl sm:text-6xl font-black tracking-tight text-slate-900"
+                      >
+                        {activeCard.targetItem}
+                      </h2>
 
-                    <button
-                      id="audio-target-btn"
-                      onClick={() => handlePlayAudio(activeCard.targetItem, `target-${activeCard.id}`)}
-                      className={`w-11 h-11 rounded-full border flex items-center justify-center transition-all cursor-pointer ${
-                        playingAudioId === `target-${activeCard.id}`
-                          ? "bg-indigo-600 text-white border-indigo-600 scale-110 shadow-md shadow-indigo-200"
-                          : "bg-slate-50 border-slate-200 text-indigo-600 hover:bg-indigo-600 hover:text-white"
-                      }`}
-                      title="Listen to pronunciation"
-                    >
-                      <Volume2 className="w-5 h-5" />
-                    </button>
+                      <button
+                        id="audio-target-btn"
+                        onClick={() => handlePlayAudio(activeCard.targetItem, `target-${activeCard.id}`)}
+                        className={`w-11 h-11 rounded-full border flex items-center justify-center transition-all cursor-pointer ${
+                          playingAudioId === `target-${activeCard.id}`
+                            ? "bg-indigo-600 text-white border-indigo-600 scale-110 shadow-md shadow-indigo-200"
+                            : "bg-slate-50 border-slate-200 text-indigo-600 hover:bg-indigo-600 hover:text-white"
+                        }`}
+                        title="Listen to pronunciation"
+                      >
+                        <Volume2 className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    {/* Pronunciation Aid (Zhuyin, Pinyin, Furigana, etc.) */}
+                    {formatPronunciation(activeCard.targetItem, activeCard.phonetic, targetLang.code, pronunciationAid) && (
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100/90 text-slate-700 font-serif text-sm tracking-wide mt-1 border border-slate-200">
+                        <span className="text-[10px] font-sans font-bold uppercase text-indigo-600">
+                          {pronunciationAid === "zhuyin" ? "注音" : pronunciationAid === "pinyin" ? "拼音" : "Pronunciation"}
+                        </span>
+                        <span>
+                          {formatPronunciation(activeCard.targetItem, activeCard.phonetic, targetLang.code, pronunciationAid)}
+                        </span>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   /* REVERSE RECALL DISPLAY: Show translated meaning in known language */
@@ -851,11 +876,18 @@ export const StudySession: React.FC<StudySessionProps> = ({
                       </h3>
                     </div>
 
-                    <div className="flex items-center justify-center gap-2 text-xs">
+                    <div className="flex flex-col items-center justify-center gap-1 text-xs">
                       {showRecallHint || isRevealed ? (
-                        <span className="font-mono font-bold text-slate-700 bg-slate-100 px-3 py-1 rounded-xl">
-                          Target: {activeCard.targetItem}
-                        </span>
+                        <div className="flex flex-col items-center gap-1">
+                          <span className="font-mono font-bold text-slate-700 bg-slate-100 px-3 py-1 rounded-xl">
+                            Target: {activeCard.targetItem}
+                          </span>
+                          {formatPronunciation(activeCard.targetItem, activeCard.phonetic, targetLang.code, pronunciationAid) && (
+                            <span className="font-serif text-xs text-indigo-600">
+                              {formatPronunciation(activeCard.targetItem, activeCard.phonetic, targetLang.code, pronunciationAid)}
+                            </span>
+                          )}
+                        </div>
                       ) : (
                         <button
                           onClick={() => setShowRecallHint(true)}
@@ -1338,8 +1370,10 @@ export const StudySession: React.FC<StudySessionProps> = ({
                     <p className="text-base font-extrabold text-slate-900">
                       {explanationData?.definition || activeCard.definition}
                     </p>
-                    {activeCard.phonetic && (
-                      <p className="text-xs text-slate-400 font-serif mt-0.5">{activeCard.phonetic}</p>
+                    {formatPronunciation(activeCard.targetItem, activeCard.phonetic, targetLang.code, pronunciationAid) && (
+                      <p className="text-xs text-indigo-600 font-serif mt-0.5">
+                        {formatPronunciation(activeCard.targetItem, activeCard.phonetic, targetLang.code, pronunciationAid)}
+                      </p>
                     )}
                   </div>
 

@@ -10,6 +10,7 @@ import {
   fetchCloudDecks,
   User,
 } from "../lib/firebase";
+import { PronunciationAidSelector } from "./PronunciationAidSelector";
 import {
   Languages,
   X,
@@ -45,6 +46,8 @@ interface LanguagePairModalProps {
   initialMode?: "browse" | "generate";
   isOnline?: boolean;
   currentUser?: User | null;
+  pronunciationAid?: string;
+  onChangePronunciationAid?: (aidId: string) => void;
 }
 
 export const LanguagePairModal: React.FC<LanguagePairModalProps> = ({
@@ -61,6 +64,8 @@ export const LanguagePairModal: React.FC<LanguagePairModalProps> = ({
   initialMode = "browse",
   isOnline = true,
   currentUser,
+  pronunciationAid = "none",
+  onChangePronunciationAid,
 }) => {
   const [mode, setMode] = useState<"browse" | "generate">(initialMode);
   const [selectedTarget, setSelectedTarget] = useState(targetLang.code);
@@ -446,12 +451,32 @@ export const LanguagePairModal: React.FC<LanguagePairModalProps> = ({
                 </div>
               </div>
 
-              {/* 3. Available Decks for Selected Target Language (Curated + Community Cloud) */}
+              {/* 3. Pronunciation & Romanization Aid Preference */}
+              {onChangePronunciationAid && (
+                <div className="p-3.5 rounded-2xl bg-indigo-50/50 border border-indigo-100 flex items-center justify-between">
+                  <div>
+                    <label className="text-slate-800 font-bold block">
+                      3. Pronunciation Aid for {targetLangObj.name}:
+                    </label>
+                    <span className="text-[11px] text-slate-500">
+                      Choose your preferred script, phonetic aid, or none
+                    </span>
+                  </div>
+                  <PronunciationAidSelector
+                    langCode={targetLangObj.code}
+                    langName={targetLangObj.name}
+                    currentAid={pronunciationAid}
+                    onChangeAid={onChangePronunciationAid}
+                  />
+                </div>
+              )}
+
+              {/* 4. Available Decks for Selected Target Language (Curated + Community Cloud) */}
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <label className="text-slate-700 font-bold flex items-center gap-1.5">
                     <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
-                    <span>Decks for {targetLangObj.name}</span>
+                    <span>4. Decks for {targetLangObj.name}</span>
                   </label>
                   
                   {/* Category Filter */}

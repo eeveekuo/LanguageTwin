@@ -16,6 +16,8 @@ import { ConjugationLookup } from "./ConjugationLookup";
 import { IS_CONJUGATION_LANGUAGE } from "../data/conjugations";
 import { lookupBuiltinDictionary } from "../data/builtinDictionary";
 import { estimateStandardizedProficiency } from "../utils/proficiencyEstimation";
+import { formatPronunciation } from "../utils/pronunciation";
+import { PronunciationAidSelector } from "./PronunciationAidSelector";
 import {
   BookOpen,
   Headphones,
@@ -58,6 +60,8 @@ interface ReadingListeningPracticeProps {
   onAddCardToDeck: (card: Flashcard) => void;
   learnerErrors?: LearnerError[];
   onNavigateTab?: (tab: string) => void;
+  pronunciationAid?: string;
+  onChangePronunciationAid?: (aidId: string) => void;
 }
 
 export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> = ({
@@ -68,6 +72,8 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
   onAddCardToDeck,
   learnerErrors = [],
   onNavigateTab,
+  pronunciationAid = "none",
+  onChangePronunciationAid,
 }) => {
   const [showLevelWarningDismissed, setShowLevelWarningDismissed] = useState<boolean>(false);
 
@@ -1066,9 +1072,9 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
                         </span>
                       </div>
 
-                      {concept.phonetic && (
-                        <p className="text-xs text-indigo-600 font-mono">
-                          {concept.phonetic}
+                      {formatPronunciation(concept.targetItem, concept.phonetic, targetLang.code, pronunciationAid) && (
+                        <p className="text-xs text-indigo-600 font-serif">
+                          {formatPronunciation(concept.targetItem, concept.phonetic, targetLang.code, pronunciationAid)}
                         </p>
                       )}
 
