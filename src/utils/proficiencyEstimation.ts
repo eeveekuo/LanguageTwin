@@ -1,4 +1,5 @@
 import { Deck, Flashcard, SupportedLanguage, LearnerError, CEFRLevel, StandardizedEquivalency } from "../types";
+import { isIgnoredNonErrorInput } from "./errors";
 
 export interface ProficiencyAssessment {
   cefrLevel: CEFRLevel;
@@ -47,10 +48,10 @@ export function estimateStandardizedProficiency(
 
   // Active errors ratio
   const activeDeckErrors = learnerErrors.filter(
-    (e) => !e.isResolved && cards.some((c) => c.id === e.cardId || c.targetItem.toLowerCase() === e.targetItem.toLowerCase())
+    (e) => !e.isResolved && !isIgnoredNonErrorInput(e.originalMistake) && cards.some((c) => c.id === e.cardId || c.targetItem.toLowerCase() === e.targetItem.toLowerCase())
   );
   const resolvedDeckErrors = learnerErrors.filter(
-    (e) => e.isResolved && cards.some((c) => c.id === e.cardId || c.targetItem.toLowerCase() === e.targetItem.toLowerCase())
+    (e) => e.isResolved && !isIgnoredNonErrorInput(e.originalMistake) && cards.some((c) => c.id === e.cardId || c.targetItem.toLowerCase() === e.targetItem.toLowerCase())
   );
 
   // Average AI mastery score of reviewed cards

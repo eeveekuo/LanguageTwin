@@ -5,6 +5,7 @@ import { getFrequencyBrackets, getActiveFrequencyBracket } from "../utils/freque
 import { estimateStandardizedProficiency } from "../utils/proficiencyEstimation";
 import { playTextAloud } from "../utils/speech";
 import { loadDiagnosticHistory, DiagnosticTestRecord } from "../utils/diagnosticHistory";
+import { isIgnoredNonErrorInput } from "../utils/errors";
 import { MasteryProgressionChart } from "./MasteryProgressionChart";
 import {
   Flame,
@@ -168,6 +169,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
   // Filter learner errors for the active deck
   const deckErrors = learnerErrors.filter((err) => {
+    if (isIgnoredNonErrorInput(err.originalMistake)) return false;
     // Check if error belongs to a card in this deck or matches target words in this deck
     const matchesCard = deck.cards.some(
       (c) => c.id === err.cardId || c.targetItem.toLowerCase() === err.targetItem.toLowerCase()

@@ -1,102 +1,153 @@
 # LanguageTwin 🌐
 
-> **Intelligent Language Acquisition Platform powered by Frequency-Ranked SRS, Active Sentence Production, and Gemini AI.**
+> **Intelligent Multi-Language Acquisition Platform powered by Frequency-Ranked SRS, Active Sentence Production, Graded Immersion, and Gemini AI.**
 
 🔗 **Live App Link**: [https://ais-pre-fcvezsmnsjhdwdw4zeiyuf-666974423825.us-west2.run.app](https://ais-pre-fcvezsmnsjhdwdw4zeiyuf-666974423825.us-west2.run.app)  
 🛠️ **Dev Preview**: [https://ais-dev-fcvezsmnsjhdwdw4zeiyuf-666974423825.us-west2.run.app](https://ais-dev-fcvezsmnsjhdwdw4zeiyuf-666974423825.us-west2.run.app)
 
 ---
 
-## 🌍 Supported Languages & Pronunciation Aids
+## 🌍 Supported Target Languages & Pronunciation Aids
 
-LanguageTwin offers deep multi-tier support for target language acquisition paired with native pedagogical explanations and customizable pronunciation/romanization aids.
+LanguageTwin provides deep pedagogical support for target languages paired with native reference explanations, customizable script/romanization aids, and international proficiency benchmark mapping:
 
-### 🎯 Supported Target Languages
-
-| Language | Native Name | Code | Flag | Supported Pronunciation & Romanization Aids | Proficiency Benchmark Mapping | Special Features |
+| Language | Native Name | Code | Flag | Supported Pronunciation & Script Aids | Proficiency Benchmark Mapping | Specialized Linguistic Tools |
 | :--- | :--- | :---: | :---: | :--- | :--- | :--- |
-| **Traditional Chinese** | 繁體中文 | `zh-TW` | 🇹🇼 | • **注音符號 (Zhuyin / Bopomofo)**<br>• **漢語拼音 (Hanyu Pinyin)**<br>• *None (Characters Only)* | **TOCFL** (Band A–C)<br>**HSK** (1–6)<br>**CEFR** (A1–C2) | Dynamic Pinyin-to-Zhuyin converter, authentic stroke & radical awareness, traditional punctuation bar |
-| **Spanish** | Español | `es` | 🇪🇸 | • **IPA (International Phonetic Alphabet)**<br>• **Syllable Respelling**<br>• *None* | **DELE & SIELE**<br>**CEFR** (A1–C2)<br>**ACTFL** | Verb conjugation matrices (Preterite, Imperfect, Subjunctive, Conditional, Commands), inverted punctuation helpers (`¿`, `¡`, `ñ`, `á`, etc.) |
-| **Japanese** | 日本語 | `ja` | 🇯🇵 | • **Furigana / Kana (ふりがな)**<br>• **Romaji (Hepburn)**<br>• *None (Kanji Only)* | **JLPT** (N5, N4, N3, N2, N1)<br>**CEFR** (A1–C2) | Kanji decomposition, particle practice (`は`, `が`, `を`, `に`, `で`), polite vs. plain forms |
-| **Korean** | 한국어 | `ko` | 🇰🇷 | • **Revised Romanization (RR)**<br>• **IPA (국제 음성 기호)**<br>• *None (Hangul Only)* | **TOPIK** (Level 1–6)<br>**CEFR** (A1–C2) | Hangul syllable breakdown, formal/polite speech endings (`-습니다`, `-해요`), particle accuracy |
-| **Taiwanese Hokkien** | 臺灣話 (臺語) | `nan` | 🇹🇼 | • **Tâi-lô (台羅拼音)**<br>• **Pe̍h-ōe-jī (POJ 白話字)**<br>• **Taiwanese Zhuyin (方音符號)**<br>• *None (Characters Only)* | **Taiwan Ministry of Education Language Benchmark**<br>**CEFR** (A1–B2) | Tone sandhi markings, nasal vowels (`ⁿ`), authentic Taiwanese hanzi, specialized dialect input palette |
+| **Traditional Chinese** | 繁體中文 | `zh-TW` | 🇹🇼 | • **注音符號 (Zhuyin / Bopomofo)**<br>• **漢語拼音 (Hanyu Pinyin)**<br>• *None (Characters Only)* | **TOCFL** (Band A–C)<br>**HSK** (1–6)<br>**CEFR** (A1–C2) | Dynamic Pinyin-to-Zhuyin converter, authentic stroke & radical breakdown, traditional punctuation palette (`「」`, `《》`, `、`, etc.) |
+| **Spanish** | Español | `es` | 🇪🇸 | • **IPA (International Phonetic Alphabet)**<br>• **Syllable Respelling**<br>• *None* | **DELE & SIELE**<br>**CEFR** (A1–C2)<br>**ACTFL** | Interactive verb conjugation matrices (Preterite, Imperfect, Subjunctive, Conditional, Commands), inverted punctuation helpers (`¿`, `¡`, `ñ`, `á`, etc.) |
+| **Japanese** | 日本語 | `ja` | 🇯🇵 | • **Furigana / Kana (ふりがな)**<br>• **Romaji (Hepburn)**<br>• *None (Kanji Only)* | **JLPT** (N5, N4, N3, N2, N1)<br>**CEFR** (A1–C2) | Kanji decomposition, particle practice (`は`, `が`, `を`, `に`, `で`), polite vs. plain register awareness |
+| **Korean** | 한국어 | `ko` | 🇰🇷 | • **Revised Romanization (RR)**<br>• **IPA (국제 음성 기호)**<br>• *None (Hangul Only)* | **TOPIK** (Level 1–6)<br>**CEFR** (A1–C2) | Hangul syllable decomposition, formal/polite endings (`-습니다`, `-아요/해요`), honorifics and particle tracking |
+| **Taiwanese Hokkien** | 臺灣話 (臺語) | `nan` | 🇹🇼 | • **Tâi-lô (台羅拼音)**<br>• **Pe̍h-ōe-jī (POJ 白話字)**<br>• **Taiwanese Zhuyin (方音符號)**<br>• *None (Characters Only)* | **MOE Language Benchmark**<br>**CEFR** (A1–B2) | Tone sandhi indicators, nasalized vowels (`ⁿ`), authentic Taiwanese hanzi, specialized dialect input palette |
 
 ---
 
-### 🗣️ Supported Known / Native Reference Languages
+### 🗣️ Supported Native / Reference Languages
 
-Learners can select their preferred language for definitions, grammar formulas, diagnostic reports, and AI Tutor pedagogical explanations:
-- **English** (`en` 🇺🇸 / 🇬🇧) — Comprehensive definitions, grammatical terminology, and cross-linguistic collocations.
+Learners can select their preferred reference language for definitions, grammatical formulas, diagnostic feedback, and AI explanations:
+- **English** (`en` 🇺🇸 / 🇬🇧) — Comprehensive definitions, grammar terminology, and cross-linguistic collocations.
 - **Traditional Chinese** (`zh-TW` 🇹🇼) — Authentic 繁體中文 translations, grammatical explanations, and cultural nuances.
 
 ---
 
-## 🌟 Key Features
+## 🌟 Comprehensive Capability Overview
 
-### 1. 🗂️ Deck Explorer & Dynamic Frequency Catalog
-- **Target & Known Language Pairs**: Instant switching between Spanish, Traditional Chinese, Japanese, Korean, and Taiwanese Hokkien with English or Traditional Chinese explanations.
-- **Real-Time Deck Statistics**: Track total deck items, mastered vocabulary, cards in active review, and items due for practice.
-- **Smart Filtering & Sorting**:
+### 1. 🗂️ In-Tab Deck Management & Frequency Explorer (`Deck` Tab)
+- **In-Tab Deck Switcher & Quick Pills**: Seamlessly switch between multiple local and community decks directly within the Deck tab without leaving the workspace. Includes instant search and real-time card count/level indicators.
+- **Centralized Cloud Deck Hub**: Browse, search, and 1-click import decks created by other learners from the centralized Firestore cloud database.
+- **AI-Powered Deck Generation**: Generate custom frequency decks calibrated by theme, situation, topic, or proficiency level (CEFR A1–C2) with automatic grammatical categorization.
+- **Smart Filtering & Status Indicators**:
   - Filter by mastery status (*Mastered*, *Active Review*, *New*, *Due*, *⚠️ Error Remedies*).
-  - Filter by item type (*Vocabulary*, *Particles & Connectors*, *Grammar Concepts & Formulas*, *Phrases*).
-  - Sort by frequency rank (#1–#10, #11–#20, #21–#50, etc.), alphabetical order, or mastery level.
-- **Dynamic Pronunciation Aid Selector**: Switch on-the-fly between Zhuyin, Pinyin, Furigana, Romaji, RR, IPA, or Character-only views across every study mode.
-- **Generate More Items**: Expand decks dynamically on demand using Gemini AI with frequency calibration.
-- **Conjugation Tables & Explorer**: Interactive verb conjugation paradigms for inflected languages (Spanish, etc.).
+  - Filter by concept type (*Vocabulary*, *Particles & Connectors*, *Grammar Concepts & Formulas*, *Phrases*).
+  - Sort by frequency rank (#1–#10, #11–#20, etc.), alphabetical order, or retention score.
+- **Conjugation Tables & Verb Explorer**: Interactive verb conjugation paradigms for inflected languages (Spanish, etc.) with tense, mood, and person breakdowns.
+- **Batch Expansion**: Expand frequency decks with the next 10, 20, or 50 high-frequency words on demand.
 
-### 2. ✍️ Active Production Study Session (SM-2 Spaced Repetition)
-- **Active Output Testing**: Prompt the learner to construct full, authentic sentences applying the target word or grammar formula rather than passive flashcard flipping.
-- **AI Sentence Evaluation**: Instant multi-dimensional scoring for semantic accuracy, grammatical precision, natural word choice, and tailored remedy flashcards for any grammar slips.
-- **Voice Recognition & Speech Audio**: Built-in microphone dictation and native audio playback via speech synthesis.
-- **Offline / Resilient Fallback Engine**: Automatic local sentence validation and smart grading even when network or API limits are encountered.
+---
 
-### 3. 📖 Reading & Listening Immersion
-- **Graded Real-World Articles**: AI-synthesized reading and listening passages matched to the learner's vocabulary level.
-- **Interactive Linguistic Decomposition**: Click any word, phrase, or clause in the article to inspect definitions, part-of-speech breakdowns, conjugation tables, and add new vocabulary directly to active decks.
-- **Level Advisory Notice**: Automatically alerts beginner learners (CEFR A1) to build foundational vocabulary before undertaking complex immersion tasks.
-- **Sentence-by-Sentence Audio Player**: Synchronized paragraph playback with adjustable speed.
+### 2. ✍️ Active Production Study Session (`Study` Tab)
+- **Active Output Testing (SM-2 SRS)**: Rather than passive flashcard flipping, learners are prompted to construct full, authentic sentences applying the target word or grammar formula.
+- **Guided Reinforcement & Shadowing Mode**: When a learner indicates *"I don't know this yet"*, the system initiates an active reinforcement workflow:
+  - Requires copying or verbally repeating the target item.
+  - Requires shadowing and reciting at least one native example sentence.
+  - Provides quick audio playback, 1-tap copy/fill assistance, and live speech recognition matching to establish strong neural memory traces before continuing.
+- **Sanitized Error Intelligence Tracking**: Strict distinction between true grammatical/lexical errors (misplaced particles, incorrect conjugation) and "I don't know" / self-reported uncertainty, keeping the Error Ledger and slip warnings clean, accurate, and actionable.
+- **Streamlined Single-Action Reference Reveal**: Consolidated reveal triggers into a clean single-action unlock that seamlessly presents native audio examples, grammar formulas, mnemonics, and conjugation tables.
+- **Multi-Dimensional AI Evaluation**: Real-time scoring across core dimensions:
+  - Semantic appropriateness and context usage
+  - Grammatical correctness and morphology
+  - Natural phrasing and colloquial alternatives
+  - Specific diagnostic feedback with tailored grammar remedy flashcards for recurring slips.
+- **Integrated Voice Input & Speech Synthesis**: Built-in voice dictation via Web Speech Recognition and native audio playback with adjustable speed and accent variants.
+- **On-Screen Character Palette**: One-tap insertion of language-specific symbols, inverted punctuation, accents, and diacritics.
+- **Offline Resilient Fallback Engine**: Local fallback grading and heuristics ensure uninterrupted study even with network or API rate constraints.
 
-### 4. 🎭 AI Conversation Partner & Roleplay
-- **Context-Aware Tutor**: Practice natural dialogue while the AI cross-evaluates deck items and updates your SRS mastery scores in real time.
-- **Roleplay Scenario Engine**: Specify custom roleplay settings or click the one-click generator to simulate ordering at a cafe, asking for directions, shopping at a local market, or meeting new friends.
-- **Linguistic Co-Pilot Side Tab**: Ask quick questions mid-conversation (*"How do I say...?"*, *"Lookup word"*, *"Polite vs. Casual register"*) without interrupting the main conversational flow.
+---
 
-### 5. 📊 Mastery & Level Analytics (Standardized Frameworks)
-- **Standardized Equivalency Engine**: Maps vocabulary mastery and frequency progression onto official international frameworks:
-  - **CEFR**: Common European Framework (A1, A2, B1, B2, C1, C2)
+### 3. 📖 Graded Reading & Listening Immersion (`Reading` Tab)
+- **Level-Calibrated Articles**: AI-synthesized reading and listening passages matched precisely to the learner's vocabulary level.
+- **Interactive Word & Clause Decomposition**: Click any word, phrase, or clause in the article to inspect definitions, part-of-speech breakdowns, conjugation tables, and add new vocabulary directly to active decks.
+- **Beginner Guidance Notices**: Provides helpful advisories for A1/introductory learners to master foundational vocabulary before tackling advanced immersion texts.
+- **Synchronized Audio Narration**: Sentence-by-sentence text-to-speech narration with highlighted reading progress.
+
+---
+
+### 4. 📝 Writing & Expression Journal (`Journal` Tab)
+- **Daily Guided Expression Prompts**: Tailored writing prompts designed to elicit target vocabulary and active sentence production.
+- **Comprehensive Line-by-Line Feedback**: Receive detailed linguistic corrections, natural rewrites, and explanations for nuances and stylistic improvements.
+- **Automatic Error Extraction & Remediation**: Automatically extracts grammatical and lexical errors into targeted SRS remedy cards to prevent error fossilization.
+
+---
+
+### 5. 🎭 AI Conversation Partner & Roleplay (`Tutor` Tab)
+- **Context-Aware Conversational AI**: Practice spontaneous, authentic dialogues while the AI tutor actively tracks deck items and updates your SRS mastery scores in real time.
+- **Custom & 1-Click Roleplay Scenarios**: Simulate real-world situations (ordering at a café, asking for directions, negotiating in a market, meeting friends, job interviews).
+- **Linguistic Co-Pilot Side Panel**: Ask quick questions mid-conversation (*"How do I say...?"*, *"Lookup word"*, *"Polite vs. Casual register"*) without derailing the roleplay narrative.
+- **Real-Time Voice Dictation & Audio Playback**: Hands-free conversation practice with instant transcription and speech output.
+
+---
+
+### 6. 📊 Mastery Analytics & Standardized Proficiency Frameworks (`Stats` Tab)
+- **Standardized Equivalency Engine**: Automatically maps cumulative vocabulary mastery, frequency coverage, and production accuracy onto international benchmark scales:
+  - **CEFR**: Common European Framework of Reference (A1, A2, B1, B2, C1, C2)
   - **DELE & SIELE**: Spanish language certification benchmarks
   - **JLPT**: Japanese Language Proficiency Test (N5 to N1)
   - **TOPIK**: Test of Proficiency in Korean (Level 1 to 6)
   - **TOCFL & HSK**: Chinese proficiency standards
   - **ACTFL**: American Council on the Teaching of Foreign Languages scale
-- **Granular Skill Breakdown**: Lexical breadth, retention stability, grammatical precision, and production fluency.
-- **Target Calibration & Multi-Tier Placement Test**: Adaptive diagnostic tests to evaluate and calibrate decks to the student's exact level.
+- **Granular Skill Dimensions**: Visual analytics for lexical breadth, retention stability, grammatical precision, and production fluency.
+- **Adaptive Multi-Tier Placement Test**: Take a calibrated diagnostic assessment to benchmark current competence and adjust recommended frequency decks.
 
 ---
 
-## 🚀 Tech Stack
-
-- **Frontend**: React 18, TypeScript, Tailwind CSS, Lucide Icons, Web Speech API (Synthesis & Recognition), Local/IndexedDB Storage.
-- **Backend**: Express.js, TypeScript (`tsx` dev / `esbuild` prod bundle).
-- **AI Engine**: `@google/genai` with Gemini models and layered resilience fallback architecture.
-- **Spaced Repetition**: Modified SuperMemo SM-2 algorithm with continuous mastery scoring.
+### 7. ☁️ Cloud Sync, Authentication & Community Sharing
+- **Google Account Authentication**: Sign in with Google for seamless cross-device synchronization.
+- **Cloud Database (Firebase Firestore)**: Securely stores custom decks, review histories, SRS intervals, journal entries, and error remedies.
+- **Community Decks Repository**: Share your custom-generated decks with the LanguageTwin community and discover decks curated by fellow learners.
 
 ---
 
-## 💻 Getting Started Locally
+## 🛠️ Architecture & Tech Stack
+
+```
+LanguageTwin Platform
+├── Frontend (React 18 + TypeScript + Tailwind CSS)
+│   ├── Active Production SRS Engine (Modified SuperMemo SM-2)
+│   ├── Dynamic Pronunciation Aid Transformer (Zhuyin, Pinyin, Furigana, Romaji, RR, IPA, Tâi-lô)
+│   ├── Interactive Voice Interface (Web Speech API Synthesis & Recognition)
+│   ├── In-Tab Deck Management & Community Cloud Hub
+│   └── Graded Immersion & Linguistic Text Decomposition
+├── Backend (Express.js + TypeScript)
+│   ├── Secure Server-Side Gemini API Proxy
+│   ├── AI Evaluation, Roleplay & Graded Passage Generator
+│   └── CommonJS Single-Bundle Production Deployment (esbuild)
+└── Cloud Infrastructure (Firebase Firestore & Auth)
+    ├── User Authentication (Google OAuth)
+    ├── Cloud Deck Repository & Community Sharing
+    └── Persistent Learning Progress & Error Remediation Logs
+```
+
+---
+
+## 💻 Local Development Setup
 
 1. **Install dependencies**:
    ```bash
    npm install
    ```
 
-2. **Start the development server**:
+2. **Configure Environment Variables**:
+   Ensure `.env` contains your Gemini API credentials:
+   ```env
+   GEMINI_API_KEY=your_gemini_api_key_here
+   ```
+
+3. **Start Development Server**:
    ```bash
    npm run dev
    ```
    Open `http://localhost:3000` in your browser.
 
-3. **Build for production**:
+4. **Build & Validate for Production**:
    ```bash
    npm run build
    ```

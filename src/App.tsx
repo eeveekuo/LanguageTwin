@@ -26,6 +26,7 @@ import {
   saveLearnerErrors,
   recordEvaluationErrors,
   toggleErrorResolution,
+  isIgnoredNonErrorInput,
 } from "./utils/errors";
 import {
   getFrequencyFocusedQueue,
@@ -388,7 +389,9 @@ export default function App() {
   }
 
   const { dueCards } = getStudyQueue(activeDeck.cards);
-  const activeErrorsCount = learnerErrors.filter((e) => !e.isResolved).length;
+  const activeErrorsCount = learnerErrors.filter(
+    (e) => !e.isResolved && !isIgnoredNonErrorInput(e.originalMistake)
+  ).length;
 
   // Update a flashcard after review or edits
   const handleCardUpdated = (updatedCard: Flashcard) => {

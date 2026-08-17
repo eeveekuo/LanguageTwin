@@ -5,6 +5,7 @@ import { playTextAloud, stopSpeech, isSpeechRecognitionSupported, createSpeechRe
 import { getActiveFrequencyBracket } from "../utils/frequencyProgression";
 import { ConjugationLookup } from "./ConjugationLookup";
 import { IS_CONJUGATION_LANGUAGE } from "../data/conjugations";
+import { isIgnoredNonErrorInput } from "../utils/errors";
 import confetti from "canvas-confetti";
 import {
   Volume2,
@@ -34,6 +35,9 @@ import {
   Unlock,
   WifiOff,
   Table,
+  Copy,
+  Repeat,
+  Headphones,
 } from "lucide-react";
 import { formatPronunciation } from "../utils/pronunciation";
 
@@ -84,6 +88,18 @@ export const StudySession: React.FC<StudySessionProps> = ({
   // Reveal-on-demand state: initially false (definition, usage format & examples are hidden until requested or evaluated)
   const [isRevealed, setIsRevealed] = useState<boolean>(false);
 
+  // Guided Reinforcement Mode (Triggered when user clicks "I Don't Know This Yet")
+  const [isDontKnowMode, setIsDontKnowMode] = useState<boolean>(false);
+  const [repeatWordInput, setRepeatWordInput] = useState<string>("");
+  const [repeatExampleInput, setRepeatExampleInput] = useState<string>("");
+  const [selectedExampleIndex, setSelectedExampleIndex] = useState<number>(0);
+  const [isWordRepeated, setIsWordRepeated] = useState<boolean>(false);
+  const [isExampleRepeated, setIsExampleRepeated] = useState<boolean>(false);
+  const [isRecordingWord, setIsRecordingWord] = useState<boolean>(false);
+  const [isRecordingExample, setIsRecordingExample] = useState<boolean>(false);
+  const wordRecognitionRef = useRef<any>(null);
+  const exampleRecognitionRef = useRef<any>(null);
+
   // Voice recording state
   const [isRecording, setIsRecording] = useState<boolean>(false);
   const [speechSupported, setSpeechSupported] = useState<boolean>(true);
@@ -120,10 +136,24 @@ export const StudySession: React.FC<StudySessionProps> = ({
     setNextDueNotice("");
     setOvercomeCelebration(null);
     setShowConjugationLookup(false);
+    setIsDontKnowMode(false);
+    setRepeatWordInput("");
+    setRepeatExampleInput("");
+    setSelectedExampleIndex(0);
+    setIsWordRepeated(false);
+    setIsExampleRepeated(false);
+    setIsRecordingWord(false);
+    setIsRecordingExample(false);
     stopSpeech();
     if (isRecording && recognitionRef.current) {
       recognitionRef.current.stop();
       setIsRecording(false);
+    }
+    if (wordRecognitionRef.current) {
+      wordRecognitionRef.current.stop();
+    }
+    if (exampleRecognitionRef.current) {
+      exampleRecognitionRef.current.stop();
     }
 
     // Pure random challenge mode per card (50% Meaning Recall, 50% Word Display)
@@ -377,9 +407,17 @@ export const StudySession: React.FC<StudySessionProps> = ({
     }
   };
 
-  // "I Don't Know This" / Request Detailed Explanation
+  const normalizeForMatch = (text: string) =>
+    text
+      .toLowerCase()
+      .replace(/[.,/#!$%^&*;:{}=\-_`~()?'"“”‘’，。！？]/g, "")
+      .replace(/\s+/g, "")
+      .trim();
+
+  // "I Don't Know This" / Request Detailed Explanation & Guided Reinforcement
   const handleFetchExplanation = async () => {
     if (!activeCard) return;
+    setIsDontKnowMode(true);
     setIsRevealed(true);
 
     if (activeCard.examples && activeCard.examples.length >= 2 && activeCard.usageNotes) {
@@ -430,7 +468,7 @@ export const StudySession: React.FC<StudySessionProps> = ({
       0,
       "incorrect",
       "I don't know this (viewed definition & examples)",
-      "Card reviewed in help mode. Scheduled for immediate retention practice.",
+      "Card reviewed in reinforcement mode. Scheduled for immediate retention practice.",
       activeCard.examples?.[0]?.target || activeCard.targetItem,
       "typed"
     );
@@ -449,15 +487,163 @@ export const StudySession: React.FC<StudySessionProps> = ({
         masteryLevel: "incorrect",
         isTargetUsed: false,
         isGrammaticallyCorrect: false,
-        feedbackSummary: "Reviewed definition and structure in reference mode.",
+        feedbackSummary: "Reviewed definition and practicing guided reinforcement.",
         correctedSentence: activeCard.examples?.[0]?.target || activeCard.targetItem,
         correctedSentenceTranslation: activeCard.examples?.[0]?.translation || activeCard.definition,
-        detailedExplanation: "Card reviewed in reference mode to build initial foundation.",
-        breakdown: [{ type: "vocab", message: "Initial concept review required." }],
+        detailedExplanation: "Card entered guided reinforcement mode to solidify foundation.",
+        breakdown: [{ type: "vocab", message: "Reinforcement practice active." }],
         naturalAlternatives: [],
       },
       "I don't know this yet"
     );
+  };
+
+  // Handlers for Repeating Word in Guided Reinforcement
+  const handleRepeatWordChange = (val: string) => {
+    setRepeatWordInput(val);
+    if (!activeCard) return;
+    const targetNorm = normalizeForMatch(activeCard.targetItem);
+    const inputNorm = normalizeForMatch(val);
+    if (
+      inputNorm.length > 0 &&
+      (inputNorm.includes(targetNorm) || targetNorm.includes(inputNorm) || inputNorm === targetNorm)
+    ) {
+      setIsWordRepeated(true);
+    }
+  };
+
+  const handleFillWord = () => {
+    if (!activeCard) return;
+    setRepeatWordInput(activeCard.targetItem);
+    setIsWordRepeated(true);
+  };
+
+  const toggleRecordWord = () => {
+    if (!speechSupported) {
+      setErrorMsg("Voice speech recognition is not supported in this browser.");
+      return;
+    }
+    if (isRecordingWord) {
+      if (wordRecognitionRef.current) {
+        wordRecognitionRef.current.stop();
+      }
+      setIsRecordingWord(false);
+    } else {
+      const recognizer = createSpeechRecognizer(targetLang.code, {
+        onStart: () => setIsRecordingWord(true),
+        onResult: (transcript) => {
+          setRepeatWordInput(transcript);
+          const targetNorm = normalizeForMatch(activeCard?.targetItem || "");
+          const inputNorm = normalizeForMatch(transcript);
+          if (
+            inputNorm.length > 0 &&
+            (inputNorm.includes(targetNorm) || targetNorm.includes(inputNorm) || inputNorm === targetNorm)
+          ) {
+            setIsWordRepeated(true);
+          }
+        },
+        onError: (err) => {
+          console.warn("Speech error on word repetition:", err);
+          setIsRecordingWord(false);
+        },
+        onEnd: () => setIsRecordingWord(false),
+      });
+
+      if (recognizer) {
+        wordRecognitionRef.current = recognizer;
+        try {
+          recognizer.start();
+        } catch (e) {
+          console.warn("Could not start word speech recognizer:", e);
+          setIsRecordingWord(false);
+        }
+      }
+    }
+  };
+
+  // Handlers for Repeating Example Sentence in Guided Reinforcement
+  const currentExampleList = explanationData?.examples || activeCard?.examples || [];
+  const activeExample =
+    currentExampleList[selectedExampleIndex] || currentExampleList[0] || {
+      target: activeCard?.targetItem || "",
+      translation: activeCard?.definition || "",
+    };
+
+  const handleRepeatExampleChange = (val: string) => {
+    setRepeatExampleInput(val);
+    if (!activeExample) return;
+    const exampleNorm = normalizeForMatch(activeExample.target);
+    const inputNorm = normalizeForMatch(val);
+    if (
+      inputNorm.length >= 2 &&
+      (inputNorm.includes(exampleNorm) ||
+        exampleNorm.includes(inputNorm) ||
+        inputNorm.length >= Math.max(3, exampleNorm.length * 0.6))
+    ) {
+      setIsExampleRepeated(true);
+    }
+  };
+
+  const handleFillExample = () => {
+    if (!activeExample) return;
+    setRepeatExampleInput(activeExample.target);
+    setIsExampleRepeated(true);
+  };
+
+  const toggleRecordExample = () => {
+    if (!speechSupported) {
+      setErrorMsg("Voice speech recognition is not supported in this browser.");
+      return;
+    }
+    if (isRecordingExample) {
+      if (exampleRecognitionRef.current) {
+        exampleRecognitionRef.current.stop();
+      }
+      setIsRecordingExample(false);
+    } else {
+      const recognizer = createSpeechRecognizer(targetLang.code, {
+        onStart: () => setIsRecordingExample(true),
+        onResult: (transcript) => {
+          setRepeatExampleInput(transcript);
+          const exampleNorm = normalizeForMatch(activeExample.target);
+          const inputNorm = normalizeForMatch(transcript);
+          if (
+            inputNorm.length >= 2 &&
+            (inputNorm.includes(exampleNorm) ||
+              exampleNorm.includes(inputNorm) ||
+              inputNorm.length >= Math.max(3, exampleNorm.length * 0.5))
+          ) {
+            setIsExampleRepeated(true);
+          }
+        },
+        onError: (err) => {
+          console.warn("Speech error on example repetition:", err);
+          setIsRecordingExample(false);
+        },
+        onEnd: () => setIsRecordingExample(false),
+      });
+
+      if (recognizer) {
+        exampleRecognitionRef.current = recognizer;
+        try {
+          recognizer.start();
+        } catch (e) {
+          console.warn("Could not start example speech recognizer:", e);
+          setIsRecordingExample(false);
+        }
+      }
+    }
+  };
+
+  const handleCompleteReinforcement = () => {
+    if (isWordRepeated && isExampleRepeated) {
+      confetti({
+        particleCount: 35,
+        spread: 60,
+        origin: { y: 0.7 },
+      });
+    }
+    handleNextCard();
   };
 
   // Advance to Next Card
@@ -615,6 +801,7 @@ export const StudySession: React.FC<StudySessionProps> = ({
   const activeCardErrors = learnerErrors.filter(
     (e) =>
       !e.isResolved &&
+      !isIgnoredNonErrorInput(e.originalMistake) &&
       (e.targetItem.toLowerCase() === activeCard.targetItem.toLowerCase() ||
         e.cardId === activeCard.id ||
         e.id === activeCard.errorId)
@@ -838,33 +1025,16 @@ export const StudySession: React.FC<StudySessionProps> = ({
                       </button>
                     </div>
 
-                    {/* Pronunciation Aid (Zhuyin, Pinyin, Furigana, etc.) - Hidden until Reveal Reference */}
+                    {/* Pronunciation Aid (Zhuyin, Pinyin, Furigana, etc.) */}
                     {formatPronunciation(activeCard.targetItem, activeCard.phonetic, targetLang.code, pronunciationAid) && (
-                      isRevealed || evaluation ? (
-                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100/90 text-slate-700 font-serif text-sm tracking-wide mt-1 border border-slate-200">
-                          <span className="text-[10px] font-sans font-bold uppercase text-indigo-600">
-                            {pronunciationAid === "zhuyin" ? "注音" : pronunciationAid === "pinyin" ? "拼音" : "Pronunciation"}
-                          </span>
-                          <span>
-                            {formatPronunciation(activeCard.targetItem, activeCard.phonetic, targetLang.code, pronunciationAid)}
-                          </span>
-                        </div>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => setIsRevealed(true)}
-                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 text-xs font-semibold mt-1 border border-dashed border-slate-200 transition cursor-pointer"
-                          title="Reveal pronunciation & reference"
-                        >
-                          <Lock className="w-3 h-3 text-slate-400" />
-                          <span className="text-[10px] uppercase font-bold text-slate-400">
-                            {pronunciationAid === "zhuyin" ? "注音" : pronunciationAid === "pinyin" ? "拼音" : "Pronunciation"}
-                          </span>
-                          <span className="text-[11px] font-sans text-slate-400 hover:text-indigo-600">
-                            • Click to Reveal Reference
-                          </span>
-                        </button>
-                      )
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100/90 text-slate-700 font-serif text-sm tracking-wide mt-1 border border-slate-200">
+                        <span className="text-[10px] font-sans font-bold uppercase text-indigo-600">
+                          {pronunciationAid === "zhuyin" ? "注音" : pronunciationAid === "pinyin" ? "拼音" : "Pronunciation"}
+                        </span>
+                        <span>
+                          {formatPronunciation(activeCard.targetItem, activeCard.phonetic, targetLang.code, pronunciationAid)}
+                        </span>
+                      </div>
                     )}
                   </div>
                 ) : (
@@ -951,8 +1121,275 @@ export const StudySession: React.FC<StudySessionProps> = ({
               </div>
             )}
 
-            {/* If NOT evaluated -> Show sentence input textarea & Self-Reporting Controls */}
-            {!evaluation && (
+            {/* GUIDED REINFORCEMENT MODE: Triggered when user selects "I Don't Know This Yet" */}
+            {!evaluation && isDontKnowMode && (
+              <div className="w-full max-w-xl text-left space-y-4 mt-3 animate-fade-in">
+                {/* Pedagogical Guidance Banner */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-50 via-purple-50 to-blue-50 border border-indigo-100 shadow-2xs">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Repeat className="w-4 h-4 text-indigo-600" />
+                      <h4 className="text-xs font-black uppercase tracking-wider text-indigo-950">
+                        Guided Reinforcement & Shadowing
+                      </h4>
+                    </div>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                      Active Recall Building
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
+                    You indicated you don't know this word yet. Active vocal and written repetition builds strong neural memory traces. Please repeat or copy the word and at least one example sentence below.
+                  </p>
+                </div>
+
+                {/* STEP 1: REPEAT TARGET WORD */}
+                <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[11px] font-black flex items-center justify-center">
+                        1
+                      </span>
+                      <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                        Repeat Target Word
+                      </span>
+                    </div>
+                    {isWordRepeated ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Word Practiced
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-semibold text-slate-400">
+                        Type or speak aloud
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Word preview & audio */}
+                  <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex items-center justify-between">
+                    <div>
+                      <div className="flex items-baseline gap-2 flex-wrap">
+                        <span className="text-xl font-black text-slate-900 font-mono">
+                          {activeCard.targetItem}
+                        </span>
+                        <span className="text-xs text-slate-500 font-medium">
+                          ({explanationData?.definition || activeCard.definition})
+                        </span>
+                      </div>
+                      {formatPronunciation(activeCard.targetItem, activeCard.phonetic, targetLang.code, pronunciationAid) && (
+                        <span className="text-xs font-serif text-indigo-600 block mt-0.5">
+                          {formatPronunciation(activeCard.targetItem, activeCard.phonetic, targetLang.code, pronunciationAid)}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        onClick={() => handlePlayAudio(activeCard.targetItem, `repeat-word-${activeCard.id}`)}
+                        className={`p-2 rounded-xl border transition cursor-pointer ${
+                          playingAudioId === `repeat-word-${activeCard.id}`
+                            ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                            : "bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-600 hover:text-white"
+                        }`}
+                        title="Listen to word"
+                      >
+                        <Volume2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleFillWord}
+                        className="p-2 rounded-xl bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 transition cursor-pointer text-xs font-bold flex items-center gap-1"
+                        title="Auto-fill word"
+                      >
+                        <Copy className="w-3.5 h-3.5 text-slate-500" />
+                        <span className="hidden sm:inline">Copy</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Word input + Mic */}
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={repeatWordInput}
+                      onChange={(e) => handleRepeatWordChange(e.target.value)}
+                      placeholder={`Type "${activeCard.targetItem}" or use microphone...`}
+                      className={`w-full bg-slate-50 border-2 rounded-xl px-3.5 py-2.5 pr-11 text-sm font-semibold transition-colors focus:bg-white focus:outline-none ${
+                        isWordRepeated
+                          ? "border-emerald-300 focus:border-emerald-500 text-emerald-950"
+                          : "border-slate-200 focus:border-indigo-500 text-slate-900"
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={toggleRecordWord}
+                      className={`absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg transition cursor-pointer ${
+                        isRecordingWord
+                          ? "bg-red-500 text-white animate-pulse shadow-xs"
+                          : "bg-white hover:bg-slate-100 text-slate-500 border border-slate-200"
+                      }`}
+                      title={isRecordingWord ? "Stop recording" : "Speak target word aloud"}
+                    >
+                      <Mic className="w-4 h-4" />
+                    </button>
+                  </div>
+                  {isRecordingWord && (
+                    <p className="text-[11px] text-red-500 font-semibold animate-pulse flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                      <span>Listening... say "{activeCard.targetItem}" clearly</span>
+                    </p>
+                  )}
+                </div>
+
+                {/* STEP 2: REPEAT EXAMPLE SENTENCE */}
+                <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="w-5 h-5 rounded-full bg-indigo-600 text-white text-[11px] font-black flex items-center justify-center">
+                        2
+                      </span>
+                      <span className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                        Repeat Example Sentence
+                      </span>
+                    </div>
+                    {isExampleRepeated ? (
+                      <span className="inline-flex items-center gap-1 text-xs font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full border border-emerald-200">
+                        <CheckCircle2 className="w-3.5 h-3.5" /> Sentence Practiced
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-semibold text-slate-400">
+                        Shadow & repeat aloud
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Example selection pills if multiple exist */}
+                  {currentExampleList.length > 1 && (
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase">Sentence:</span>
+                      {currentExampleList.map((ex, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setSelectedExampleIndex(idx);
+                            setRepeatExampleInput("");
+                            setIsExampleRepeated(false);
+                          }}
+                          className={`px-2.5 py-0.5 rounded-full text-xs font-bold transition cursor-pointer ${
+                            selectedExampleIndex === idx
+                              ? "bg-indigo-600 text-white shadow-2xs"
+                              : "bg-slate-100 hover:bg-slate-200 text-slate-600"
+                          }`}
+                        >
+                          Example #{idx + 1}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Selected Example display */}
+                  <div className="p-3.5 rounded-xl bg-indigo-50/50 border border-indigo-100 space-y-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <p className="text-sm font-bold text-indigo-950 font-sans">
+                        "{activeExample.target}"
+                      </p>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handlePlayAudio(activeExample.target, `repeat-ex-${selectedExampleIndex}`)}
+                          className={`p-1.5 rounded-lg border transition cursor-pointer ${
+                            playingAudioId === `repeat-ex-${selectedExampleIndex}`
+                              ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                              : "bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-600 hover:text-white"
+                          }`}
+                          title="Listen to sentence"
+                        >
+                          <Volume2 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleFillExample}
+                          className="p-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 transition cursor-pointer text-xs font-bold flex items-center gap-1"
+                          title="Auto-fill example"
+                        >
+                          <Copy className="w-3.5 h-3.5 text-slate-500" />
+                          <span className="hidden sm:inline">Copy</span>
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-500 italic">
+                      {activeExample.translation}
+                    </p>
+                  </div>
+
+                  {/* Example input + Mic */}
+                  <div className="relative">
+                    <textarea
+                      rows={2}
+                      value={repeatExampleInput}
+                      onChange={(e) => handleRepeatExampleChange(e.target.value)}
+                      placeholder={`Type or verbally repeat "${activeExample.target}"...`}
+                      className={`w-full bg-slate-50 border-2 rounded-xl p-3 pr-11 text-xs sm:text-sm font-semibold transition-colors focus:bg-white focus:outline-none resize-none ${
+                        isExampleRepeated
+                          ? "border-emerald-300 focus:border-emerald-500 text-emerald-950"
+                          : "border-slate-200 focus:border-indigo-500 text-slate-900"
+                      }`}
+                    />
+                    <button
+                      type="button"
+                      onClick={toggleRecordExample}
+                      className={`absolute right-2 bottom-3 p-1.5 rounded-lg transition cursor-pointer ${
+                        isRecordingExample
+                          ? "bg-red-500 text-white animate-pulse shadow-xs"
+                          : "bg-white hover:bg-slate-100 text-slate-500 border border-slate-200"
+                      }`}
+                      title={isRecordingExample ? "Stop recording" : "Speak example sentence aloud"}
+                    >
+                      <Mic className="w-4 h-4" />
+                    </button>
+                  </div>
+                  {isRecordingExample && (
+                    <p className="text-[11px] text-red-500 font-semibold animate-pulse flex items-center gap-1.5">
+                      <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                      <span>Listening... speak the sentence clearly</span>
+                    </p>
+                  )}
+                </div>
+
+                {/* Actions: Finish Reinforcement / Next Card */}
+                <div className="pt-2 flex items-center justify-between gap-3 flex-wrap">
+                  <button
+                    type="button"
+                    onClick={handleNextCard}
+                    className="text-xs text-slate-400 hover:text-slate-600 font-semibold transition cursor-pointer"
+                  >
+                    Skip repetition & continue →
+                  </button>
+
+                  <button
+                    type="button"
+                    id="complete-reinforcement-btn"
+                    onClick={handleCompleteReinforcement}
+                    className={`px-6 py-3 rounded-2xl font-bold text-xs sm:text-sm uppercase tracking-wider transition flex items-center gap-2 cursor-pointer ${
+                      isWordRepeated && isExampleRepeated
+                        ? "bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-100 active:scale-95"
+                        : "bg-indigo-600 hover:bg-indigo-700 text-white shadow-md shadow-indigo-100 active:scale-95"
+                    }`}
+                  >
+                    <span>
+                      {isWordRepeated && isExampleRepeated
+                        ? "Reinforcement Complete! Next Card"
+                        : "Done Practicing • Next Card"}
+                    </span>
+                    <ArrowRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Standard Sentence Input: Shown when NOT evaluated and NOT in dontKnowMode */}
+            {!evaluation && !isDontKnowMode && (
               <div className="w-full max-w-xl text-left space-y-3 mt-2">
                 {!isOnline && (
                   <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between text-xs text-amber-900">
@@ -968,15 +1405,6 @@ export const StudySession: React.FC<StudySessionProps> = ({
                   <label className="block text-left text-xs font-bold text-slate-500 uppercase ml-1 tracking-wider">
                     Your Sentence in {targetLang.name}
                   </label>
-                  {!isRevealed && (
-                    <button
-                      type="button"
-                      onClick={() => setIsRevealed(true)}
-                      className="text-xs text-indigo-600 hover:text-indigo-800 font-bold underline cursor-pointer"
-                    >
-                      Show Answer & Reference
-                    </button>
-                  )}
                 </div>
 
                 <div className="relative">
@@ -1199,8 +1627,8 @@ export const StudySession: React.FC<StudySessionProps> = ({
             )}
           </div>
 
-          {/* Action Footer (Input mode) */}
-          {!evaluation && (
+          {/* Action Footer (Standard Input mode only) */}
+          {!evaluation && !isDontKnowMode && (
             <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-100 flex-wrap gap-2">
               <button
                 id="dont-know-btn"
@@ -1211,39 +1639,27 @@ export const StudySession: React.FC<StudySessionProps> = ({
                 <span>I DON'T KNOW THIS YET</span>
               </button>
 
-              <div className="flex items-center gap-2">
-                {!isRevealed && (
-                  <button
-                    type="button"
-                    onClick={() => setIsRevealed(true)}
-                    className="px-4 py-3 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs uppercase tracking-wider transition cursor-pointer"
-                  >
-                    Reveal Reference
-                  </button>
-                )}
-
-                <button
-                  id="submit-sentence-btn"
-                  onClick={handleEvaluateSentence}
-                  disabled={!isOnline || isEvaluating || !userSentence.trim()}
-                  className={`px-6 sm:px-8 py-3.5 rounded-2xl font-bold text-xs sm:text-sm uppercase tracking-wider transition ${
-                    isOnline && userSentence.trim() && !isEvaluating
-                      ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-100 active:scale-95 cursor-pointer"
-                      : "bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed opacity-60"
-                  }`}
-                  title={
-                    isOnline
-                      ? "Submit sentence for AI linguistic evaluation"
-                      : "Requires online connection to evaluate with AI model (Use self-reported rating buttons above)"
-                  }
-                >
-                  {isEvaluating
-                    ? "EVALUATING..."
-                    : isOnline
-                    ? "SUBMIT MASTERY CHECK"
-                    : "AI CHECK (ONLINE ONLY)"}
-                </button>
-              </div>
+              <button
+                id="submit-sentence-btn"
+                onClick={handleEvaluateSentence}
+                disabled={!isOnline || isEvaluating || !userSentence.trim()}
+                className={`px-6 sm:px-8 py-3.5 rounded-2xl font-bold text-xs sm:text-sm uppercase tracking-wider transition ${
+                  isOnline && userSentence.trim() && !isEvaluating
+                    ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-100 active:scale-95 cursor-pointer"
+                    : "bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed opacity-60"
+                }`}
+                title={
+                  isOnline
+                    ? "Submit sentence for AI linguistic evaluation"
+                    : "Requires online connection to evaluate with AI model (Use self-reported rating buttons above)"
+                }
+              >
+                {isEvaluating
+                  ? "EVALUATING..."
+                  : isOnline
+                  ? "SUBMIT MASTERY CHECK"
+                  : "AI CHECK (ONLINE ONLY)"}
+              </button>
             </div>
           )}
         </section>
@@ -1324,29 +1740,11 @@ export const StudySession: React.FC<StudySessionProps> = ({
         <section className="col-span-12 rounded-3xl border border-slate-200 bg-white p-6 sm:p-8 shadow-sm">
           {!isRevealed && !evaluation ? (
             /* LOCKED / COLLAPSED STATE (Active Recall Mode) */
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-4 rounded-2xl bg-indigo-50/50 border border-indigo-100">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-white border border-indigo-200 text-indigo-600 flex items-center justify-center shadow-xs">
-                  <Lock className="w-5 h-5" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-extrabold text-slate-900">
-                    Definition, Grammar Formula & Examples are Hidden for Active Recall
-                  </h4>
-                  <p className="text-xs text-slate-500">
-                    Formulate your original sentence above to test memory retention. If you don't know the item, click reveal.
-                  </p>
-                </div>
-              </div>
-
-              <button
-                id="reveal-guide-btn"
-                onClick={handleFetchExplanation}
-                className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white hover:bg-indigo-50 text-indigo-700 font-bold text-xs border border-indigo-200 shadow-xs transition cursor-pointer shrink-0"
-              >
-                <Unlock className="w-4 h-4" />
-                <span>Reveal Definition & Examples</span>
-              </button>
+            <div className="flex items-center gap-3 p-4 rounded-2xl bg-indigo-50/40 border border-indigo-100 text-slate-600 text-xs">
+              <Lock className="w-4 h-4 text-indigo-500 shrink-0" />
+              <p>
+                Detailed grammar patterns, usage notes, and audio example sentences will unlock upon evaluating your sentence or clicking <span className="font-bold text-indigo-700">"I Don't Know This Yet"</span>.
+              </p>
             </div>
           ) : (
             /* REVEALED STATE: Full Definition, Usage notes, and Audio Example Sentences */

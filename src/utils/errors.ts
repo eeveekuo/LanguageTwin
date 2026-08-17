@@ -2,13 +2,65 @@ import { Flashcard, EvaluationResult, LearnerError, Deck } from "../types";
 
 const STORAGE_KEY_ERRORS = "frequency_srs_learner_errors_v1";
 
+const NON_ERROR_PATTERNS = [
+  /^i\s*don'?t\s*know/i,
+  /^i\s*dont\s*know/i,
+  /^idk/i,
+  /^don'?t\s*know/i,
+  /^dont\s*know/i,
+  /^no\s*s[eé]/i,
+  /^no\s*lo\s*s[eé]/i,
+  /^分からない/i,
+  /^わからない/i,
+  /^分かりません/i,
+  /^わかりません/i,
+  /^知らん/i,
+  /^모르겠어요/i,
+  /^몰라요/i,
+  /^모름/i,
+  /^모릅니다/i,
+  /^我不知道/i,
+  /^不知道/i,
+  /^不清楚/i,
+  /^唔知/i,
+  /^我唔知/i,
+  /^skip/i,
+  /^pass/i,
+  /^next/i,
+  /^help/i,
+  /^test\s*slip/i,
+  /^diagnostic\s*slip/i,
+  /^i\s*forgot/i,
+  /^forgot/i,
+  /^\[self-report/i,
+  /^\[self-reported/i,
+  /^self-reported/i,
+];
+
+/**
+ * Checks whether an input string is an "I don't know" / skip / reference / self-report response
+ * rather than a genuine grammatical or lexical error slip.
+ */
+export function isIgnoredNonErrorInput(text?: string | null): boolean {
+  if (!text) return true;
+  const trimmed = text.trim();
+  if (trimmed.length < 2) return true;
+  return NON_ERROR_PATTERNS.some((pattern) => pattern.test(trimmed));
+}
+
 export function loadLearnerErrors(): LearnerError[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(STORAGE_KEY_ERRORS);
     if (!raw) return [];
     const parsed = JSON.parse(raw);
-    return Array.isArray(parsed) ? parsed : [];
+    if (!Array.isArray(parsed)) return [];
+    // Sanitize: remove any legacy non-error slips (like "I don't know this yet")
+    const cleaned = parsed.filter((err: any) => err && !isIgnoredNonErrorInput(err.originalMistake));
+    if (cleaned.length !== parsed.length) {
+      saveLearnerErrors(cleaned);
+    }
+    return cleaned;
   } catch (e) {
     console.warn("Failed to load learner errors:", e);
     return [];
@@ -18,7 +70,8 @@ export function loadLearnerErrors(): LearnerError[] {
 export function saveLearnerErrors(errors: LearnerError[]): void {
   if (typeof window === "undefined") return;
   try {
-    localStorage.setItem(STORAGE_KEY_ERRORS, JSON.stringify(errors));
+    const cleaned = errors.filter((err) => !isIgnoredNonErrorInput(err.originalMistake));
+    localStorage.setItem(STORAGE_KEY_ERRORS, JSON.stringify(cleaned));
   } catch (e) {
     console.warn("Failed to save learner errors:", e);
   }
@@ -79,11 +132,14 @@ export function syncCommonErrorCardsIntoDeck(
   targetLang: string,
   knownLang: string
 ): Flashcard[] {
+  // Filter out any non-error entries
+  const validErrors = errors.filter((err) => !isIgnoredNonErrorInput(err.originalMistake));
+
   // Keep all non-common-error cards, plus any existing common error cards that still exist
   const baseCards = deckCards.filter((c) => !c.isCommonError && c.category !== "common_error");
   
   // Create or update tailored cards for all active/recorded errors
-  const errorCards: Flashcard[] = errors.map((err) => {
+  const errorCards: Flashcard[] = validErrors.map((err) => {
     const existing = deckCards.find((c) => c.errorId === err.id || c.id === `error-card-${err.id}`);
     if (existing) {
       return {
@@ -116,10 +172,16 @@ export function recordEvaluationErrors(
   userSentence: string,
   currentErrors: LearnerError[]
 ): { updatedErrors: LearnerError[]; newErrorsCount: number; newlyPhasedOutCount: number } {
-  let updated = [...currentErrors];
+  let updated = currentErrors.filter((err) => !isIgnoredNonErrorInput(err.originalMistake));
   let newErrorsCount = 0;
   let newlyPhasedOutCount = 0;
   const now = new Date().toISOString();
+
+  // If the user's sentence is an "I don't know" / skip / self-report response, do NOT treat it as a grammar slip!
+  if (isIgnoredNonErrorInput(userSentence) || isIgnoredNonErrorInput(evaluation.feedbackSummary)) {
+    saveLearnerErrors(updated);
+    return { updatedErrors: updated, newErrorsCount: 0, newlyPhasedOutCount: 0 };
+  }
 
   // If high score with no grammar/vocab issues, celebrate overcoming past errors on this item
   if (evaluation.score >= 85 && evaluation.isGrammaticallyCorrect) {
@@ -145,7 +207,9 @@ export function recordEvaluationErrors(
   }
 
   // Check identified errors from evaluation
-  const identified = evaluation.identifiedErrors || [];
+  const identified = (evaluation.identifiedErrors || []).filter(
+    (errItem) => !isIgnoredNonErrorInput(errItem.originalMistake)
+  );
 
   if (identified.length > 0) {
     identified.forEach((errItem) => {
@@ -189,7 +253,7 @@ export function recordEvaluationErrors(
         updated.unshift(newError);
       }
     });
-  } else if (evaluation.score < 80 && !evaluation.isGrammaticallyCorrect) {
+  } else if (evaluation.score < 80 && !evaluation.isGrammaticallyCorrect && !isIgnoredNonErrorInput(userSentence)) {
     // Fallback: If score is low but identifiedErrors wasn't populated, create one from feedback
     const breakdownMistakes = evaluation.breakdown.filter((b) => b.type !== "positive");
     const explanationText =
