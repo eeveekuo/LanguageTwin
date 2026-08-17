@@ -36,7 +36,6 @@ import {
   Table,
 } from "lucide-react";
 import { formatPronunciation } from "../utils/pronunciation";
-import { PronunciationAidSelector } from "./PronunciationAidSelector";
 
 interface StudySessionProps {
   cards: Flashcard[];
@@ -53,7 +52,6 @@ interface StudySessionProps {
   isGeneratingBatch?: boolean;
   isOnline?: boolean;
   pronunciationAid?: string;
-  onChangePronunciationAid?: (aidId: string) => void;
 }
 
 export const StudySession: React.FC<StudySessionProps> = ({
@@ -71,7 +69,6 @@ export const StudySession: React.FC<StudySessionProps> = ({
   isGeneratingBatch = false,
   isOnline = true,
   pronunciationAid = "none",
-  onChangePronunciationAid,
 }) => {
   const [currentIndex, setCurrentIndex] = useState<number>(0);
   const [userSentence, setUserSentence] = useState<string>("");
@@ -752,17 +749,6 @@ export const StudySession: React.FC<StudySessionProps> = ({
               <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold flex items-center gap-1">
                 <CheckCircle2 className="w-3 h-3" /> Mastered
               </span>
-            )}
-
-            {/* In-Card Pronunciation Aid Switcher */}
-            {onChangePronunciationAid && (
-              <PronunciationAidSelector
-                langCode={targetLang.code}
-                langName={targetLang.name}
-                currentAid={pronunciationAid}
-                onChangeAid={onChangePronunciationAid}
-                variant="compact"
-              />
             )}
           </div>
 

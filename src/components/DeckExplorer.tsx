@@ -1,10 +1,10 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect, useRef } from "react";
 import { Deck, Flashcard, SupportedLanguage, CardType } from "../types";
 import { playTextAloud } from "../utils/speech";
 import { ConjugationLookup } from "./ConjugationLookup";
 import { IS_CONJUGATION_LANGUAGE } from "../data/conjugations";
 import { formatPronunciation } from "../utils/pronunciation";
-import { PronunciationAidSelector } from "./PronunciationAidSelector";
+import { fetchCloudDecks, User } from "../lib/firebase";
 import {
   Search,
   Plus,
@@ -26,10 +26,16 @@ import {
   ListFilter,
   Check,
   Languages,
+  Cloud,
+  Globe2,
+  FolderOpen,
 } from "lucide-react";
 
 interface DeckExplorerProps {
   deck: Deck;
+  allDecks?: Deck[];
+  onSelectDeck?: (deck: Deck) => void;
+  onDeckGenerated?: (newDeck: Deck) => void;
   targetLang: SupportedLanguage;
   knownLang: SupportedLanguage;
   onAddCard: (card: Flashcard) => void;
@@ -39,12 +45,15 @@ interface DeckExplorerProps {
   onGenerateNextBatch?: (startRank: number, endRank: number) => void;
   isGeneratingBatch?: boolean;
   isOnline?: boolean;
+  currentUser?: User | null;
   pronunciationAid?: string;
-  onChangePronunciationAid?: (aidId: string) => void;
 }
 
 export const DeckExplorer: React.FC<DeckExplorerProps> = ({
   deck,
+  allDecks = [],
+  onSelectDeck,
+  onDeckGenerated,
   targetLang,
   knownLang,
   onAddCard,
@@ -54,8 +63,8 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
   onGenerateNextBatch,
   isGeneratingBatch = false,
   isOnline = true,
+  currentUser,
   pronunciationAid = "none",
-  onChangePronunciationAid,
 }) => {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -66,6 +75,102 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
   const [showAddCardModal, setShowAddCardModal] = useState<boolean>(false);
   const [showConjugationExplorer, setShowConjugationExplorer] = useState<boolean>(false);
   const [activeLookupVerb, setActiveLookupVerb] = useState<string>("");
+
+  // In-tab Deck Switcher state
+  const [showDeckPicker, setShowDeckPicker] = useState<boolean>(false);
+  const [deckPickerSearch, setDeckPickerSearch] = useState<string>("");
+  const [deckPickerTab, setDeckPickerTab] = useState<"my" | "community">("my");
+  const [cloudDecks, setCloudDecks] = useState<Deck[]>([]);
+  const [isLoadingCloudDecks, setIsLoadingCloudDecks] = useState<boolean>(false);
+  const deckPickerRef = useRef<HTMLDivElement>(null);
+
+  // Close deck picker on click outside
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (
+        deckPickerRef.current &&
+        !deckPickerRef.current.contains(event.target as Node)
+      ) {
+        setShowDeckPicker(false);
+      }
+    }
+    if (showDeckPicker) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [showDeckPicker]);
+
+  // Load cloud community decks for the current target language
+  useEffect(() => {
+    let isMounted = true;
+    if (isOnline && showDeckPicker && deckPickerTab === "community") {
+      setIsLoadingCloudDecks(true);
+      fetchCloudDecks(targetLang.code)
+        .then((fetched) => {
+          if (isMounted) {
+            const formatted: Deck[] = fetched.map((d: any) => ({
+              id: d.id,
+              title: d.title || "Custom Deck",
+              description: d.description || "",
+              targetLang: d.targetLang,
+              targetLangCode: d.targetLangCode,
+              knownLang: d.knownLang,
+              knownLangCode: d.knownLangCode,
+              level: d.level || "Beginner",
+              cards: d.cards || [],
+              createdAt: d.createdAt || new Date().toISOString(),
+              isCustom: true,
+              creatorName: d.creatorName,
+              creatorPhoto: d.creatorPhoto,
+            }));
+            setCloudDecks(formatted);
+            setIsLoadingCloudDecks(false);
+          }
+        })
+        .catch(() => {
+          if (isMounted) setIsLoadingCloudDecks(false);
+        });
+    }
+    return () => {
+      isMounted = false;
+    };
+  }, [isOnline, showDeckPicker, deckPickerTab, targetLang.code]);
+
+  // Decks for current language
+  const currentLangDecks = useMemo(() => {
+    const combined = allDecks.length > 0 ? allDecks : [deck];
+    return combined.filter((d) => d.targetLangCode === targetLang.code);
+  }, [allDecks, deck, targetLang.code]);
+
+  // Filtered decks for the picker
+  const filteredLocalDecks = useMemo(() => {
+    return currentLangDecks.filter((d) => {
+      if (!deckPickerSearch.trim()) return true;
+      const q = deckPickerSearch.toLowerCase();
+      return (
+        d.title.toLowerCase().includes(q) ||
+        (d.description && d.description.toLowerCase().includes(q)) ||
+        (d.level && d.level.toLowerCase().includes(q))
+      );
+    });
+  }, [currentLangDecks, deckPickerSearch]);
+
+  const filteredCloudDecks = useMemo(() => {
+    const localIds = new Set(currentLangDecks.map((d) => d.id));
+    return cloudDecks
+      .filter((d) => !localIds.has(d.id))
+      .filter((d) => {
+        if (!deckPickerSearch.trim()) return true;
+        const q = deckPickerSearch.toLowerCase();
+        return (
+          d.title.toLowerCase().includes(q) ||
+          (d.description && d.description.toLowerCase().includes(q)) ||
+          (d.level && d.level.toLowerCase().includes(q))
+        );
+      });
+  }, [cloudDecks, currentLangDecks, deckPickerSearch]);
 
   // New Card Form State
   const [newTargetItem, setNewTargetItem] = useState("");
@@ -263,113 +368,365 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 space-y-6">
-      {/* Header Bento Tile */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 shadow-sm">
-        <div>
-          {/* Target & Known Language Display */}
-          <div className="flex items-center gap-3">
-            <span className="text-3xl sm:text-4xl">{targetLang.flag}</span>
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
-                  {targetLang.name}
-                </h2>
-                <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-                  from {knownLang.name} {knownLang.flag}
+      {/* Quick Decks Switcher Pills (when more than 1 deck is available) */}
+      {currentLangDecks.length > 1 && (
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1 text-xs">
+          <span className="text-slate-400 font-bold text-[11px] uppercase tracking-wider shrink-0 flex items-center gap-1">
+            <Layers className="w-3.5 h-3.5 text-indigo-500" />
+            <span>Decks:</span>
+          </span>
+          {currentLangDecks.map((d) => {
+            const isActive = d.id === deck.id;
+            return (
+              <button
+                key={d.id}
+                id={`quick-deck-btn-${d.id}`}
+                onClick={() => {
+                  if (onSelectDeck) onSelectDeck(d);
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full font-bold transition whitespace-nowrap cursor-pointer shrink-0 border ${
+                  isActive
+                    ? "bg-indigo-600 text-white border-indigo-600 shadow-xs shadow-indigo-200"
+                    : "bg-white text-slate-700 hover:bg-slate-50 border-slate-200 hover:border-slate-300"
+                }`}
+              >
+                {isActive && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                <span className="truncate max-w-[180px]">{d.title}</span>
+                <span
+                  className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
+                    isActive
+                      ? "bg-white/20 text-white"
+                      : "bg-slate-100 text-slate-600"
+                  }`}
+                >
+                  {d.cards.length}
                 </span>
-                {deck.level && (
-                  <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
-                    {deck.level}
-                  </span>
+              </button>
+            );
+          })}
+          <button
+            onClick={() => {
+              if (isOnline) onOpenGenerateModal();
+            }}
+            disabled={!isOnline}
+            className="flex items-center gap-1 px-3 py-1.5 rounded-full font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition whitespace-nowrap cursor-pointer shrink-0"
+            title="Generate new deck with AI"
+          >
+            <Sparkles className="w-3 h-3" />
+            <span>+ New Deck</span>
+          </button>
+        </div>
+      )}
+
+      {/* Header Bento Tile */}
+      <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-5">
+        <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+          <div className="space-y-2 max-w-3xl">
+            {/* Language and Deck Context Tags */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-xl">{targetLang.flag}</span>
+              <span className="text-xs font-bold text-slate-800">
+                {targetLang.name}
+              </span>
+              <span className="text-slate-300 text-xs">·</span>
+              <span className="text-xs font-semibold text-slate-500">
+                from {knownLang.name} {knownLang.flag}
+              </span>
+              {deck.level && (
+                <span className="text-xs font-bold px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">
+                  {deck.level}
+                </span>
+              )}
+              {deck.isCustom && (
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
+                  Custom
+                </span>
+              )}
+            </div>
+
+            {/* Deck Title & Switcher Dropdown Anchor */}
+            <div className="flex items-center gap-3 flex-wrap">
+              <h2 className="text-2xl sm:text-3xl font-black text-slate-900 tracking-tight">
+                {deck.title}
+              </h2>
+
+              {/* In-tab Deck Switcher Dropdown Button */}
+              <div className="relative inline-block" ref={deckPickerRef}>
+                <button
+                  id="deck-switcher-btn"
+                  type="button"
+                  onClick={() => setShowDeckPicker(!showDeckPicker)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-800 border border-indigo-200/80 text-xs font-bold transition cursor-pointer"
+                  title="Switch to a different deck"
+                >
+                  <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                  <span>Switch Deck ({currentLangDecks.length})</span>
+                  <ChevronDown
+                    className={`w-3.5 h-3.5 text-indigo-500 transition-transform duration-200 ${
+                      showDeckPicker ? "rotate-180" : ""
+                    }`}
+                  />
+                </button>
+
+                {/* Deck Switcher Popover Menu */}
+                {showDeckPicker && (
+                  <div className="absolute left-0 top-full mt-2 w-80 sm:w-96 rounded-3xl bg-white border border-slate-200 shadow-2xl p-4 z-40 space-y-3 animate-in fade-in zoom-in-95 duration-150">
+                    <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                      <div className="flex items-center gap-1.5 font-bold text-slate-900 text-sm">
+                        <BookOpen className="w-4 h-4 text-indigo-600" />
+                        <span>Select Deck for {targetLang.name}</span>
+                      </div>
+                      <span className="text-[11px] text-slate-400 font-medium">
+                        {currentLangDecks.length} local
+                      </span>
+                    </div>
+
+                    {/* Search inside deck picker */}
+                    <div className="relative">
+                      <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={deckPickerSearch}
+                        onChange={(e) => setDeckPickerSearch(e.target.value)}
+                        placeholder="Search decks..."
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-indigo-400"
+                      />
+                    </div>
+
+                    {/* Tabs: My Decks / Community Cloud Decks */}
+                    <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 text-xs font-bold">
+                      <button
+                        onClick={() => setDeckPickerTab("my")}
+                        className={`flex-1 py-1 rounded-lg text-center transition cursor-pointer ${
+                          deckPickerTab === "my"
+                            ? "bg-white text-slate-900 shadow-2xs"
+                            : "text-slate-500 hover:text-slate-800"
+                        }`}
+                      >
+                        My Decks ({currentLangDecks.length})
+                      </button>
+                      <button
+                        onClick={() => setDeckPickerTab("community")}
+                        className={`flex-1 py-1 rounded-lg text-center transition cursor-pointer flex items-center justify-center gap-1 ${
+                          deckPickerTab === "community"
+                            ? "bg-white text-slate-900 shadow-2xs"
+                            : "text-slate-500 hover:text-slate-800"
+                        }`}
+                      >
+                        <Cloud className="w-3 h-3 text-indigo-500" />
+                        <span>Community</span>
+                      </button>
+                    </div>
+
+                    {/* Decks List */}
+                    <div className="max-h-60 overflow-y-auto space-y-2 pr-1 no-scrollbar text-xs">
+                      {deckPickerTab === "my" ? (
+                        filteredLocalDecks.length === 0 ? (
+                          <div className="p-4 text-center text-slate-400 text-xs">
+                            No local decks match your search.
+                          </div>
+                        ) : (
+                          filteredLocalDecks.map((d) => {
+                            const isCurrent = d.id === deck.id;
+                            const dMastered = d.cards.filter(
+                              (c) => c.srs.status === "mastered" || c.srs.masteryScore >= 85
+                            ).length;
+                            return (
+                              <div
+                                key={d.id}
+                                onClick={() => {
+                                  if (onSelectDeck) onSelectDeck(d);
+                                  setShowDeckPicker(false);
+                                }}
+                                className={`p-3 rounded-2xl border transition cursor-pointer space-y-1 text-left ${
+                                  isCurrent
+                                    ? "bg-indigo-50/70 border-indigo-300 shadow-2xs"
+                                    : "bg-slate-50/60 hover:bg-slate-100/80 border-slate-200/80"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="font-bold text-slate-900 truncate">
+                                    {d.title}
+                                  </span>
+                                  {isCurrent && (
+                                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-indigo-600 text-white shrink-0">
+                                      Active
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] text-slate-500 line-clamp-1">
+                                  {d.description || "Active Vocabulary and Grammar Formulas"}
+                                </p>
+                                <div className="flex items-center gap-2 text-[10px] text-slate-400 font-semibold pt-0.5">
+                                  <span>{d.cards.length} items</span>
+                                  <span>·</span>
+                                  <span className="text-emerald-600">
+                                    {dMastered} mastered
+                                  </span>
+                                  {d.level && (
+                                    <>
+                                      <span>·</span>
+                                      <span className="text-indigo-600 font-bold">
+                                        {d.level}
+                                      </span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })
+                        )
+                      ) : (
+                        /* Community Cloud Decks */
+                        isLoadingCloudDecks ? (
+                          <div className="p-6 text-center text-slate-400 space-y-1">
+                            <Cloud className="w-5 h-5 animate-pulse text-indigo-500 mx-auto" />
+                            <p className="text-xs">Loading community decks...</p>
+                          </div>
+                        ) : filteredCloudDecks.length === 0 ? (
+                          <div className="p-4 text-center text-slate-400 text-xs">
+                            No community decks found for {targetLang.name}.
+                          </div>
+                        ) : (
+                          filteredCloudDecks.map((cd) => (
+                            <div
+                              key={cd.id}
+                              onClick={() => {
+                                if (onSelectDeck) onSelectDeck(cd);
+                                setShowDeckPicker(false);
+                              }}
+                              className="p-3 rounded-2xl bg-slate-50/60 hover:bg-indigo-50/60 border border-slate-200/80 hover:border-indigo-200 transition cursor-pointer space-y-1 text-left"
+                            >
+                              <div className="flex items-center justify-between">
+                                <span className="font-bold text-slate-900 truncate">
+                                  {cd.title}
+                                </span>
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 shrink-0 flex items-center gap-1">
+                                  <Cloud className="w-2.5 h-2.5" />
+                                  <span>Import</span>
+                                </span>
+                              </div>
+                              <p className="text-[11px] text-slate-500 line-clamp-1">
+                                {cd.description || "Shared by the community"}
+                              </p>
+                              <div className="flex items-center justify-between text-[10px] text-slate-400 pt-0.5">
+                                <span>{cd.cards.length} items</span>
+                                <span>by {cd.creatorName || "Learner"}</span>
+                              </div>
+                            </div>
+                          ))
+                        )
+                      )}
+                    </div>
+
+                    {/* Footer Actions inside Deck Switcher */}
+                    <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2">
+                      <button
+                        onClick={() => {
+                          setShowDeckPicker(false);
+                          if (isOnline) onOpenGenerateModal();
+                        }}
+                        disabled={!isOnline}
+                        className="w-full flex items-center justify-center gap-1.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition cursor-pointer shadow-2xs"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        <span>+ Generate New Deck</span>
+                      </button>
+                    </div>
+                  </div>
                 )}
               </div>
-              <p className="text-xs sm:text-sm text-slate-500 mt-1">{deck.description || "Active Vocabulary and Grammar Formulas"}</p>
             </div>
+
+            {/* Description */}
+            <p className="text-xs sm:text-sm text-slate-500">
+              {deck.description || "Active Vocabulary and Grammar Formulas"}
+            </p>
           </div>
 
-          {/* Current Deck Stats Chips */}
-          <div className="flex items-center gap-2 mt-4 text-xs font-bold flex-wrap">
-            <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-800 px-3 py-1 rounded-full border border-slate-200">
-              <BookOpen className="w-3.5 h-3.5 text-slate-500" />
-              <span>{totalCards} Total Items</span>
-            </span>
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 shrink-0 flex-wrap">
+            <button
+              id="deck-generate-more-btn"
+              onClick={() => {
+                if (isOnline) {
+                  onOpenGenerateModal();
+                }
+              }}
+              disabled={!isOnline || isGeneratingBatch}
+              title={
+                !isOnline
+                  ? "Requires online connection to generate cards with AI"
+                  : "Generate more frequency cards and grammar concepts"
+              }
+              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs font-bold transition shadow-xs ${
+                isOnline
+                  ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-100 active:scale-95 cursor-pointer"
+                  : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
+              }`}
+            >
+              <Sparkles className="w-4 h-4" />
+              <span>Generate More Items</span>
+            </button>
 
-            <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 px-3 py-1 rounded-full border border-emerald-200">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-              <span>{masteredCardsCount} Mastered</span>
-            </span>
+            <button
+              id="open-add-card-modal-btn"
+              onClick={() => setShowAddCardModal(true)}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-200 transition cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add Custom Card</span>
+            </button>
 
-            <span className="inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-800 px-3 py-1 rounded-full border border-indigo-200">
-              <Flame className="w-3.5 h-3.5 text-indigo-600 fill-indigo-600" />
-              <span>{activeReviewCardsCount} Active Review</span>
-            </span>
-
-            {newCardsCount > 0 && (
-              <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 px-3 py-1 rounded-full border border-amber-200">
-                <span className="w-2 h-2 rounded-full bg-amber-500" />
-                <span>{newCardsCount} New</span>
-              </span>
-            )}
-
-            {dueCardsCount > 0 && (
-              <span className="inline-flex items-center gap-1.5 bg-orange-50 text-orange-800 px-3 py-1 rounded-full border border-orange-200">
-                <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
-                <span>{dueCardsCount} Due</span>
-              </span>
+            {isConjugationLang && (
+              <button
+                id="deck-conjugation-explorer-btn"
+                onClick={() => {
+                  setShowConjugationExplorer(!showConjugationExplorer);
+                  setActiveLookupVerb("");
+                }}
+                className={`flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs font-bold border transition cursor-pointer ${
+                  showConjugationExplorer
+                    ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
+                    : "bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 text-slate-700 border-slate-200"
+                }`}
+              >
+                <Table className="w-4 h-4" />
+                <span>Conjugation Tables</span>
+              </button>
             )}
           </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2.5 shrink-0 flex-wrap">
-          <button
-            id="deck-generate-more-btn"
-            onClick={() => {
-              if (isOnline) {
-                onOpenGenerateModal();
-              }
-            }}
-            disabled={!isOnline || isGeneratingBatch}
-            title={
-              !isOnline
-                ? "Requires online connection to generate cards with AI"
-                : "Generate more frequency cards and grammar concepts"
-            }
-            className={`flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs font-bold transition shadow-xs ${
-              isOnline
-                ? "bg-indigo-600 hover:bg-indigo-700 text-white shadow-indigo-100 active:scale-95 cursor-pointer"
-                : "bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-60"
-            }`}
-          >
-            <Sparkles className="w-4 h-4" />
-            <span>Generate More Items</span>
-          </button>
+        {/* Current Deck Stats Chips */}
+        <div className="flex items-center gap-2 pt-2 border-t border-slate-100 text-xs font-bold flex-wrap">
+          <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-800 px-3 py-1 rounded-full border border-slate-200">
+            <BookOpen className="w-3.5 h-3.5 text-slate-500" />
+            <span>{totalCards} Total Items</span>
+          </span>
 
-          <button
-            id="open-add-card-modal-btn"
-            onClick={() => setShowAddCardModal(true)}
-            className="flex items-center gap-1.5 px-4 py-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold border border-slate-200 transition cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Custom Card</span>
-          </button>
+          <span className="inline-flex items-center gap-1.5 bg-emerald-50 text-emerald-800 px-3 py-1 rounded-full border border-emerald-200">
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            <span>{masteredCardsCount} Mastered</span>
+          </span>
 
-          {isConjugationLang && (
-            <button
-              id="deck-conjugation-explorer-btn"
-              onClick={() => {
-                setShowConjugationExplorer(!showConjugationExplorer);
-                setActiveLookupVerb("");
-              }}
-              className={`flex items-center gap-1.5 px-4 py-2.5 rounded-2xl text-xs font-bold border transition cursor-pointer ${
-                showConjugationExplorer
-                  ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
-                  : "bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 text-slate-700 border-slate-200"
-              }`}
-            >
-              <Table className="w-4 h-4" />
-              <span>Conjugation Tables</span>
-            </button>
+          <span className="inline-flex items-center gap-1.5 bg-indigo-50 text-indigo-800 px-3 py-1 rounded-full border border-indigo-200">
+            <Flame className="w-3.5 h-3.5 text-indigo-600 fill-indigo-600" />
+            <span>{activeReviewCardsCount} Active Review</span>
+          </span>
+
+          {newCardsCount > 0 && (
+            <span className="inline-flex items-center gap-1.5 bg-amber-50 text-amber-800 px-3 py-1 rounded-full border border-amber-200">
+              <span className="w-2 h-2 rounded-full bg-amber-500" />
+              <span>{newCardsCount} New</span>
+            </span>
+          )}
+
+          {dueCardsCount > 0 && (
+            <span className="inline-flex items-center gap-1.5 bg-orange-50 text-orange-800 px-3 py-1 rounded-full border border-orange-200">
+              <span className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+              <span>{dueCardsCount} Due</span>
+            </span>
           )}
         </div>
       </div>
@@ -507,21 +864,6 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
                 <option value="101+">Ranks #101+</option>
               </select>
             </div>
-
-            {/* Pronunciation Aid Option Selector */}
-            {onChangePronunciationAid && (
-              <div>
-                <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider block mb-1">
-                  Pronunciation Aid:
-                </span>
-                <PronunciationAidSelector
-                  langCode={targetLang.code}
-                  langName={targetLang.name}
-                  currentAid={pronunciationAid}
-                  onChangeAid={onChangePronunciationAid}
-                />
-              </div>
-            )}
           </div>
         </div>
       </div>

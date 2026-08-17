@@ -30,8 +30,8 @@ interface HeaderProps {
   activeTab: "study" | "deck" | "reading" | "journal" | "tutor" | "stats";
   setActiveTab: (tab: "study" | "deck" | "reading" | "journal" | "tutor" | "stats") => void;
   activeDeck: Deck;
-  allDecks: Deck[];
-  onSelectDeck: (deck: Deck) => void;
+  allDecks?: Deck[];
+  onSelectDeck?: (deck: Deck) => void;
   targetLang: SupportedLanguage;
   knownLang: SupportedLanguage;
   onOpenLanguageModal: () => void;
@@ -58,7 +58,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeTab,
   setActiveTab,
   activeDeck,
-  allDecks,
+  allDecks = [],
   onSelectDeck,
   targetLang,
   knownLang,
@@ -133,15 +133,16 @@ export const Header: React.FC<HeaderProps> = ({
             </div>
           </div>
 
-          {/* Unified Language Pair & Active Deck Switcher */}
+          {/* Language Pair Selector (Deck is selected via the Deck tab) */}
           <div className="hidden md:flex items-center gap-2">
             <button
-              id="header-lang-deck-btn"
+              id="header-lang-btn"
               type="button"
               onClick={onOpenLanguageModal}
-              className="group flex items-center bg-slate-50 hover:bg-slate-100/90 text-slate-800 rounded-full px-3.5 py-1.5 border border-slate-200 shadow-xs gap-2.5 text-xs transition cursor-pointer"
-              title="Click to adjust language pair or switch decks"
+              className="group flex items-center bg-slate-50 hover:bg-slate-100/90 text-slate-800 rounded-full px-3.5 py-1.5 border border-slate-200 shadow-xs gap-2 text-xs transition cursor-pointer"
+              title="Click to adjust learning or source language"
             >
+              <Languages className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
               {/* Language Pair */}
               <div className="flex items-center gap-1.5 font-semibold">
                 <span className="text-slate-400 text-[11px] font-medium">
@@ -158,17 +159,6 @@ export const Header: React.FC<HeaderProps> = ({
                 <span className="text-slate-900 font-bold flex items-center gap-1">
                   <span>{knownLang.flag}</span>
                   <span>{knownLang.name}</span>
-                </span>
-              </div>
-
-              <span className="h-3.5 w-px bg-slate-200" />
-
-              {/* Current Active Deck */}
-              <div className="flex items-center gap-1.5 text-indigo-700 font-semibold max-w-[210px]">
-                <BookOpen className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-                <span className="truncate">{activeDeck.title}</span>
-                <span className="text-[10px] bg-indigo-100/80 text-indigo-800 font-bold px-1.5 py-0.5 rounded-full shrink-0">
-                  {activeDeck.cards.length}
                 </span>
               </div>
 

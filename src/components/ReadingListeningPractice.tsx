@@ -17,7 +17,6 @@ import { IS_CONJUGATION_LANGUAGE } from "../data/conjugations";
 import { lookupBuiltinDictionary } from "../data/builtinDictionary";
 import { estimateStandardizedProficiency } from "../utils/proficiencyEstimation";
 import { formatPronunciation } from "../utils/pronunciation";
-import { PronunciationAidSelector } from "./PronunciationAidSelector";
 import {
   BookOpen,
   Headphones,
@@ -61,7 +60,6 @@ interface ReadingListeningPracticeProps {
   learnerErrors?: LearnerError[];
   onNavigateTab?: (tab: string) => void;
   pronunciationAid?: string;
-  onChangePronunciationAid?: (aidId: string) => void;
 }
 
 export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> = ({
@@ -73,7 +71,6 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
   learnerErrors = [],
   onNavigateTab,
   pronunciationAid = "none",
-  onChangePronunciationAid,
 }) => {
   const [showLevelWarningDismissed, setShowLevelWarningDismissed] = useState<boolean>(false);
 

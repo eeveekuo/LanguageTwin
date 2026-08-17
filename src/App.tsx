@@ -350,11 +350,12 @@ export default function App() {
     pronunciationSettings[targetLang.code] ||
     loadSavedPronunciationAid(targetLang.code);
 
-  const handlePronunciationAidChange = (aidId: string) => {
-    savePronunciationAid(targetLang.code, aidId);
+  const handlePronunciationAidChange = (aidId: string, langCode?: string) => {
+    const code = langCode || targetLang.code;
+    savePronunciationAid(code, aidId);
     setPronunciationSettings((prev) => ({
       ...prev,
-      [targetLang.code]: aidId,
+      [code]: aidId,
     }));
   };
 
@@ -714,6 +715,18 @@ export default function App() {
     setStudyFilter({ mode: "auto" });
   };
 
+  // Handle selecting a deck from Deck tab or elsewhere
+  const handleSelectDeck = (selectedDeck: Deck) => {
+    setDecks((prev) => {
+      if (prev.some((d) => d.id === selectedDeck.id)) {
+        return prev;
+      }
+      return [selectedDeck, ...prev];
+    });
+    setActiveDeckId(selectedDeck.id);
+    setStudyFilter({ mode: "auto" });
+  };
+
   return (
     <div className="min-h-screen bg-[#f0f2f5] text-slate-900 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
       {/* Header with Google Account Login & Sync */}
@@ -721,11 +734,6 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         activeDeck={activeDeck}
-        allDecks={decks}
-        onSelectDeck={(deck) => {
-          setActiveDeckId(deck.id);
-          setStudyFilter({ mode: "auto" });
-        }}
         targetLang={targetLang}
         knownLang={knownLang}
         onOpenLanguageModal={() => {
@@ -785,7 +793,6 @@ export default function App() {
             isGeneratingBatch={isGeneratingBatch}
             isOnline={isOnline}
             pronunciationAid={currentPronunciationAid}
-            onChangePronunciationAid={handlePronunciationAidChange}
           />
         )}
 
@@ -800,7 +807,6 @@ export default function App() {
             learnerErrors={learnerErrors}
             onNavigateTab={(tab) => setActiveTab(tab as any)}
             pronunciationAid={currentPronunciationAid}
-            onChangePronunciationAid={handlePronunciationAidChange}
           />
         )}
 
@@ -808,6 +814,9 @@ export default function App() {
           <DeckExplorer
             key={activeDeck.id}
             deck={activeDeck}
+            allDecks={decks}
+            onSelectDeck={handleSelectDeck}
+            onDeckGenerated={handleDeckGenerated}
             targetLang={targetLang}
             knownLang={knownLang}
             onAddCard={handleAddCard}
@@ -820,8 +829,8 @@ export default function App() {
             onGenerateNextBatch={handleGenerateNextBatch}
             isGeneratingBatch={isGeneratingBatch}
             isOnline={isOnline}
+            currentUser={currentUser}
             pronunciationAid={currentPronunciationAid}
-            onChangePronunciationAid={handlePronunciationAidChange}
           />
         )}
 
@@ -866,7 +875,6 @@ export default function App() {
             knownLang={knownLang}
             onTutorItemsEvaluated={handleTutorItemsEvaluated}
             pronunciationAid={currentPronunciationAid}
-            onChangePronunciationAid={handlePronunciationAidChange}
           />
         )}
 
@@ -899,16 +907,13 @@ export default function App() {
         allDecks={decks}
         activeDeckId={activeDeck.id}
         onSelectLanguagePair={handleSelectLanguagePair}
-        onSelectDeck={(deck) => {
-          setActiveDeckId(deck.id);
-          setStudyFilter({ mode: "auto" });
-        }}
+        onSelectDeck={handleSelectDeck}
         onDeckGenerated={handleDeckGenerated}
         onOpenPlacementModal={() => setIsPlacementModalOpen(true)}
         initialMode={languageModalInitialMode}
         isOnline={isOnline}
         currentUser={currentUser}
-        pronunciationAid={currentPronunciationAid}
+        pronunciationSettings={pronunciationSettings}
         onChangePronunciationAid={handlePronunciationAidChange}
       />
 

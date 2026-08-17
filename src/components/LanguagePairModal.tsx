@@ -10,6 +10,10 @@ import {
   fetchCloudDecks,
   User,
 } from "../lib/firebase";
+import {
+  loadSavedPronunciationAid,
+  savePronunciationAid,
+} from "../utils/pronunciation";
 import { PronunciationAidSelector } from "./PronunciationAidSelector";
 import {
   Languages,
@@ -30,6 +34,7 @@ import {
   Users,
   Calendar,
   Search,
+  Volume2,
 } from "lucide-react";
 
 interface LanguagePairModalProps {
@@ -46,8 +51,8 @@ interface LanguagePairModalProps {
   initialMode?: "browse" | "generate";
   isOnline?: boolean;
   currentUser?: User | null;
-  pronunciationAid?: string;
-  onChangePronunciationAid?: (aidId: string) => void;
+  pronunciationSettings?: Record<string, string>;
+  onChangePronunciationAid?: (aidId: string, langCode?: string) => void;
 }
 
 export const LanguagePairModal: React.FC<LanguagePairModalProps> = ({
@@ -64,12 +69,15 @@ export const LanguagePairModal: React.FC<LanguagePairModalProps> = ({
   initialMode = "browse",
   isOnline = true,
   currentUser,
-  pronunciationAid = "none",
+  pronunciationSettings = {},
   onChangePronunciationAid,
 }) => {
   const [mode, setMode] = useState<"browse" | "generate">(initialMode);
   const [selectedTarget, setSelectedTarget] = useState(targetLang.code);
   const [selectedKnown, setSelectedKnown] = useState(knownLang.code);
+  const [selectedAid, setSelectedAid] = useState<string>(() =>
+    pronunciationSettings[targetLang.code] || loadSavedPronunciationAid(targetLang.code)
+  );
 
   // Cloud decks state
   const [cloudDecks, setCloudDecks] = useState<Deck[]>([]);
@@ -86,16 +94,34 @@ export const LanguagePairModal: React.FC<LanguagePairModalProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Load cloud decks whenever modal is opened or target language changes
+  // Load cloud decks and update aid whenever modal is opened or target language changes
   useEffect(() => {
     if (isOpen) {
       setSelectedTarget(targetLang.code);
       setSelectedKnown(knownLang.code);
+      setSelectedAid(
+        pronunciationSettings[targetLang.code] || loadSavedPronunciationAid(targetLang.code)
+      );
       setMode(initialMode);
       setErrorMsg(null);
       setIsGenerating(false);
     }
-  }, [isOpen, targetLang.code, knownLang.code, initialMode]);
+  }, [isOpen, targetLang.code, knownLang.code, initialMode, pronunciationSettings]);
+
+  // When target language selection changes within modal, load saved/configured aid for that language
+  useEffect(() => {
+    setSelectedAid(
+      pronunciationSettings[selectedTarget] || loadSavedPronunciationAid(selectedTarget)
+    );
+  }, [selectedTarget, pronunciationSettings]);
+
+  const handleAidChange = (aidId: string) => {
+    setSelectedAid(aidId);
+    savePronunciationAid(selectedTarget, aidId);
+    if (onChangePronunciationAid) {
+      onChangePronunciationAid(aidId, selectedTarget);
+    }
+  };
 
   useEffect(() => {
     let isMounted = true;
@@ -176,11 +202,20 @@ export const LanguagePairModal: React.FC<LanguagePairModalProps> = ({
   ];
 
   const handleApplySwitch = () => {
+    savePronunciationAid(selectedTarget, selectedAid);
+    if (onChangePronunciationAid) {
+      onChangePronunciationAid(selectedAid, selectedTarget);
+    }
     onSelectLanguagePair(selectedTarget, selectedKnown);
     onClose();
   };
 
   const handleDeckClick = (deck: Deck) => {
+    const aidToSave = deck.targetLangCode === selectedTarget ? selectedAid : loadSavedPronunciationAid(deck.targetLangCode);
+    savePronunciationAid(deck.targetLangCode, aidToSave);
+    if (onChangePronunciationAid) {
+      onChangePronunciationAid(aidToSave, deck.targetLangCode);
+    }
     onSelectDeck(deck);
     onSelectLanguagePair(deck.targetLangCode, deck.knownLangCode);
     onClose();
@@ -265,6 +300,11 @@ export const LanguagePairModal: React.FC<LanguagePairModalProps> = ({
 
       // Save to centralized cloud database (Firestore) so all users can reuse it
       await saveDeckToCloud(newDeck, currentUser);
+
+      savePronunciationAid(targetLangObj.code, selectedAid);
+      if (onChangePronunciationAid) {
+        onChangePronunciationAid(selectedAid, targetLangObj.code);
+      }
 
       if (onDeckGenerated) {
         onDeckGenerated(newDeck);
@@ -451,25 +491,24 @@ export const LanguagePairModal: React.FC<LanguagePairModalProps> = ({
                 </div>
               </div>
 
-              {/* 3. Pronunciation & Romanization Aid Preference */}
-              {onChangePronunciationAid && (
-                <div className="p-3.5 rounded-2xl bg-indigo-50/50 border border-indigo-100 flex items-center justify-between">
-                  <div>
-                    <label className="text-slate-800 font-bold block">
-                      3. Pronunciation Aid for {targetLangObj.name}:
-                    </label>
-                    <span className="text-[11px] text-slate-500">
-                      Choose your preferred script, phonetic aid, or none
-                    </span>
-                  </div>
-                  <PronunciationAidSelector
-                    langCode={targetLangObj.code}
-                    langName={targetLangObj.name}
-                    currentAid={pronunciationAid}
-                    onChangeAid={onChangePronunciationAid}
-                  />
+              {/* 3. Pronunciation & Script Aid Preference for Selected Target Language */}
+              <div className="p-3.5 rounded-2xl bg-indigo-50/60 border border-indigo-100/80 flex items-center justify-between gap-3">
+                <div className="space-y-0.5">
+                  <label className="text-slate-800 font-bold text-xs flex items-center gap-1.5">
+                    <Volume2 className="w-3.5 h-3.5 text-indigo-600" />
+                    <span>3. Pronunciation Aid for {targetLangObj.name}:</span>
+                  </label>
+                  <p className="text-[11px] text-slate-500">
+                    Select phonetic script, romanization, or none
+                  </p>
                 </div>
-              )}
+                <PronunciationAidSelector
+                  langCode={targetLangObj.code}
+                  langName={targetLangObj.name}
+                  currentAid={selectedAid}
+                  onChangeAid={handleAidChange}
+                />
+              </div>
 
               {/* 4. Available Decks for Selected Target Language (Curated + Community Cloud) */}
               <div>

@@ -2,7 +2,6 @@ import React, { useState, useRef, useEffect } from "react";
 import { Deck, SupportedLanguage, ChatMessage, EvaluatedItemInChat, Flashcard } from "../types";
 import { playTextAloud, stopSpeech, isSpeechRecognitionSupported, createSpeechRecognizer } from "../utils/speech";
 import { formatPronunciation } from "../utils/pronunciation";
-import { PronunciationAidSelector } from "./PronunciationAidSelector";
 import {
   Send,
   Mic,
@@ -36,7 +35,6 @@ interface AITutorChatProps {
   knownLang: SupportedLanguage;
   onTutorItemsEvaluated?: (evaluatedItems: EvaluatedItemInChat[], userMessage: string) => void;
   pronunciationAid?: string;
-  onChangePronunciationAid?: (aidId: string) => void;
 }
 
 interface QuickAssistResult {
@@ -64,7 +62,6 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
   knownLang,
   onTutorItemsEvaluated,
   pronunciationAid = "none",
-  onChangePronunciationAid,
 }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputVal, setInputVal] = useState("");
@@ -334,17 +331,6 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
         </div>
 
         <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-          {/* Pronunciation Aid Selector */}
-          {onChangePronunciationAid && (
-            <PronunciationAidSelector
-              langCode={targetLang.code}
-              langName={targetLang.name}
-              currentAid={pronunciationAid}
-              onChangeAid={onChangePronunciationAid}
-              variant="compact"
-            />
-          )}
-
           {/* Side Tab / Co-Pilot Toggle Button */}
           <button
             id="toggle-side-copilot-btn"
