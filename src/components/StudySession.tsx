@@ -852,16 +852,33 @@ export const StudySession: React.FC<StudySessionProps> = ({
                       </button>
                     </div>
 
-                    {/* Pronunciation Aid (Zhuyin, Pinyin, Furigana, etc.) */}
+                    {/* Pronunciation Aid (Zhuyin, Pinyin, Furigana, etc.) - Hidden until Reveal Reference */}
                     {formatPronunciation(activeCard.targetItem, activeCard.phonetic, targetLang.code, pronunciationAid) && (
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100/90 text-slate-700 font-serif text-sm tracking-wide mt-1 border border-slate-200">
-                        <span className="text-[10px] font-sans font-bold uppercase text-indigo-600">
-                          {pronunciationAid === "zhuyin" ? "注音" : pronunciationAid === "pinyin" ? "拼音" : "Pronunciation"}
-                        </span>
-                        <span>
-                          {formatPronunciation(activeCard.targetItem, activeCard.phonetic, targetLang.code, pronunciationAid)}
-                        </span>
-                      </div>
+                      isRevealed || evaluation ? (
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100/90 text-slate-700 font-serif text-sm tracking-wide mt-1 border border-slate-200">
+                          <span className="text-[10px] font-sans font-bold uppercase text-indigo-600">
+                            {pronunciationAid === "zhuyin" ? "注音" : pronunciationAid === "pinyin" ? "拼音" : "Pronunciation"}
+                          </span>
+                          <span>
+                            {formatPronunciation(activeCard.targetItem, activeCard.phonetic, targetLang.code, pronunciationAid)}
+                          </span>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setIsRevealed(true)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-50 hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 text-xs font-semibold mt-1 border border-dashed border-slate-200 transition cursor-pointer"
+                          title="Reveal pronunciation & reference"
+                        >
+                          <Lock className="w-3 h-3 text-slate-400" />
+                          <span className="text-[10px] uppercase font-bold text-slate-400">
+                            {pronunciationAid === "zhuyin" ? "注音" : pronunciationAid === "pinyin" ? "拼音" : "Pronunciation"}
+                          </span>
+                          <span className="text-[11px] font-sans text-slate-400 hover:text-indigo-600">
+                            • Click to Reveal Reference
+                          </span>
+                        </button>
+                      )
                     )}
                   </div>
                 ) : (

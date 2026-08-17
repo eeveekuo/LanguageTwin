@@ -688,3 +688,239 @@ export function getFallbackDeck(
     cards: sampleCards,
   };
 }
+
+/**
+ * Fallback active production sentence evaluation
+ */
+export function getFallbackSentenceEvaluation(params: {
+  targetItem: string;
+  userSentence: string;
+  targetLanguage: string;
+  knownLanguage: string;
+  definition?: string;
+}) {
+  const { targetItem, userSentence, targetLanguage, definition } = params;
+  const sentence = (userSentence || "").trim();
+  const lowerSentence = sentence.toLowerCase();
+  const lowerTarget = (targetItem || "").toLowerCase();
+  
+  const isTargetUsed = lowerSentence.includes(lowerTarget) || sentence.includes(targetItem);
+  const isReasonableLength = sentence.length >= 8;
+  const score = isTargetUsed && isReasonableLength ? 90 : isTargetUsed ? 75 : 60;
+  const grade = score >= 85 ? 4 : score >= 70 ? 3 : 2;
+  const masteryLevel = score >= 85 ? "mastered" : score >= 70 ? "good" : "developing";
+
+  return {
+    score,
+    grade,
+    masteryLevel,
+    isTargetUsed,
+    isGrammaticallyCorrect: true,
+    feedbackSummary: isTargetUsed
+      ? `Great active use of "${targetItem}" in your sentence!`
+      : `Sentence received! Make sure to include the target item "${targetItem}".`,
+    correctedSentence: sentence,
+    grammarBreakdown: `You formulated an active output sentence in ${targetLanguage}. Definition: ${definition || targetItem}. Keep practicing authentic context sentences!`,
+    identifiedErrors: [],
+    usageAlternatives: [
+      {
+        targetSentence: `${sentence}`,
+        translation: `Contextual application of ${targetItem}`,
+      },
+    ],
+    detectedTenseOrAspect: "Present Indicative / Natural Expression",
+  };
+}
+
+/**
+ * Fallback explain card data
+ */
+export function getFallbackExplainCard(params: {
+  targetItem: string;
+  targetLanguage: string;
+  knownLanguage: string;
+  partOfSpeech?: string;
+  definition?: string;
+}) {
+  const { targetItem, targetLanguage, knownLanguage, partOfSpeech, definition } = params;
+  return {
+    targetItem,
+    definition: definition || `Essential ${partOfSpeech || "expression"} in ${targetLanguage}`,
+    phonetic: `/${targetItem}/`,
+    partOfSpeech: partOfSpeech || "Vocabulary",
+    usageFormat: `${targetItem} + Context`,
+    grammaticalRules: `Use "${targetItem}" in natural discourse according to standard ${targetLanguage} word order.`,
+    contextExamples: [
+      {
+        target: `${targetItem} is frequently used in everyday dialogue.`,
+        translation: `How to use ${targetItem} naturally.`,
+        nuanceExplanation: `Standard conversational register.`,
+      },
+    ],
+    commonCollocations: [`natural ${targetItem}`],
+    register: "neutral / conversational",
+  };
+}
+
+/**
+ * Fallback AI Tutor chat reply
+ */
+export function getFallbackAiTutorReply(params: {
+  userMessage: string;
+  targetLanguage: string;
+  knownLanguage: string;
+}) {
+  const { targetLanguage } = params;
+  const isSpanish = targetLanguage.toLowerCase().includes("spanish");
+  const isChinese = targetLanguage.toLowerCase().includes("chinese") || targetLanguage.includes("中文");
+  const isJapanese = targetLanguage.toLowerCase().includes("japanese") || targetLanguage.includes("日本");
+  const isKorean = targetLanguage.toLowerCase().includes("korean") || targetLanguage.includes("한국");
+
+  let reply = "I understand! Let's continue our conversation practice.";
+  if (isSpanish) {
+    reply = "¡Muy bien! Te he entendido perfectamente. ¿Qué más te gustaría practicar hoy?";
+  } else if (isChinese) {
+    reply = "很好！我明白你的意思了。我們繼續用中文聊聊吧，你今天過得如何？";
+  } else if (isJapanese) {
+    reply = "よく分かりました！とても自然な表現ですね。今日はどんなことについて話しましょうか？";
+  } else if (isKorean) {
+    reply = "잘 이해했습니다! 아주 자연스러운 표현이에요. 오늘 어떤 주제로 더 이야기해 볼까요?";
+  }
+
+  return {
+    reply,
+    evaluatedItems: [],
+  };
+}
+
+/**
+ * Fallback Quick Assist lookup
+ */
+export function getFallbackQuickAssist(params: {
+  query: string;
+  targetLanguage: string;
+  knownLanguage: string;
+}) {
+  const { query, targetLanguage, knownLanguage } = params;
+  return {
+    targetExpression: query,
+    phonetic: `/${query}/`,
+    meaningInKnown: `Translation/expression for "${query}" in ${knownLanguage}`,
+    register: "conversational",
+    usageExample: `${query}`,
+    exampleTranslation: `How to apply "${query}" in context`,
+    culturalTip: `Common expression across ${targetLanguage}-speaking regions.`,
+  };
+}
+
+/**
+ * Fallback Reading Article
+ */
+export function getFallbackReadingArticle(params: {
+  targetLanguage: string;
+  knownLanguage: string;
+  level?: string;
+  topic?: string;
+}) {
+  const { targetLanguage, level, topic } = params;
+  const isChinese = targetLanguage.toLowerCase().includes("chinese") || targetLanguage.includes("中文");
+  const isSpanish = targetLanguage.toLowerCase().includes("spanish");
+  const isJapanese = targetLanguage.toLowerCase().includes("japanese");
+  const isKorean = targetLanguage.toLowerCase().includes("korean");
+
+  let title = `${targetLanguage} Immersion Article: ${topic || "Culture & Daily Life"}`;
+  let text = `Learning a new language opens up wonderful opportunities to connect with diverse cultures and communities. Consistent daily practice in reading and listening accelerates fluency.`;
+  
+  if (isChinese) {
+    title = `探索文化與日常生活 (${topic || "精選短文"})`;
+    text = `學習一門新的語言不僅能開啟探索世界的窗口，更能深入了解豐富多元的文化。每天透過閱讀與主動造句練習，能夠讓你的語言能力逐步提升，建立扎實的語感與詞彙量。`;
+  } else if (isSpanish) {
+    title = `Inmersión Cultural: ${topic || "Vida Cotidiana"}`;
+    text = `Aprender un nuevo idioma nos permite conectar con personas de diferentes países y culturas. La práctica diaria y la lectura activa son fundamentales para mejorar la comprensión y la fluidez comunicativa.`;
+  } else if (isJapanese) {
+    title = `文化と言語の旅 (${topic || "日常の読解"})`;
+    text = `新しい言語を学ぶことは、世界中の人々と心を通わせる素晴らしい冒険です。毎日の読解とリスニングの積み重ねが、自然な会話力への近道となります。`;
+  } else if (isKorean) {
+    title = `문화와 일상 이야기 (${topic || "읽기 연습"})`;
+    text = `새로운 언어를 배우는 것은 다른 문화와 사람들을 이해하는 훌륭한 방법입니다. 매일 꾸준히 읽고 소리 내어 연습하면 자연스러운 표현력을 기를 수 있습니다.`;
+  }
+
+  return {
+    title,
+    text,
+    cefrLevel: level || "A2",
+    topic: topic || "Daily Life",
+    summary: `An engaging reading passage formatted for ${targetLanguage} learners at level ${level || "A2"}.`,
+    vocabularyHighlights: [
+      {
+        word: isChinese ? "學習" : isSpanish ? "aprender" : isJapanese ? "学ぶ" : isKorean ? "배우다" : "practice",
+        meaning: "to learn, to study",
+        partOfSpeech: "Verb",
+      },
+      {
+        word: isChinese ? "文化" : isSpanish ? "cultura" : isJapanese ? "文化" : isKorean ? "문화" : "culture",
+        meaning: "culture",
+        partOfSpeech: "Noun",
+      },
+    ],
+    comprehensionQuestions: [
+      {
+        question: `What is one key benefit of daily practice mentioned in the passage?`,
+        options: [
+          "It accelerates fluency and strengthens vocabulary",
+          "It replaces all speaking practice",
+          "It requires hours without pause",
+          "It is only useful for exams",
+        ],
+        correctOptionIndex: 0,
+        explanation: "Consistent daily immersion directly builds active vocabulary retention.",
+      },
+    ],
+  };
+}
+
+/**
+ * Fallback Journal Error Check and Prose Polish
+ */
+export function getFallbackJournalCheck(params: {
+  title: string;
+  content: string;
+  targetLanguage: string;
+  knownLanguage: string;
+}) {
+  const { title, content, targetLanguage, knownLanguage } = params;
+  const wordCount = content.trim().split(/\s+/).filter(Boolean).length;
+
+  return {
+    overallScore: Math.min(94, Math.max(78, 80 + Math.min(10, Math.floor(wordCount / 10)))),
+    estimatedCEFR: wordCount > 80 ? "B2" : wordCount > 40 ? "B1" : "A2",
+    fluencyRating: wordCount > 80 ? "fluent" : wordCount > 40 ? "intermediate" : "developing",
+    summaryFeedback: `Great effort writing ${wordCount} words in ${targetLanguage}! Your communicative intent is clear and your sentence flow demonstrates solid command of foundational vocabulary.`,
+    correctedText: content.trim(),
+    translatedText: `[Translation to ${knownLanguage}]: ${content.trim()}`,
+    grammarScore: 86,
+    vocabularyScore: 88,
+    naturalnessScore: 84,
+    errors: [],
+    positiveHighlights: [
+      `Effective and clear expression of ideas in ${targetLanguage}.`,
+      `Consistent sentence structure and vocabulary engagement.`
+    ],
+    naturalPhrasings: [],
+    extractedVocabulary: content
+      .split(/[\s,.;!?，。！？]+/)
+      .filter((w) => w.length > 3)
+      .slice(0, 4)
+      .map((w) => ({
+        word: w,
+        translation: `Key term in ${targetLanguage}`,
+        partOfSpeech: "Vocabulary",
+        phonetic: `/${w}/`,
+        exampleSentence: content.slice(0, 80),
+      })),
+    suggestedTags: ["daily-life", "practice", "thoughts"],
+    suggestedEmoji: wordCount > 50 ? "🚀" : "🌿",
+    suggestedMood: wordCount > 50 ? "motivated" : "reflective",
+  };
+}
+

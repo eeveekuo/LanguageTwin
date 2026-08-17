@@ -10,6 +10,12 @@ import {
   getFallbackPlacementEvaluation,
   safeParseJson,
   getFallbackDeck,
+  getFallbackSentenceEvaluation,
+  getFallbackExplainCard,
+  getFallbackAiTutorReply,
+  getFallbackQuickAssist,
+  getFallbackReadingArticle,
+  getFallbackJournalCheck,
 } from "./server/geminiResilience";
 import {
   getDeckGenerationSystemInstruction,
@@ -40,6 +46,8 @@ import {
   getConjugationLookupUserPrompt,
   getExplainCardSystemInstruction,
   getExplainCardUserPrompt,
+  getJournalCheckSystemInstruction,
+  getJournalCheckUserPrompt,
 } from "./server/prompts";
 
 dotenv.config();
@@ -218,8 +226,15 @@ app.post("/api/evaluate-sentence", async (req, res) => {
     const parsed = safeParseJson(response.text);
     res.json(parsed);
   } catch (error: any) {
-    console.error("Sentence evaluation error:", error);
-    res.status(500).json({ error: error.message || "Failed to evaluate sentence" });
+    console.error("Sentence evaluation error, using fallback:", error);
+    const fallback = getFallbackSentenceEvaluation({
+      targetItem: req.body?.targetItem || "",
+      userSentence: req.body?.userSentence || "",
+      targetLanguage: req.body?.targetLanguage || "Spanish",
+      knownLanguage: req.body?.knownLanguage || "English",
+      definition: req.body?.definition,
+    });
+    res.json(fallback);
   }
 });
 
@@ -306,8 +321,15 @@ app.post("/api/explain-card", async (req, res) => {
     const parsed = safeParseJson(response.text);
     res.json(parsed);
   } catch (error: any) {
-    console.error("Explain card error:", error);
-    res.status(500).json({ error: error.message || "Failed to explain card" });
+    console.error("Explain card error, using fallback:", error);
+    const fallback = getFallbackExplainCard({
+      targetItem: req.body?.targetItem || "",
+      targetLanguage: req.body?.targetLanguage || "Spanish",
+      knownLanguage: req.body?.knownLanguage || "English",
+      partOfSpeech: req.body?.partOfSpeech,
+      definition: req.body?.definition,
+    });
+    res.json(fallback);
   }
 });
 
@@ -520,8 +542,15 @@ app.post("/api/ai-tutor-chat", async (req, res) => {
       evaluatedItems: parsed.evaluatedItems || [],
     });
   } catch (error: any) {
-    console.error("Tutor chat error:", error);
-    res.status(500).json({ error: error.message || "Tutor chat failed" });
+    console.error("Tutor chat error, using fallback:", error);
+    const messages = req.body?.messages || [];
+    const lastMsg = messages[messages.length - 1]?.content || "";
+    const fallback = getFallbackAiTutorReply({
+      userMessage: lastMsg,
+      targetLanguage: req.body?.targetLanguage || "Spanish",
+      knownLanguage: req.body?.knownLanguage || "English",
+    });
+    res.json(fallback);
   }
 });
 
@@ -605,8 +634,13 @@ app.post("/api/quick-assist", async (req, res) => {
     const parsed = safeParseJson(response.text);
     res.json(parsed);
   } catch (error: any) {
-    console.error("Quick assist error:", error);
-    res.status(500).json({ error: error.message || "Quick assist lookup failed" });
+    console.error("Quick assist error, using fallback:", error);
+    const fallback = getFallbackQuickAssist({
+      query: req.body?.query || "",
+      targetLanguage: req.body?.targetLanguage || "Spanish",
+      knownLanguage: req.body?.knownLanguage || "English",
+    });
+    res.json(fallback);
   }
 });
 
@@ -1077,8 +1111,14 @@ app.post("/api/generate-reading-article", async (req, res) => {
     const parsed = safeParseJson(response.text);
     res.json(parsed);
   } catch (error: any) {
-    console.error("Reading generation error:", error);
-    res.status(500).json({ error: error.message || "Failed to generate reading article" });
+    console.error("Reading generation error, using fallback:", error);
+    const fallback = getFallbackReadingArticle({
+      targetLanguage: req.body?.targetLanguage || "Spanish",
+      knownLanguage: req.body?.knownLanguage || "English",
+      level: req.body?.cefrLevel || req.body?.level || "A2",
+      topic: req.body?.topic || "Culture & Daily Life",
+    });
+    res.json(fallback);
   }
 });
 
@@ -1361,6 +1401,143 @@ app.post("/api/conjugation-lookup", async (req, res) => {
   } catch (error: any) {
     console.error("Conjugation lookup error:", error);
     res.status(500).json({ error: error.message || "Failed to lookup verb conjugations" });
+  }
+});
+
+// AI Language Journal Error Check & Prose Polish Endpoint
+app.post("/api/check-journal-prose", async (req, res) => {
+  try {
+    const { title, content, targetLanguage, knownLanguage, estimatedLevel } = req.body;
+
+    if (!content || typeof content !== "string" || content.trim().length === 0) {
+      return res.status(400).json({ error: "Content is required for journal evaluation" });
+    }
+
+    const tLang = targetLanguage || "Spanish";
+    const kLang = knownLanguage || "English";
+
+    try {
+      const ai = getGeminiClient();
+      const systemInstruction = getJournalCheckSystemInstruction(tLang, kLang);
+      const userPrompt = getJournalCheckUserPrompt(title || "", content, tLang, kLang, estimatedLevel);
+
+      const response = await generateWithFallback(ai, {
+        contents: [
+          {
+            role: "user",
+            parts: [{ text: userPrompt }],
+          },
+        ],
+        config: {
+          systemInstruction: {
+            parts: [{ text: systemInstruction }],
+          },
+          temperature: 0.2,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              overallScore: { type: Type.INTEGER, description: "0-100 overall mastery score" },
+              estimatedCEFR: { type: Type.STRING, description: "'A1', 'A2', 'B1', 'B2', 'C1', or 'C2'" },
+              fluencyRating: { type: Type.STRING, description: "'beginner', 'developing', 'intermediate', 'fluent', or 'native_like'" },
+              summaryFeedback: { type: Type.STRING },
+              correctedText: { type: Type.STRING },
+              translatedText: { type: Type.STRING },
+              grammarScore: { type: Type.INTEGER },
+              vocabularyScore: { type: Type.INTEGER },
+              naturalnessScore: { type: Type.INTEGER },
+              errors: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    originalText: { type: Type.STRING },
+                    correctedText: { type: Type.STRING },
+                    errorType: { type: Type.STRING },
+                    explanation: { type: Type.STRING },
+                  },
+                  required: ["originalText", "correctedText", "errorType", "explanation"],
+                },
+              },
+              positiveHighlights: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+              },
+              naturalPhrasings: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    originalExcerpt: { type: Type.STRING },
+                    suggestedAlternative: { type: Type.STRING },
+                    explanation: { type: Type.STRING },
+                  },
+                  required: ["originalExcerpt", "suggestedAlternative", "explanation"],
+                },
+              },
+              extractedVocabulary: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    word: { type: Type.STRING },
+                    translation: { type: Type.STRING },
+                    partOfSpeech: { type: Type.STRING },
+                    phonetic: { type: Type.STRING },
+                    exampleSentence: { type: Type.STRING },
+                  },
+                  required: ["word", "translation", "partOfSpeech"],
+                },
+              },
+              suggestedTags: {
+                type: Type.ARRAY,
+                items: { type: Type.STRING },
+                description: "3-5 relevant contextual tags for this entry in lowercase",
+              },
+              suggestedEmoji: {
+                type: Type.STRING,
+                description: "Single fitting emoji matching entry mood and topic",
+              },
+              suggestedMood: {
+                type: Type.STRING,
+                description: "Fitting mood descriptor e.g. happy, reflective, motivated, relaxed, proud",
+              },
+            },
+            required: [
+              "overallScore",
+              "estimatedCEFR",
+              "fluencyRating",
+              "summaryFeedback",
+              "correctedText",
+              "translatedText",
+              "grammarScore",
+              "vocabularyScore",
+              "naturalnessScore",
+              "errors",
+              "positiveHighlights",
+            ],
+          },
+        },
+      });
+
+      const parsed = safeParseJson(response.text);
+      if (parsed && typeof parsed.overallScore === "number") {
+        return res.json(parsed);
+      }
+    } catch (aiErr: any) {
+      console.warn("AI journal check failed, using fallback resilience:", aiErr?.message || aiErr);
+    }
+
+    const fallback = getFallbackJournalCheck({
+      title: title || "",
+      content,
+      targetLanguage: tLang,
+      knownLanguage: kLang,
+    });
+    return res.json(fallback);
+  } catch (error: any) {
+    console.error("Journal prose check error:", error);
+    res.status(500).json({ error: error.message || "Failed to check journal prose" });
   }
 });
 

@@ -120,7 +120,7 @@ export interface DailyProgress {
   reviewedToday: number;
   date: string; // YYYY-MM-DD
   streak: number;
-  lastCompletedDate?: string;
+  lastCompletedDate?: string | null;
 }
 
 export interface FrequencyBracket {
@@ -332,5 +332,68 @@ export interface PlacementTestResult {
     idealAnswer: string;
   }>;
   completedAt: string;
+}
+
+export interface JournalErrorDetail {
+  originalText: string;
+  correctedText: string;
+  errorType: "grammar" | "spelling" | "conjugation" | "vocabulary" | "punctuation" | "agreement" | "nuance" | string;
+  explanation: string;
+}
+
+export interface JournalVocabularyHighlight {
+  word: string;
+  translation: string;
+  partOfSpeech: string;
+  phonetic?: string;
+  exampleSentence?: string;
+}
+
+export interface JournalCorrectionResult {
+  overallScore: number;
+  estimatedCEFR: CEFRLevel;
+  fluencyRating: "beginner" | "developing" | "intermediate" | "fluent" | "native_like";
+  summaryFeedback: string;
+  correctedText: string;
+  translatedText: string;
+  grammarScore: number;
+  vocabularyScore: number;
+  naturalnessScore: number;
+  errors: JournalErrorDetail[];
+  positiveHighlights: string[];
+  naturalPhrasings: Array<{
+    originalExcerpt: string;
+    suggestedAlternative: string;
+    explanation: string;
+  }>;
+  extractedVocabulary: JournalVocabularyHighlight[];
+  suggestedTags?: string[];
+  suggestedEmoji?: string;
+  suggestedMood?: string;
+  checkedAt?: string;
+}
+
+export interface JournalEntry {
+  id: string;
+  title: string;
+  content: string;
+  date: string; // YYYY-MM-DD (auto-recorded)
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+  targetLangCode: string;
+  targetLangName: string;
+  knownLangCode: string;
+  knownLangName: string;
+  tags: string[];
+  wordCount: number;
+  characterCount: number;
+  promptTopic?: string;
+  mood?: string;
+  emoji?: string;
+  voiceNoteAudioBase64?: string | null;
+  voiceNoteDuration?: number | null;
+  isFavorite?: boolean;
+  isExample?: boolean;
+  correctionResult?: JournalCorrectionResult | null;
 }
 

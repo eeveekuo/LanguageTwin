@@ -38,9 +38,35 @@
         "dailyProgress": { "type": "object" },
         "progressHistory": { "type": "array" },
         "errorRemedyDeck": { "type": "object" },
+        "journalEntries": { "type": "array" },
         "updatedAt": { "type": "string" }
       },
       "required": ["uid"]
+    },
+    "JournalEntry": {
+      "title": "Language Journal Entry",
+      "description": "User freeform prose entries, timestamps, tags, and AI error checking corrections",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "date": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "targetLangCode": { "type": "string" },
+        "targetLangName": { "type": "string" },
+        "knownLangCode": { "type": "string" },
+        "knownLangName": { "type": "string" },
+        "tags": { "type": "array" },
+        "wordCount": { "type": "number" },
+        "characterCount": { "type": "number" },
+        "promptTopic": { "type": "string" },
+        "mood": { "type": "string" },
+        "isFavorite": { "type": "boolean" },
+        "correctionResult": { "type": "object" }
+      },
+      "required": ["id", "content", "date", "targetLangCode"]
     }
   },
   "firestore": {

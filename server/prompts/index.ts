@@ -12,3 +12,4 @@ export * from "./placementTest";
 export * from "./readingPractice";
 export * from "./grammarAndConjugation";
 export * from "./flashcardExplanation";
+export * from "./journalCheck";

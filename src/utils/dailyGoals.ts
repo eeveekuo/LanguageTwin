@@ -17,7 +17,7 @@ export function loadDailyProgress(): DailyProgress {
     reviewedToday: 0,
     date: today,
     streak: 1,
-    lastCompletedDate: undefined,
+    lastCompletedDate: null,
   };
 
   if (typeof window === "undefined") return defaultProgress;
@@ -52,7 +52,7 @@ export function loadDailyProgress(): DailyProgress {
         reviewedToday: 0,
         date: today,
         streak: newStreak > 0 ? newStreak : 1,
-        lastCompletedDate: wasCompleted ? data.date : data.lastCompletedDate,
+        lastCompletedDate: wasCompleted ? data.date : data.lastCompletedDate || null,
       };
 
       saveDailyProgress(refreshed);
@@ -64,7 +64,7 @@ export function loadDailyProgress(): DailyProgress {
       reviewedToday: data.reviewedToday || 0,
       date: today,
       streak: data.streak || 1,
-      lastCompletedDate: data.lastCompletedDate,
+      lastCompletedDate: data.lastCompletedDate ?? null,
     };
   } catch (e) {
     console.warn("Failed to load daily progress:", e);
@@ -89,7 +89,7 @@ export function recordCardReview(current: DailyProgress): {
   let reviewed = current.date === today ? current.reviewedToday + 1 : 1;
   const target = current.target || 10;
   let streak = current.streak || 1;
-  let lastCompletedDate = current.lastCompletedDate;
+  let lastCompletedDate = current.lastCompletedDate ?? null;
   let justAchievedGoal = false;
 
   if (reviewed >= target && lastCompletedDate !== today) {
@@ -103,7 +103,7 @@ export function recordCardReview(current: DailyProgress): {
     reviewedToday: reviewed,
     date: today,
     streak,
-    lastCompletedDate,
+    lastCompletedDate: lastCompletedDate ?? null,
   };
 
   saveDailyProgress(updated);

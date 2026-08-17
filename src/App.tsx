@@ -36,6 +36,10 @@ import {
   savePronunciationAid,
   getDefaultPronunciationOption,
 } from "./utils/pronunciation";
+import {
+  loadJournalEntriesFromLocal,
+  saveJournalEntriesToLocal,
+} from "./utils/journalStorage";
 import { useOnlineStatus } from "./hooks/useOnlineStatus";
 import {
   loadDecksFromDB,
@@ -57,6 +61,7 @@ import { Header } from "./components/Header";
 import { StudySession } from "./components/StudySession";
 import { DeckExplorer } from "./components/DeckExplorer";
 import { ReadingListeningPractice } from "./components/ReadingListeningPractice";
+import { LanguageJournal } from "./components/LanguageJournal";
 import { AITutorChat } from "./components/AITutorChat";
 import { AnalyticsView } from "./components/AnalyticsView";
 import { LanguagePairModal } from "./components/LanguagePairModal";
@@ -68,7 +73,7 @@ const STORAGE_KEY_ACTIVE_DECK = "frequency_srs_active_deck_id_v1";
 export default function App() {
   const isOnline = useOnlineStatus();
   const [activeTab, setActiveTab] = useState<
-    "study" | "deck" | "reading" | "tutor" | "stats"
+    "study" | "deck" | "reading" | "journal" | "tutor" | "stats"
   >("study");
 
   // User & Cloud Sync State
@@ -209,10 +214,18 @@ export default function App() {
               setActiveDeckId(cloudData.activeDeckId);
             }
 
+            // Restore / merge journal entries from cloud
+            if (
+              Array.isArray(cloudData.journalEntries) &&
+              cloudData.journalEntries.length > 0
+            ) {
+              saveJournalEntriesToLocal(cloudData.journalEntries);
+            }
+
             setBatchNotice(
               `☁️ Welcome back, ${
                 user.displayName || "Learner"
-              }! Your progress and decks are synced from Google Cloud.`
+              }! Your progress, decks, and journal entries are synced from Google Cloud.`
             );
           } else {
             // First time user login: back up their current state to cloud
@@ -223,6 +236,7 @@ export default function App() {
               targetLangCode: targetLang.code,
               knownLangCode: knownLang.code,
               streak: dailyProgress.streak || 1,
+              journalEntries: loadJournalEntriesFromLocal(targetLang, knownLang),
               userProfile: {
                 displayName: user.displayName,
                 email: user.email,
@@ -230,7 +244,7 @@ export default function App() {
               },
             });
             setBatchNotice(
-              `✨ Connected to Google Account! Your progress is now safely backed up to the cloud.`
+              `✨ Connected to Google Account! Your progress and journal are now safely backed up to the cloud.`
             );
           }
         } catch (err) {
@@ -298,6 +312,7 @@ export default function App() {
           targetLangCode: targetLang.code,
           knownLangCode: knownLang.code,
           streak: dailyProgress.streak || 1,
+          journalEntries: loadJournalEntriesFromLocal(targetLang, knownLang),
           userProfile: {
             displayName: currentUser.displayName,
             email: currentUser.email,
@@ -807,6 +822,39 @@ export default function App() {
             isOnline={isOnline}
             pronunciationAid={currentPronunciationAid}
             onChangePronunciationAid={handlePronunciationAidChange}
+          />
+        )}
+
+        {activeTab === "journal" && (
+          <LanguageJournal
+            key={`${activeDeck.id}-${targetLang.code}`}
+            targetLang={targetLang}
+            knownLang={knownLang}
+            activeDeck={activeDeck}
+            onAddCardToDeck={handleAddCard}
+            isOnline={isOnline}
+            currentUser={currentUser}
+            isSyncing={isSyncing}
+            onSyncWithCloud={(entries) => {
+              if (currentUser) {
+                saveUserProgressToCloud(currentUser.uid, {
+                  dailyProgress,
+                  decks,
+                  activeDeckId,
+                  targetLangCode: targetLang.code,
+                  knownLangCode: knownLang.code,
+                  streak: dailyProgress.streak || 1,
+                  journalEntries: entries,
+                  userProfile: {
+                    displayName: currentUser.displayName,
+                    email: currentUser.email,
+                    photoURL: currentUser.photoURL,
+                  },
+                }).catch((err) =>
+                  console.warn("Journal cloud sync warning:", err)
+                );
+              }
+            }}
           />
         )}
 

@@ -23,11 +23,12 @@ import {
   LogOut,
   User as UserIcon,
   RefreshCw,
+  PenTool,
 } from "lucide-react";
 
 interface HeaderProps {
-  activeTab: "study" | "deck" | "reading" | "tutor" | "stats";
-  setActiveTab: (tab: "study" | "deck" | "reading" | "tutor" | "stats") => void;
+  activeTab: "study" | "deck" | "reading" | "journal" | "tutor" | "stats";
+  setActiveTab: (tab: "study" | "deck" | "reading" | "journal" | "tutor" | "stats") => void;
   activeDeck: Deck;
   allDecks: Deck[];
   onSelectDeck: (deck: Deck) => void;
@@ -418,6 +419,19 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Layers className="w-4 h-4" />
             <span>Deck ({activeDeck.cards.length})</span>
+          </button>
+
+          <button
+            id="tab-journal"
+            onClick={() => setActiveTab("journal")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-2xl transition whitespace-nowrap cursor-pointer ${
+              activeTab === "journal"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-100"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            }`}
+          >
+            <PenTool className="w-4 h-4" />
+            <span>Language Journal</span>
           </button>
 
           <button
