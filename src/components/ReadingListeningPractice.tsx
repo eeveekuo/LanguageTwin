@@ -18,6 +18,12 @@ import { lookupBuiltinDictionary } from "../data/builtinDictionary";
 import { estimateStandardizedProficiency } from "../utils/proficiencyEstimation";
 import { formatPronunciation } from "../utils/pronunciation";
 import {
+  isArticleSaved,
+  toggleSaveArticle,
+  loadSavedArticles,
+} from "../utils/savedArticlesStorage";
+import { SavedArticlesModal } from "./SavedArticlesModal";
+import {
   BookOpen,
   Headphones,
   Play,
@@ -37,6 +43,8 @@ import {
   Layers,
   ArrowRight,
   Bookmark,
+  BookmarkCheck,
+  FolderHeart,
   Share2,
   HelpCircle,
   Table,
@@ -123,6 +131,36 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
   const [showQuestionTranslations, setShowQuestionTranslations] = useState<Record<string, boolean>>({});
   const [addedRemedyCardIds, setAddedRemedyCardIds] = useState<Set<string>>(new Set());
   const recognitionRef = useRef<any>(null);
+
+  // Saved Articles Library State
+  const [isSavedModalOpen, setIsSavedModalOpen] = useState<boolean>(false);
+  const [isArticleBookmarked, setIsArticleBookmarked] = useState<boolean>(() => isArticleSaved(article.id));
+  const [savedArticlesCount, setSavedArticlesCount] = useState<number>(() => loadSavedArticles(targetLang.code).length);
+
+  // Update bookmark status whenever article changes
+  useEffect(() => {
+    setIsArticleBookmarked(isArticleSaved(article.id));
+    setSavedArticlesCount(loadSavedArticles(targetLang.code).length);
+  }, [article.id, targetLang.code]);
+
+  const handleToggleSaveCurrentArticle = () => {
+    const isNowSaved = toggleSaveArticle(article);
+    setIsArticleBookmarked(isNowSaved);
+    setSavedArticlesCount(loadSavedArticles(targetLang.code).length);
+    if (isNowSaved) {
+      showToast(`Saved "${article.title}" to your review library!`);
+    } else {
+      showToast(`Removed "${article.title}" from saved library.`);
+    }
+  };
+
+  const handleSelectSavedArticle = (savedArticle: ReadingArticle) => {
+    handleStopAudio();
+    setArticle(savedArticle);
+    setIsArticleBookmarked(true);
+    showToast(`Loaded "${savedArticle.title}"`);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
 
   const isConjugationLang = IS_CONJUGATION_LANGUAGE[targetLang.code] ?? false;
 
@@ -717,84 +755,124 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
             </p>
           </div>
 
-          {/* Quick Audio Control Bar */}
-          <div className="flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-2xl p-2 shrink-0">
-            {isPlaying ? (
-              <button
-                type="button"
-                id="pause-audio-btn"
-                onClick={handlePauseAudio}
-                className="p-3 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold transition shadow-xs flex items-center gap-1.5 text-xs cursor-pointer"
-                title="Pause Audio Narration"
-              >
-                <Pause className="w-4 h-4 fill-white" />
-                <span>Pause</span>
-              </button>
-            ) : isPaused ? (
-              <button
-                type="button"
-                id="resume-audio-btn"
-                onClick={handlePlayFullArticle}
-                className="p-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition shadow-xs flex items-center gap-1.5 text-xs cursor-pointer"
-                title="Resume Audio Narration"
-              >
-                <Play className="w-4 h-4 fill-white" />
-                <span>Resume</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                id="play-audio-btn"
-                onClick={handlePlayFullArticle}
-                className="p-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition shadow-xs flex items-center gap-1.5 text-xs cursor-pointer"
-                title="Listen to Full Article"
-              >
-                <Headphones className="w-4 h-4" />
-                <span>Listen All</span>
-              </button>
-            )}
-
-            {(isPlaying || isPaused) && (
-              <button
-                type="button"
-                id="stop-audio-btn"
-                onClick={handleStopAudio}
-                className="p-3 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold transition text-xs cursor-pointer"
-                title="Stop Audio"
-              >
-                <RotateCcw className="w-4 h-4" />
-              </button>
-            )}
-
-            {/* Speed Selector */}
-            <div className="flex items-center bg-white border border-slate-200 rounded-xl px-2 py-1 text-xs font-bold text-slate-700">
-              <span className="text-[10px] text-slate-400 mr-1">Speed:</span>
-              <select
-                id="audio-speed-select"
-                value={playbackSpeed}
-                onChange={(e) => handleSpeedChange(Number(e.target.value))}
-                className="bg-transparent text-slate-800 focus:outline-none cursor-pointer"
-              >
-                <option value={0.75}>0.75x</option>
-                <option value={1.0}>1.0x</option>
-                <option value={1.25}>1.25x</option>
-              </select>
-            </div>
-
-            {/* Toggle Translation visibility */}
+          {/* Quick Audio & Library Control Bar */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {/* Save Article Button */}
             <button
               type="button"
-              id="toggle-translation-btn"
-              onClick={() => setShowTranslations(!showTranslations)}
-              className={`p-2.5 rounded-xl border text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
-                showTranslations
-                  ? "bg-indigo-50 border-indigo-200 text-indigo-700"
-                  : "bg-white border-slate-200 text-slate-600 hover:bg-slate-100"
+              id="save-current-article-btn"
+              onClick={handleToggleSaveCurrentArticle}
+              className={`px-3.5 py-2.5 rounded-2xl border text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-xs active:scale-95 ${
+                isArticleBookmarked
+                  ? "bg-indigo-600 border-indigo-600 text-white shadow-indigo-100"
+                  : "bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:border-indigo-200"
               }`}
-              title={showTranslations ? "Hide translations" : "Show bilingual translations"}
+              title={
+                isArticleBookmarked
+                  ? "Article saved in your review library (click to remove)"
+                  : "Save this article to your library for review anytime"
+              }
             >
-              {showTranslations ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+              <Bookmark className={`w-4 h-4 ${isArticleBookmarked ? "fill-white text-white" : "text-slate-400"}`} />
+              <span>{isArticleBookmarked ? "Saved" : "Save Article"}</span>
             </button>
+
+            {/* Saved Library Button */}
+            <button
+              type="button"
+              id="open-saved-articles-modal-btn"
+              onClick={() => setIsSavedModalOpen(true)}
+              className="px-3.5 py-2.5 rounded-2xl bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 text-xs font-bold transition flex items-center gap-2 cursor-pointer shadow-xs active:scale-95 hover:border-indigo-200"
+              title="Open Saved Reading & Listening Library"
+            >
+              <FolderHeart className="w-4 h-4 text-indigo-600" />
+              <span className="hidden sm:inline">Saved Library</span>
+              <span className="sm:hidden">Saved</span>
+              {savedArticlesCount > 0 && (
+                <span className="px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-extrabold">
+                  {savedArticlesCount}
+                </span>
+              )}
+            </button>
+
+            <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl p-1.5 shrink-0">
+              {isPlaying ? (
+                <button
+                  type="button"
+                  id="pause-audio-btn"
+                  onClick={handlePauseAudio}
+                  className="p-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold transition shadow-xs flex items-center gap-1.5 text-xs cursor-pointer"
+                  title="Pause Audio Narration"
+                >
+                  <Pause className="w-4 h-4 fill-white" />
+                  <span className="hidden sm:inline">Pause</span>
+                </button>
+              ) : isPaused ? (
+                <button
+                  type="button"
+                  id="resume-audio-btn"
+                  onClick={handlePlayFullArticle}
+                  className="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition shadow-xs flex items-center gap-1.5 text-xs cursor-pointer"
+                  title="Resume Audio Narration"
+                >
+                  <Play className="w-4 h-4 fill-white" />
+                  <span className="hidden sm:inline">Resume</span>
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  id="play-audio-btn"
+                  onClick={handlePlayFullArticle}
+                  className="p-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold transition shadow-xs flex items-center gap-1.5 text-xs cursor-pointer"
+                  title="Listen to Full Article"
+                >
+                  <Headphones className="w-4 h-4" />
+                  <span className="hidden sm:inline">Listen All</span>
+                </button>
+              )}
+
+              {(isPlaying || isPaused) && (
+                <button
+                  type="button"
+                  id="stop-audio-btn"
+                  onClick={handleStopAudio}
+                  className="p-2.5 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold transition text-xs cursor-pointer"
+                  title="Stop Audio"
+                >
+                  <RotateCcw className="w-4 h-4" />
+                </button>
+              )}
+
+              {/* Speed Selector */}
+              <div className="flex items-center bg-white border border-slate-200 rounded-xl px-2 py-1 text-xs font-bold text-slate-700">
+                <span className="text-[10px] text-slate-400 mr-1 hidden sm:inline">Speed:</span>
+                <select
+                  id="audio-speed-select"
+                  value={playbackSpeed}
+                  onChange={(e) => handleSpeedChange(Number(e.target.value))}
+                  className="bg-transparent text-slate-800 focus:outline-none cursor-pointer text-xs font-bold"
+                >
+                  <option value={0.75}>0.75x</option>
+                  <option value={1.0}>1.0x</option>
+                  <option value={1.25}>1.25x</option>
+                </select>
+              </div>
+
+              {/* Toggle Translation visibility */}
+              <button
+                type="button"
+                id="toggle-translation-btn"
+                onClick={() => setShowTranslations(!showTranslations)}
+                className={`p-2 rounded-xl border text-xs font-bold transition flex items-center gap-1 cursor-pointer ${
+                  showTranslations
+                    ? "bg-indigo-50 border-indigo-200 text-indigo-700"
+                    : "bg-white border-slate-200 text-slate-600 hover:bg-slate-100"
+                }`}
+                title={showTranslations ? "Hide translations" : "Show bilingual translations"}
+              >
+                {showTranslations ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -1604,6 +1682,19 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
           </button>
         </div>
       </div>
+
+      {/* Saved Articles Library Modal */}
+      <SavedArticlesModal
+        isOpen={isSavedModalOpen}
+        onClose={() => {
+          setIsSavedModalOpen(false);
+          setSavedArticlesCount(loadSavedArticles(targetLang.code).length);
+          setIsArticleBookmarked(isArticleSaved(article.id));
+        }}
+        targetLang={targetLang}
+        currentArticleId={article.id}
+        onSelectArticle={handleSelectSavedArticle}
+      />
     </div>
   );
 };

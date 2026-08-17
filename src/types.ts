@@ -397,3 +397,63 @@ export interface JournalEntry {
   correctionResult?: JournalCorrectionResult | null;
 }
 
+export interface SavedArticleItem {
+  id: string;
+  article: ReadingArticle;
+  savedAt: string; // ISO date string
+  targetLangCode: string;
+  notes?: string;
+  isFavorite?: boolean;
+  lastReadAt?: string;
+}
+
+export interface ScenarioData {
+  title: string;
+  category: string;
+  scenarioPrompt: string;
+  targetWordsToUse: string[];
+  openingGreeting: string;
+  openingGreetingTranslation: string;
+}
+
+export interface SavedConversation {
+  id: string;
+  title: string;
+  targetLangCode: string;
+  targetLangName: string;
+  knownLangCode?: string;
+  knownLangName?: string;
+  createdAt: string; // ISO date string
+  updatedAt: string; // ISO date string
+  messages: ChatMessage[];
+  scenario?: ScenarioData | null;
+  summary?: string;
+  messageCount: number;
+  evaluatedItemsCount: number;
+}
+
+export type QuickAssistQueryType = "how_to_say" | "lookup_word" | "check_nuance" | "conjugate" | "general";
+
+export interface QuickAssistResult {
+  targetExpression: string;
+  phonetic?: string;
+  meaningInKnown: string;
+  formalityVariants?: Array<{
+    register: string;
+    phrase: string;
+    note: string;
+  }>;
+  wordBreakdown?: Array<{
+    word: string;
+    meaning: string;
+    partOfSpeech?: string;
+  }>;
+  exampleSentence?: {
+    target: string;
+    meaning: string;
+    phonetic?: string;
+  };
+  grammarNote?: string;
+  nuanceTip?: string;
+}
+

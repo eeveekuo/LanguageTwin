@@ -1,7 +1,21 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Deck, SupportedLanguage, ChatMessage, EvaluatedItemInChat, Flashcard } from "../types";
+import {
+  Deck,
+  SupportedLanguage,
+  ChatMessage,
+  EvaluatedItemInChat,
+  Flashcard,
+  SavedConversation,
+  ScenarioData,
+} from "../types";
 import { playTextAloud, stopSpeech, isSpeechRecognitionSupported, createSpeechRecognizer } from "../utils/speech";
 import { formatPronunciation } from "../utils/pronunciation";
+import {
+  saveConversationToStorage,
+  loadSavedConversations,
+  deleteSavedConversation,
+} from "../utils/savedConversationsStorage";
+import { SavedConversationsModal } from "./SavedConversationsModal";
 import {
   Send,
   Mic,
@@ -27,6 +41,9 @@ import {
   MessageSquare,
   Zap,
   Languages,
+  Bookmark,
+  FolderHeart,
+  Archive,
 } from "lucide-react";
 
 interface AITutorChatProps {
@@ -45,15 +62,6 @@ interface QuickAssistResult {
   wordBreakdown: { word: string; meaning: string; partOfSpeech?: string }[];
   exampleSentence: { target: string; translation: string };
   nuanceTip: string;
-}
-
-interface ScenarioData {
-  title: string;
-  category: string;
-  scenarioPrompt: string;
-  targetWordsToUse: string[];
-  openingGreeting: string;
-  openingGreetingTranslation: string;
 }
 
 export const AITutorChat: React.FC<AITutorChatProps> = ({
@@ -85,6 +93,82 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
   const [isAssistLoading, setIsAssistLoading] = useState<boolean>(false);
   const [assistResult, setAssistResult] = useState<QuickAssistResult | null>(null);
   const [copiedText, setCopiedText] = useState<string | null>(null);
+
+  // Saved Conversations Archive State
+  const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
+  const [activeConversationTitle, setActiveConversationTitle] = useState<string | null>(null);
+  const [isSavedModalOpen, setIsSavedModalOpen] = useState<boolean>(false);
+  const [savedConversationsCount, setSavedConversationsCount] = useState<number>(() =>
+    loadSavedConversations(targetLang.code).length
+  );
+  const [toastNotification, setToastNotification] = useState<string | null>(null);
+
+  const showToast = (msg: string) => {
+    setToastNotification(msg);
+    setTimeout(() => {
+      setToastNotification(null);
+    }, 3000);
+  };
+
+  // Sync count on language switch
+  useEffect(() => {
+    setSavedConversationsCount(loadSavedConversations(targetLang.code).length);
+  }, [targetLang.code]);
+
+  const handleSaveCurrentConversation = () => {
+    const userMsgCount = messages.filter((m) => m.role === "user").length;
+    if (userMsgCount === 0) {
+      showToast("Send at least one message before saving the conversation!");
+      return;
+    }
+
+    const saved = saveConversationToStorage({
+      id: activeConversationId || undefined,
+      title: activeConversationTitle || undefined,
+      targetLangCode: targetLang.code,
+      targetLangName: targetLang.name,
+      messages,
+      scenario: activeScenario || undefined,
+      evaluatedItemsCount: lastEvaluatedBatch.length,
+    });
+
+    setActiveConversationId(saved.id);
+    setActiveConversationTitle(saved.title);
+    setSavedConversationsCount(loadSavedConversations(targetLang.code).length);
+    showToast(`Saved "${saved.title}" to your conversation archive!`);
+  };
+
+  const handleSelectSavedConversation = (conv: SavedConversation) => {
+    setMessages(conv.messages);
+    setActiveConversationId(conv.id);
+    setActiveConversationTitle(conv.title);
+    if (conv.scenario) {
+      setActiveScenario(conv.scenario);
+      setScenarioPrompt(conv.scenario.scenarioPrompt);
+    } else {
+      setActiveScenario(null);
+      setScenarioPrompt("");
+    }
+    showToast(`Resumed "${conv.title}"`);
+  };
+
+  const handleStartNewConversation = () => {
+    const topWords = deck.cards.slice(0, 4).map((c) => `"${c.targetItem}"`).join(", ");
+    setMessages([
+      {
+        id: "welcome-" + Date.now(),
+        role: "model",
+        text: `👋 Hello! I am your AI ${targetLang.name} language tutor. Let's practice conversing! As we chat, I evaluate your usage and update your flashcard mastery scores. Try using items from your deck like ${topWords}. How is your day going?`,
+        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      },
+    ]);
+    setActiveConversationId(null);
+    setActiveConversationTitle(null);
+    setActiveScenario(null);
+    setScenarioPrompt("");
+    setLastEvaluatedBatch([]);
+    showToast("Started fresh conversation session.");
+  };
 
   // Initialize tutor welcome message
   useEffect(() => {
@@ -330,7 +414,39 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
           </div>
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+        <div className="flex flex-wrap items-center gap-2 shrink-0 self-end sm:self-center">
+          {/* Save Conversation Button */}
+          <button
+            id="save-conversation-btn"
+            onClick={handleSaveCurrentConversation}
+            className={`flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold transition border cursor-pointer active:scale-95 shadow-xs ${
+              activeConversationId
+                ? "bg-indigo-600 text-white border-indigo-600 shadow-indigo-100"
+                : "bg-white hover:bg-slate-50 text-slate-700 border-slate-200 hover:border-indigo-200"
+            }`}
+            title={activeConversationId ? "Conversation is saved in your archive (click to update)" : "Save this conversation to review later"}
+          >
+            <Bookmark className={`w-4 h-4 ${activeConversationId ? "fill-white text-white" : "text-slate-400"}`} />
+            <span>{activeConversationId ? "Saved" : "Save Chat"}</span>
+          </button>
+
+          {/* Saved Archive Modal Toggle */}
+          <button
+            id="open-saved-conversations-btn"
+            onClick={() => setIsSavedModalOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold transition border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 hover:border-indigo-200 cursor-pointer shadow-xs active:scale-95"
+            title="Open Saved Conversations Archive"
+          >
+            <FolderHeart className="w-4 h-4 text-indigo-600" />
+            <span className="hidden sm:inline">Saved Archive</span>
+            <span className="sm:hidden">Saved</span>
+            {savedConversationsCount > 0 && (
+              <span className="px-1.5 py-0.5 rounded-full bg-indigo-100 text-indigo-700 text-[10px] font-extrabold">
+                {savedConversationsCount}
+              </span>
+            )}
+          </button>
+
           {/* Side Tab / Co-Pilot Toggle Button */}
           <button
             id="toggle-side-copilot-btn"
@@ -343,18 +459,28 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
             title="Linguistic Co-Pilot & Quick Word Lookup"
           >
             <HelpCircle className="w-4 h-4" />
-            <span>{isSideTabOpen ? "Hide Co-Pilot" : "AI Co-Pilot & Lookup"}</span>
+            <span className="hidden sm:inline">{isSideTabOpen ? "Hide Co-Pilot" : "AI Co-Pilot & Lookup"}</span>
+            <span className="sm:hidden">Co-Pilot</span>
           </button>
 
           <button
-            onClick={handleResetChat}
+            id="start-new-chat-btn"
+            onClick={handleStartNewConversation}
             className="p-2.5 rounded-2xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition cursor-pointer"
-            title="Restart conversation"
+            title="Start new fresh conversation"
           >
             <RotateCcw className="w-4 h-4" />
           </button>
         </div>
       </div>
+
+      {/* Toast Notification */}
+      {toastNotification && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-2xl shadow-xl border border-slate-700 text-xs font-bold flex items-center gap-2 animate-fade-in">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <span>{toastNotification}</span>
+        </div>
+      )}
 
       {/* Roleplay Scenario Prompt & Generator Section */}
       <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden transition-all">
@@ -846,6 +972,19 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
           </div>
         )}
       </div>
+
+      {/* Saved Conversations Archive Modal */}
+      <SavedConversationsModal
+        isOpen={isSavedModalOpen}
+        onClose={() => {
+          setIsSavedModalOpen(false);
+          setSavedConversationsCount(loadSavedConversations(targetLang.code).length);
+        }}
+        targetLang={targetLang}
+        activeConversationId={activeConversationId || undefined}
+        onSelectConversation={handleSelectSavedConversation}
+        onStartNewConversation={handleStartNewConversation}
+      />
     </div>
   );
 };

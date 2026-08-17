@@ -386,19 +386,6 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           <button
-            id="tab-reading"
-            onClick={() => setActiveTab("reading")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-2xl transition whitespace-nowrap cursor-pointer ${
-              activeTab === "reading"
-                ? "bg-indigo-600 text-white shadow-md shadow-indigo-100"
-                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-            }`}
-          >
-            <Headphones className="w-4 h-4" />
-            <span>Reading & Listening</span>
-          </button>
-
-          <button
             id="tab-deck"
             onClick={() => setActiveTab("deck")}
             className={`flex items-center gap-2 px-4 py-2 rounded-2xl transition whitespace-nowrap cursor-pointer ${
@@ -409,6 +396,19 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Layers className="w-4 h-4" />
             <span>Deck ({activeDeck.cards.length})</span>
+          </button>
+
+          <button
+            id="tab-reading"
+            onClick={() => setActiveTab("reading")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-2xl transition whitespace-nowrap cursor-pointer ${
+              activeTab === "reading"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-100"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            }`}
+          >
+            <Headphones className="w-4 h-4" />
+            <span>Reading & Listening</span>
           </button>
 
           <button

@@ -40,6 +40,7 @@ import {
   Headphones,
 } from "lucide-react";
 import { formatPronunciation } from "../utils/pronunciation";
+import { LinguisticCopilot, CopilotTriggerButton } from "./LinguisticCopilot";
 
 interface StudySessionProps {
   cards: Flashcard[];
@@ -112,6 +113,7 @@ export const StudySession: React.FC<StudySessionProps> = ({
   const [isLoadingExplanation, setIsLoadingExplanation] = useState<boolean>(false);
   const [explanationData, setExplanationData] = useState<CardExplanation | null>(null);
   const [showConjugationLookup, setShowConjugationLookup] = useState<boolean>(false);
+  const [isCopilotOpen, setIsCopilotOpen] = useState<boolean>(false);
 
   // Session stats
   const [sessionCompleted, setSessionCompleted] = useState<boolean>(false);
@@ -1405,7 +1407,34 @@ export const StudySession: React.FC<StudySessionProps> = ({
                   <label className="block text-left text-xs font-bold text-slate-500 uppercase ml-1 tracking-wider">
                     Your Sentence in {targetLang.name}
                   </label>
+                  <CopilotTriggerButton
+                    id="study-copilot-trigger-btn"
+                    isOpen={isCopilotOpen}
+                    onClick={() => setIsCopilotOpen(!isCopilotOpen)}
+                    label="AI Co-Pilot"
+                    size="xs"
+                  />
                 </div>
+
+                {/* Linguistic Co-Pilot Helper Panel */}
+                {isCopilotOpen && (
+                  <div className="animate-fade-in">
+                    <LinguisticCopilot
+                      targetLang={targetLang}
+                      knownLang={knownLang}
+                      pronunciationAid={pronunciationAid}
+                      onInsertText={(text) => {
+                        setUserSentence((prev) => (prev ? `${prev} ${text}` : text));
+                      }}
+                      isOpen={isCopilotOpen}
+                      onClose={() => setIsCopilotOpen(false)}
+                      variant="inline"
+                      idPrefix="study-copilot"
+                      title="Linguistic Co-Pilot"
+                      subtitle={`Need phrasing ideas or word lookup for "${activeCard?.targetItem || targetLang.name}"?`}
+                    />
+                  </div>
+                )}
 
                 <div className="relative">
                   <textarea
