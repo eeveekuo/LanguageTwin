@@ -55,6 +55,7 @@ import {
   saveJournalEntriesToLocal,
 } from "../utils/journalStorage";
 import { playTextAloud, stopSpeech } from "../utils/speech";
+import { LinguisticCopilot, CopilotTriggerButton } from "./LinguisticCopilot";
 
 interface LanguageJournalProps {
   targetLang: SupportedLanguage;
@@ -1124,6 +1125,15 @@ ${entry.correctionResult.errors
                         className={`w-4 h-4 ${isFavorite ? "fill-rose-500" : ""}`}
                       />
                     </button>
+
+                    {/* AI Co-Pilot Toggle Button */}
+                    <CopilotTriggerButton
+                      id="journal-copilot-header-btn"
+                      isOpen={isCopilotOpen}
+                      onClick={() => setIsCopilotOpen(!isCopilotOpen)}
+                      label="AI Co-Pilot"
+                      size="sm"
+                    />
                   </div>
                 </div>
 
@@ -1475,201 +1485,21 @@ ${entry.correctionResult.errors
           {/* Right Column: AI Co-Pilot Assistant OR Error Analysis Breakdown */}
           <div className="lg:col-span-5 space-y-4">
             {/* ========================================================================= */}
-            {/* AI LINGUISTIC CO-PILOT PANEL (Reused from Tutor Chat) */}
+            {/* AI LINGUISTIC CO-PILOT PANEL */}
             {/* ========================================================================= */}
             {isCopilotOpen && (
-              <div className="bg-white rounded-3xl p-5 border-2 border-indigo-500 shadow-md space-y-3.5">
-                <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                  <div className="flex items-center gap-2">
-                    <div className="p-1.5 rounded-xl bg-indigo-50 text-indigo-600 border border-indigo-100">
-                      <Bot className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-extrabold text-slate-900">
-                        AI Linguistic Co-Pilot
-                      </h4>
-                      <p className="text-[10px] text-slate-400">
-                        Instant phrasing assistant for {targetLang.name}
-                      </p>
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={() => setIsCopilotOpen(false)}
-                    className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
-                    title="Close Co-Pilot"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-
-                {/* Copilot Mode Tabs */}
-                <div className="grid grid-cols-3 gap-1 text-[11px] font-bold bg-slate-100 p-1 rounded-xl">
-                  {[
-                    { id: "how_to_say", label: "How to Say" },
-                    { id: "lookup_word", label: "Word Lookup" },
-                    { id: "check_nuance", label: "Nuance" },
-                  ].map((tab) => (
-                    <button
-                      key={tab.id}
-                      type="button"
-                      onClick={() => setCopilotQueryType(tab.id)}
-                      className={`py-1 px-1.5 rounded-lg transition cursor-pointer text-center ${
-                        copilotQueryType === tab.id
-                          ? "bg-indigo-600 text-white shadow-xs"
-                          : "text-slate-600 hover:text-slate-900"
-                      }`}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-
-                {/* Query Form */}
-                <form onSubmit={handleCopilotLookup} className="space-y-2">
-                  <div className="relative">
-                    <input
-                      id="journal-copilot-input"
-                      type="text"
-                      value={copilotQuery}
-                      onChange={(e) => setCopilotQuery(e.target.value)}
-                      placeholder={
-                        copilotQueryType === "how_to_say"
-                          ? "e.g. Can you make it less spicy?"
-                          : copilotQueryType === "lookup_word"
-                          ? `e.g. ${targetLang.name} word to explain...`
-                          : "e.g. Is this phrasing too informal?"
-                      }
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-3 pr-16 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white transition"
-                    />
-                    <button
-                      type="submit"
-                      disabled={isCopilotLoading || !copilotQuery.trim()}
-                      className="absolute right-1 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-bold disabled:opacity-50 transition cursor-pointer"
-                    >
-                      {isCopilotLoading ? "..." : "Ask"}
-                    </button>
-                  </div>
-                </form>
-
-                {/* Co-Pilot Result Display */}
-                {isCopilotLoading && (
-                  <div className="p-5 text-center text-slate-500 text-xs flex flex-col items-center gap-2">
-                    <BrainCircuit className="w-5 h-5 text-indigo-600 animate-spin" />
-                    <span>Consulting linguistic database for {targetLang.name}...</span>
-                  </div>
-                )}
-
-                {copilotResult && !isCopilotLoading && (
-                  <div className="space-y-3 max-h-[340px] overflow-y-auto pr-1">
-                    {/* Recommended Expression */}
-                    <div className="p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100 space-y-2">
-                      <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <span className="text-[10px] font-bold uppercase text-indigo-600 tracking-wider block">
-                            Recommended Expression:
-                          </span>
-                          <h4 className="text-base font-extrabold text-indigo-950 mt-0.5">
-                            {copilotResult.targetExpression}
-                          </h4>
-                          {copilotResult.phonetic && (
-                            <p className="text-xs font-serif text-indigo-700/80">
-                              {copilotResult.phonetic}
-                            </p>
-                          )}
-                          <p className="text-xs text-slate-600 mt-1 font-medium">
-                            {copilotResult.meaningInKnown}
-                          </p>
-                        </div>
-
-                        <div className="flex items-center gap-1 shrink-0">
-                          <button
-                            onClick={() =>
-                              handleSpeakText(copilotResult.targetExpression)
-                            }
-                            className="p-1.5 rounded-lg bg-white hover:bg-indigo-600 hover:text-white text-indigo-700 border border-indigo-200 transition cursor-pointer"
-                            title="Listen"
-                          >
-                            <Volume2 className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            onClick={() =>
-                              handleCopyCopilotText(
-                                copilotResult.targetExpression
-                              )
-                            }
-                            className="p-1.5 rounded-lg bg-white hover:bg-slate-200 text-slate-600 border border-slate-200 transition cursor-pointer"
-                            title="Copy"
-                          >
-                            {copiedCopilotText ===
-                            copilotResult.targetExpression ? (
-                              <Check className="w-3.5 h-3.5 text-emerald-600" />
-                            ) : (
-                              <Copy className="w-3.5 h-3.5" />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-
-                      {/* Insert directly into Journal Textarea */}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          handleInsertIntoProse(copilotResult.targetExpression)
-                        }
-                        className="w-full py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer shadow-xs"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                        <span>Insert into Journal Draft</span>
-                      </button>
-                    </div>
-
-                    {/* Formality Variants */}
-                    {copilotResult.formalityVariants &&
-                      copilotResult.formalityVariants.length > 0 && (
-                        <div className="space-y-1.5">
-                          <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider block">
-                            Formality Registers:
-                          </span>
-                          <div className="space-y-1 text-xs">
-                            {copilotResult.formalityVariants.map((v, i) => (
-                              <div
-                                key={i}
-                                onClick={() => handleInsertIntoProse(v.phrase)}
-                                className="p-2 rounded-xl bg-slate-50 hover:bg-indigo-50 border border-slate-200 hover:border-indigo-200 transition cursor-pointer flex items-center justify-between"
-                                title="Click to insert into draft"
-                              >
-                                <div>
-                                  <span className="font-bold text-slate-900">
-                                    {v.phrase}
-                                  </span>
-                                  <span className="text-[10px] text-slate-500 block">
-                                    {v.note}
-                                  </span>
-                                </div>
-                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
-                                  {v.register}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                    {/* Nuance Tip */}
-                    {copilotResult.nuanceTip && (
-                      <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
-                        <span className="font-bold block mb-0.5 text-[11px]">
-                          💡 Usage Nuance:
-                        </span>
-                        <p className="text-[11px] leading-relaxed">
-                          {copilotResult.nuanceTip}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+              <LinguisticCopilot
+                targetLang={targetLang}
+                knownLang={knownLang}
+                pronunciationAid={activeDeck.pronunciationAid}
+                onInsertText={(text) => handleInsertIntoProse(text)}
+                isOpen={isCopilotOpen}
+                onClose={() => setIsCopilotOpen(false)}
+                variant="sidebar"
+                idPrefix="journal-copilot"
+                title="Linguistic Assistant"
+                subtitle={`Instant phrasing, conjugations & vocabulary for ${targetLang.name}`}
+              />
             )}
 
             {/* ========================================================================= */}

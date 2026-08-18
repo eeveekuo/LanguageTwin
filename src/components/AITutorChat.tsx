@@ -16,6 +16,7 @@ import {
   deleteSavedConversation,
 } from "../utils/savedConversationsStorage";
 import { SavedConversationsModal } from "./SavedConversationsModal";
+import { LinguisticCopilot, CopilotTriggerButton } from "./LinguisticCopilot";
 import {
   Send,
   Mic,
@@ -740,13 +741,26 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
 
           {/* Message Input Box */}
           <form onSubmit={handleSendMessage} className="space-y-2">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[11px] font-bold text-slate-500">
+                Message in {targetLang.name}:
+              </span>
+              <CopilotTriggerButton
+                id="chat-copilot-trigger-btn"
+                isOpen={isSideTabOpen}
+                onClick={() => setIsSideTabOpen(!isSideTabOpen)}
+                label="AI Co-Pilot"
+                size="xs"
+              />
+            </div>
+
             <div className="relative flex items-center">
               <input
                 id="tutor-chat-input"
                 type="text"
                 value={inputVal}
                 onChange={(e) => setInputVal(e.target.value)}
-                placeholder={`Chat in ${targetLang.name} (use Co-Pilot side tab if you need help with words)...`}
+                placeholder={`Chat in ${targetLang.name} (open Co-Pilot for conjugation & phrasing help)...`}
                 className="w-full bg-white border-2 border-slate-200 rounded-2xl pl-4 pr-24 py-3.5 text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-400 transition"
                 disabled={isLoading}
               />
@@ -782,193 +796,19 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
 
         {/* Right Column: Linguistic Co-Pilot Side Drawer */}
         {isSideTabOpen && (
-          <div className="lg:col-span-5 bg-white rounded-3xl border border-slate-200 shadow-md p-5 space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2">
-                <div className="p-1.5 rounded-xl bg-indigo-50 text-indigo-700">
-                  <Languages className="w-4 h-4" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black text-slate-900">Linguistic Co-Pilot</h3>
-                  <p className="text-[11px] text-slate-500">Ask questions & lookup words mid-chat</p>
-                </div>
-              </div>
-
-              <button
-                onClick={() => setIsSideTabOpen(false)}
-                className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition cursor-pointer"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            {/* Quick Mode Buttons */}
-            <div className="grid grid-cols-3 gap-1.5 text-[11px] font-bold">
-              {[
-                { id: "how_to_say", label: "How to say?" },
-                { id: "lookup_word", label: "Word Lookup" },
-                { id: "polite_vs_casual", label: "Politeness" },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setAssistQueryType(tab.id)}
-                  className={`py-1.5 px-2 rounded-xl transition cursor-pointer text-center ${
-                    assistQueryType === tab.id
-                      ? "bg-indigo-600 text-white shadow-xs"
-                      : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
-            </div>
-
-            {/* Query Form */}
-            <form onSubmit={handleQuickAssistLookup} className="space-y-2">
-              <div className="relative">
-                <input
-                  id="side-copilot-input"
-                  type="text"
-                  value={assistQuery}
-                  onChange={(e) => setAssistQuery(e.target.value)}
-                  placeholder={
-                    assistQueryType === "how_to_say"
-                      ? "e.g. Can you make it less spicy?"
-                      : assistQueryType === "lookup_word"
-                      ? `e.g. ${targetLang.name} word to explain...`
-                      : "e.g. Is this phrasing too informal?"
-                  }
-                  className="w-full bg-slate-50 border border-slate-200 rounded-2xl pl-3 pr-20 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-indigo-500 focus:bg-white transition"
-                />
-                <button
-                  type="submit"
-                  disabled={isAssistLoading || !assistQuery.trim()}
-                  className="absolute right-1.5 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold disabled:opacity-50 transition cursor-pointer"
-                >
-                  {isAssistLoading ? "..." : "Ask"}
-                </button>
-              </div>
-            </form>
-
-            {/* Result Display */}
-            {isAssistLoading && (
-              <div className="p-6 text-center text-slate-500 text-xs flex flex-col items-center gap-2">
-                <BrainCircuit className="w-5 h-5 text-indigo-600 animate-spin" />
-                <span>Consulting linguistic database for {targetLang.name}...</span>
-              </div>
-            )}
-
-            {assistResult && !isAssistLoading && (
-              <div className="space-y-3.5 max-h-[380px] overflow-y-auto pr-1">
-                {/* Main Translated Expression */}
-                <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-100 space-y-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <div>
-                      <span className="text-[10px] font-bold uppercase text-indigo-600 tracking-wider block">
-                        Recommended Expression:
-                      </span>
-                      <h4 className="text-base font-extrabold text-indigo-950 mt-0.5">
-                        {assistResult.targetExpression}
-                      </h4>
-                      {formatPronunciation(assistResult.targetExpression, assistResult.phonetic, targetLang.code, pronunciationAid) && (
-                        <p className="text-xs font-serif text-indigo-700/80">
-                          {formatPronunciation(assistResult.targetExpression, assistResult.phonetic, targetLang.code, pronunciationAid)}
-                        </p>
-                      )}
-                      <p className="text-xs text-slate-600 mt-1 font-medium">
-                        {assistResult.meaningInKnown}
-                      </p>
-                    </div>
-
-                    <div className="flex items-center gap-1 shrink-0">
-                      <button
-                        onClick={() => playTextAloud(assistResult.targetExpression, targetLang.code)}
-                        className="p-1.5 rounded-lg bg-white hover:bg-indigo-600 hover:text-white text-indigo-700 border border-indigo-200 transition cursor-pointer"
-                        title="Listen"
-                      >
-                        <Volume2 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        onClick={() => handleCopyText(assistResult.targetExpression)}
-                        className="p-1.5 rounded-lg bg-white hover:bg-slate-200 text-slate-600 border border-slate-200 transition cursor-pointer"
-                        title="Copy"
-                      >
-                        {copiedText === assistResult.targetExpression ? (
-                          <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        ) : (
-                          <Copy className="w-3.5 h-3.5" />
-                        )}
-                      </button>
-                    </div>
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => handleInsertIntoInput(assistResult.targetExpression)}
-                    className="w-full py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white text-[11px] font-bold transition flex items-center justify-center gap-1 cursor-pointer"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>Insert into Chat Input</span>
-                  </button>
-                </div>
-
-                {/* Formality Variants */}
-                {assistResult.formalityVariants && assistResult.formalityVariants.length > 0 && (
-                  <div className="space-y-1.5">
-                    <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider block">
-                      Formality Registers:
-                    </span>
-                    <div className="space-y-1 text-xs">
-                      {assistResult.formalityVariants.map((v, i) => (
-                        <div
-                          key={i}
-                          onClick={() => handleInsertIntoInput(v.phrase)}
-                          className="p-2 rounded-xl bg-slate-50 hover:bg-purple-50 border border-slate-200 hover:border-purple-200 transition cursor-pointer flex items-center justify-between"
-                        >
-                          <div>
-                            <span className="font-bold text-slate-900">{v.phrase}</span>
-                            <span className="text-[10px] text-slate-500 block">{v.note}</span>
-                          </div>
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">
-                            {v.register}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Word Breakdown */}
-                {assistResult.wordBreakdown && assistResult.wordBreakdown.length > 0 && (
-                  <div className="space-y-1.5">
-                    <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider block">
-                      Word Breakdown:
-                    </span>
-                    <div className="flex flex-wrap gap-1.5">
-                      {assistResult.wordBreakdown.map((w, i) => (
-                        <span
-                          key={i}
-                          className="px-2 py-1 rounded-xl bg-slate-100 border border-slate-200 text-[11px] text-slate-800 flex items-center gap-1"
-                        >
-                          <span className="font-bold text-indigo-700">{w.word}</span>
-                          <span className="text-slate-400">=</span>
-                          <span className="text-slate-600">{w.meaning}</span>
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Nuance Tip */}
-                {assistResult.nuanceTip && (
-                  <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
-                    <span className="font-bold block mb-0.5">💡 Usage Nuance:</span>
-                    <p className="text-[11px] leading-relaxed">{assistResult.nuanceTip}</p>
-                  </div>
-                )}
-              </div>
-            )}
+          <div className="lg:col-span-5 animate-in fade-in slide-in-from-right-4 duration-300">
+            <LinguisticCopilot
+              targetLang={targetLang}
+              knownLang={knownLang}
+              pronunciationAid={pronunciationAid}
+              onInsertText={(text) => handleInsertIntoInput(text)}
+              isOpen={isSideTabOpen}
+              onClose={() => setIsSideTabOpen(false)}
+              variant="sidebar"
+              idPrefix="chat-copilot"
+              title="Linguistic Assistant"
+              subtitle={`Ask questions, conjugate verbs, or lookup vocabulary mid-chat`}
+            />
           </div>
         )}
       </div>

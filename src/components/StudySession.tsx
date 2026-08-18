@@ -1077,52 +1077,6 @@ export const StudySession: React.FC<StudySessionProps> = ({
               </div>
             )}
 
-            {/* Quick Conjugation Lookup Toggle for Conjugation-Based Languages */}
-            {isConjugationLang && (
-              <div className="w-full max-w-xl mx-auto my-1 flex flex-col items-center">
-                <button
-                  type="button"
-                  id="active-card-conjugation-btn"
-                  onClick={() => setShowConjugationLookup(!showConjugationLookup)}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-purple-50 hover:bg-purple-100 border border-purple-200 text-purple-700 text-xs font-bold transition shadow-2xs cursor-pointer active:scale-95 mb-2"
-                >
-                  <Table className="w-3.5 h-3.5 text-purple-600" />
-                  <span>
-                    {showConjugationLookup
-                      ? "Hide Conjugation Lookup"
-                      : `Conjugation Form Lookup (${activeCard.targetItem.replace(/\(.*?\)/g, "").trim().split(/[\s—\/:;,]/)[0].trim()})`}
-                  </span>
-                </button>
-
-                {showConjugationLookup && (
-                  <div className="w-full text-left p-4 bg-white rounded-3xl border-2 border-purple-200 shadow-md transition-all animate-fade-in mb-3">
-                    <div className="flex items-center justify-between pb-2 mb-3 border-b border-purple-100">
-                      <div className="flex items-center gap-2">
-                        <Table className="w-4 h-4 text-purple-600" />
-                        <h4 className="text-xs font-black text-purple-950 uppercase tracking-wider">
-                          Verb Conjugation Table & Forms
-                        </h4>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setShowConjugationLookup(false)}
-                        className="text-xs text-slate-400 hover:text-slate-700 font-bold cursor-pointer"
-                      >
-                        Close ✕
-                      </button>
-                    </div>
-                    <ConjugationLookup
-                      targetLang={targetLang}
-                      knownLang={knownLang}
-                      initialVerb={activeCard.targetItem.replace(/\(.*?\)/g, "").trim().split(/[\s—\/:;,]/)[0].trim()}
-                      isOnline={isOnline}
-                      onAddConjugationToDeck={(newCard) => onCardUpdated(newCard)}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-
             {/* GUIDED REINFORCEMENT MODE: Triggered when user selects "I Don't Know This Yet" */}
             {!evaluation && isDontKnowMode && (
               <div className="w-full max-w-xl text-left space-y-4 mt-3 animate-fade-in">

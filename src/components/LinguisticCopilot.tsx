@@ -21,6 +21,10 @@ import {
   Zap,
   ChevronDown,
   ChevronUp,
+  Table,
+  Split,
+  Workflow,
+  RotateCcw,
 } from "lucide-react";
 
 export interface LinguisticCopilotProps {
@@ -37,6 +41,7 @@ export interface LinguisticCopilotProps {
   className?: string;
   idPrefix?: string;
   showCloseButton?: boolean;
+  defaultTab?: QuickAssistQueryType;
 }
 
 export const LinguisticCopilot: React.FC<LinguisticCopilotProps> = ({
@@ -53,9 +58,17 @@ export const LinguisticCopilot: React.FC<LinguisticCopilotProps> = ({
   className = "",
   idPrefix = "copilot",
   showCloseButton = true,
+  defaultTab = "how_to_say",
 }) => {
   const [query, setQuery] = useState<string>(initialQuery);
-  const [queryType, setQueryType] = useState<QuickAssistQueryType>("how_to_say");
+  const [queryType, setQueryType] = useState<QuickAssistQueryType>(defaultTab);
+  
+  // Specific conjugation sub-mode: "inflect" (verb + form -> conjugated word) vs "deconjugate" (word -> base + form)
+  const [conjugateSubMode, setConjugateSubMode] = useState<"inflect" | "deconjugate">("inflect");
+  const [verbBaseInput, setVerbBaseInput] = useState<string>("");
+  const [verbFormInput, setVerbFormInput] = useState<string>("Present (yo / I)");
+  const [conjugatedWordInput, setConjugatedWordInput] = useState<string>("");
+
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [result, setResult] = useState<QuickAssistResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -89,8 +102,27 @@ export const LinguisticCopilot: React.FC<LinguisticCopilotProps> = ({
   };
 
   const handleSearch = async (overrideQuery?: string, overrideType?: QuickAssistQueryType) => {
-    const q = (overrideQuery ?? query).trim();
-    const type = overrideType ?? queryType;
+    let q = (overrideQuery ?? query).trim();
+    let type = overrideType ?? queryType;
+
+    // Build specific query for conjugation modes if in conjugate tab
+    if (type === "conjugate") {
+      if (conjugateSubMode === "inflect") {
+        if (!overrideQuery) {
+          const v = verbBaseInput.trim();
+          const f = verbFormInput.trim();
+          if (!v) return;
+          q = `Verb: "${v}", Desired Form / Tense: "${f || "Present"}"`;
+        }
+      } else {
+        if (!overrideQuery) {
+          const w = conjugatedWordInput.trim();
+          if (!w) return;
+          q = `Deconjugate and identify: "${w}"`;
+          type = "deconjugate";
+        }
+      }
+    }
 
     if (!q) return;
 
@@ -132,6 +164,17 @@ export const LinguisticCopilot: React.FC<LinguisticCopilotProps> = ({
     handleSearch();
   };
 
+  const formPresets = [
+    { label: "Present (yo/I)", value: "Present indicative (yo / 1st person singular)" },
+    { label: "Preterite / Past", value: "Past / Pretérito (completed past)" },
+    { label: "Imperfect (was doing)", value: "Imperfect (used to / was doing)" },
+    { label: "Future", value: "Future simple" },
+    { label: "Subjunctive", value: "Present Subjunctive" },
+    { label: "Conditional (would)", value: "Conditional (would do)" },
+    { label: "Imperative (Command)", value: "Imperative / Command form" },
+    { label: "Te-form / Polite", value: "Te-form / Polite standard (ます/아/어요)" },
+  ];
+
   const quickSuggestionChips: { label: string; query: string; type: QuickAssistQueryType }[] = [
     {
       label: `How to say "Thank you very much"`,
@@ -146,11 +189,6 @@ export const LinguisticCopilot: React.FC<LinguisticCopilotProps> = ({
     {
       label: `How to say "In my opinion"`,
       query: "In my opinion / from my point of view",
-      type: "how_to_say",
-    },
-    {
-      label: `How to say "Although / Even though"`,
-      query: "Although / Even though",
       type: "how_to_say",
     },
     {
@@ -169,7 +207,7 @@ export const LinguisticCopilot: React.FC<LinguisticCopilotProps> = ({
       case "check_nuance":
         return `e.g., "Is this too formal?", "Difference between word A and B"`;
       case "conjugate":
-        return `e.g., "Conjugate to go in past tense", "Subjunctive forms"`;
+        return `e.g., "hablar in past preterite", "comer subjunctive"`;
       default:
         return `Ask anything in or about ${targetLang.name}...`;
     }
@@ -191,7 +229,7 @@ export const LinguisticCopilot: React.FC<LinguisticCopilotProps> = ({
               </span>
             </div>
             <p className="text-[11px] text-slate-500 font-medium">
-              {subtitle || `Instant translation, nuance check & phrases for ${targetLang.name}`}
+              {subtitle || `Instant translation, nuance check & conjugation for ${targetLang.name}`}
             </p>
           </div>
         </div>
@@ -213,8 +251,8 @@ export const LinguisticCopilot: React.FC<LinguisticCopilotProps> = ({
         {[
           { id: "how_to_say", label: "How to Say", icon: "🎯" },
           { id: "lookup_word", label: "Lookup", icon: "📖" },
-          { id: "check_nuance", label: "Nuance", icon: "💡" },
           { id: "conjugate", label: "Conjugate", icon: "⚡" },
+          { id: "check_nuance", label: "Nuance", icon: "💡" },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -235,37 +273,181 @@ export const LinguisticCopilot: React.FC<LinguisticCopilotProps> = ({
         ))}
       </div>
 
-      {/* Query Search Input Form */}
-      <form onSubmit={handleSubmit} className="space-y-2">
-        <div className="relative flex items-center">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-          <input
-            ref={inputRef}
-            id={`${idPrefix}-query-input`}
-            type="text"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder={getPlaceholder()}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-16 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 font-medium focus:outline-none focus:border-indigo-500 focus:bg-white transition"
-          />
-          <button
-            type="submit"
-            disabled={isLoading || !query.trim()}
-            className="absolute right-1.5 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-50 transition cursor-pointer shadow-xs"
-          >
-            {isLoading ? (
-              <span className="flex items-center gap-1">
-                <span className="w-2.5 h-2.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-              </span>
-            ) : (
-              "Ask"
-            )}
-          </button>
-        </div>
-      </form>
+      {/* CONJUGATE MODE SPECIAL UI */}
+      {queryType === "conjugate" ? (
+        <div className="space-y-3 p-3 bg-indigo-50/50 rounded-2xl border border-indigo-100">
+          {/* Sub-mode switcher: Verb+Form vs Deconjugate */}
+          <div className="grid grid-cols-2 gap-1 p-0.5 bg-white rounded-xl border border-indigo-100 text-xs font-bold shadow-2xs">
+            <button
+              type="button"
+              onClick={() => setConjugateSubMode("inflect")}
+              className={`py-1.5 px-2 rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                conjugateSubMode === "inflect"
+                  ? "bg-indigo-600 text-white shadow-2xs"
+                  : "text-slate-600 hover:text-indigo-600"
+              }`}
+            >
+              <Workflow className="w-3.5 h-3.5" />
+              <span>Verb + Form → Conjugated</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setConjugateSubMode("deconjugate")}
+              className={`py-1.5 px-2 rounded-lg transition flex items-center justify-center gap-1.5 cursor-pointer ${
+                conjugateSubMode === "deconjugate"
+                  ? "bg-indigo-600 text-white shadow-2xs"
+                  : "text-slate-600 hover:text-indigo-600"
+              }`}
+            >
+              <Split className="w-3.5 h-3.5" />
+              <span>Word → Base + Form</span>
+            </button>
+          </div>
 
-      {/* Quick Suggestion Chips (when no result yet or idle) */}
-      {!result && !isLoading && (
+          {conjugateSubMode === "inflect" ? (
+            /* Mode 1: Verb + Form -> Conjugated Word */
+            <div className="space-y-2.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                    Base Verb (Infinitive)
+                  </label>
+                  <input
+                    type="text"
+                    value={verbBaseInput}
+                    onChange={(e) => setVerbBaseInput(e.target.value)}
+                    placeholder={`e.g., hablar, comer, aller, 食べる...`}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold focus:outline-none focus:border-indigo-500"
+                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                    Target Form / Tense
+                  </label>
+                  <input
+                    type="text"
+                    value={verbFormInput}
+                    onChange={(e) => setVerbFormInput(e.target.value)}
+                    placeholder={`e.g., Preterite yo, Subjunctive, Past...`}
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-semibold focus:outline-none focus:border-indigo-500"
+                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                  />
+                </div>
+              </div>
+
+              {/* Form Quick Preset Chips */}
+              <div>
+                <span className="text-[10px] font-bold uppercase text-slate-400 block mb-1">
+                  Quick Tense / Form Presets:
+                </span>
+                <div className="flex flex-wrap gap-1">
+                  {formPresets.map((preset, i) => (
+                    <button
+                      key={i}
+                      type="button"
+                      onClick={() => {
+                        setVerbFormInput(preset.value);
+                        if (verbBaseInput.trim()) {
+                          handleSearch(`Verb: "${verbBaseInput.trim()}", Form: "${preset.value}"`, "conjugate");
+                        }
+                      }}
+                      className={`text-[10px] font-bold px-2 py-0.5 rounded-lg border transition cursor-pointer ${
+                        verbFormInput === preset.value
+                          ? "bg-indigo-600 text-white border-indigo-600"
+                          : "bg-white hover:bg-indigo-50 text-slate-600 border-slate-200 hover:border-indigo-200"
+                      }`}
+                    >
+                      {preset.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handleSearch()}
+                disabled={isLoading || !verbBaseInput.trim()}
+                className="w-full py-2 px-3 rounded-xl bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                {isLoading ? (
+                  <span className="flex items-center gap-1.5">
+                    <BrainCircuit className="w-3.5 h-3.5 animate-spin" />
+                    <span>Conjugating Verb...</span>
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5">
+                    <Zap className="w-3.5 h-3.5" />
+                    <span>Conjugate Verb Form</span>
+                  </span>
+                )}
+              </button>
+            </div>
+          ) : (
+            /* Mode 2: Word -> Base Verb + Form (Deconjugate) */
+            <div className="space-y-2.5">
+              <div>
+                <label className="block text-[10px] font-bold uppercase text-slate-500 mb-1">
+                  Conjugated Word in {targetLang.name}
+                </label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={conjugatedWordInput}
+                    onChange={(e) => setConjugatedWordInput(e.target.value)}
+                    placeholder={`e.g., hablaron, comiese, 食べた, 먹었습니다...`}
+                    className="w-full bg-white border border-slate-200 rounded-xl pl-3 pr-20 py-2 text-xs text-slate-900 font-semibold focus:outline-none focus:border-indigo-500"
+                    onKeyDown={(e) => e.key === "Enter" && handleSearch(undefined, "deconjugate")}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleSearch(undefined, "deconjugate")}
+                    disabled={isLoading || !conjugatedWordInput.trim()}
+                    className="absolute right-1 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white text-xs font-bold transition cursor-pointer"
+                  >
+                    {isLoading ? "..." : "Split Form"}
+                  </button>
+                </div>
+              </div>
+              <p className="text-[11px] text-slate-500 font-medium">
+                Enter any conjugated verb form to automatically extract the root lemma infinitive, grammatical tense, person/mood, and stem breakdown.
+              </p>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* STANDARD QUERY SEARCH INPUT FORM FOR OTHER TABS */
+        <form onSubmit={handleSubmit} className="space-y-2">
+          <div className="relative flex items-center">
+            <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <input
+              ref={inputRef}
+              id={`${idPrefix}-query-input`}
+              type="text"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder={getPlaceholder()}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-16 py-2.5 text-xs sm:text-sm text-slate-900 placeholder-slate-400 font-medium focus:outline-none focus:border-indigo-500 focus:bg-white transition"
+            />
+            <button
+              type="submit"
+              disabled={isLoading || !query.trim()}
+              className="absolute right-1.5 top-1/2 -translate-y-1/2 px-3 py-1.5 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold disabled:opacity-50 transition cursor-pointer shadow-xs"
+            >
+              {isLoading ? (
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                </span>
+              ) : (
+                "Ask"
+              )}
+            </button>
+          </div>
+        </form>
+      )}
+
+      {/* Quick Suggestion Chips (when no result yet or idle, non-conjugate mode) */}
+      {!result && !isLoading && queryType !== "conjugate" && (
         <div className="space-y-1.5">
           <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider block">
             Quick Inquiries:
@@ -324,7 +506,7 @@ export const LinguisticCopilot: React.FC<LinguisticCopilotProps> = ({
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-0.5 flex-1 min-w-0">
                 <span className="text-[10px] font-black uppercase text-indigo-600 tracking-wider block">
-                  Recommended Expression
+                  {result.conjugationAnalysis ? "Conjugated / Analyzed Form" : "Recommended Expression"}
                 </span>
                 <h4 className="text-base sm:text-lg font-black text-slate-900 leading-snug">
                   {result.targetExpression}
@@ -387,6 +569,71 @@ export const LinguisticCopilot: React.FC<LinguisticCopilotProps> = ({
               </button>
             )}
           </div>
+
+          {/* Conjugation Breakdown & Morphology Card (if present) */}
+          {result.conjugationAnalysis && (
+            <div className="p-3.5 rounded-2xl bg-purple-50/80 border border-purple-200 text-xs space-y-2.5">
+              <div className="flex items-center justify-between pb-1.5 border-b border-purple-200/70">
+                <div className="flex items-center gap-1.5 text-purple-900 font-extrabold">
+                  <Table className="w-3.5 h-3.5 text-purple-700" />
+                  <span>Grammar & Conjugation Breakdown</span>
+                </div>
+                {result.conjugationAnalysis.infinitive && (
+                  <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-purple-200/80 text-purple-900">
+                    Base Lemma: {result.conjugationAnalysis.infinitive}
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-purple-950">
+                {result.conjugationAnalysis.form && (
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-purple-600 block">Form / Tense</span>
+                    <span className="font-bold">{result.conjugationAnalysis.form}</span>
+                  </div>
+                )}
+                {result.conjugationAnalysis.personOrRegister && (
+                  <div>
+                    <span className="text-[9px] uppercase font-bold text-purple-600 block">Subject / Register</span>
+                    <span className="font-bold">{result.conjugationAnalysis.personOrRegister}</span>
+                  </div>
+                )}
+              </div>
+
+              {result.conjugationAnalysis.ruleExplanation && (
+                <div className="p-2 rounded-xl bg-white/90 border border-purple-100 text-[11px] text-purple-900 leading-relaxed">
+                  <span className="font-bold text-purple-950">Formation Rule: </span>
+                  {result.conjugationAnalysis.ruleExplanation}
+                </div>
+              )}
+
+              {/* Related forms pills */}
+              {result.conjugationAnalysis.relatedForms && result.conjugationAnalysis.relatedForms.length > 0 && (
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold uppercase text-purple-600 block">
+                    Other Conjugated Forms of this Verb:
+                  </span>
+                  <div className="flex flex-wrap gap-1">
+                    {result.conjugationAnalysis.relatedForms.map((rf, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          if (onInsertText) handleInsert(rf.conjugated);
+                          else handleCopy(rf.conjugated);
+                        }}
+                        className="px-2 py-1 rounded-lg bg-white hover:bg-purple-600 hover:text-white border border-purple-200 text-purple-900 text-[10px] font-bold transition flex items-center gap-1 cursor-pointer"
+                        title={onInsertText ? `Click to insert "${rf.conjugated}"` : `Click to copy "${rf.conjugated}"`}
+                      >
+                        <span className="text-purple-600 group-hover:text-purple-200">{rf.form}:</span>
+                        <span>{rf.conjugated}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Formality Variants */}
           {result.formalityVariants && result.formalityVariants.length > 0 && (
@@ -453,7 +700,7 @@ export const LinguisticCopilot: React.FC<LinguisticCopilotProps> = ({
           {result.wordBreakdown && result.wordBreakdown.length > 0 && (
             <div className="space-y-1.5">
               <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider block">
-                Word Breakdown:
+                Word / Stem Breakdown:
               </span>
               <div className="flex flex-wrap gap-1.5">
                 {result.wordBreakdown.map((w, i) => (
@@ -487,7 +734,7 @@ export const LinguisticCopilot: React.FC<LinguisticCopilotProps> = ({
                     {result.exampleSentence.target}
                   </p>
                   <p className="text-[11px] text-slate-500 italic">
-                    {result.exampleSentence.meaning}
+                    {result.exampleSentence.translation || result.exampleSentence.meaning}
                   </p>
                 </div>
                 <button
@@ -543,7 +790,7 @@ export const LinguisticCopilot: React.FC<LinguisticCopilotProps> = ({
     return (
       <div
         id={`${idPrefix}-drawer`}
-        className={`bg-white rounded-3xl p-5 border-2 border-indigo-500 shadow-md ${className}`}
+        className={`bg-white rounded-3xl p-5 border border-indigo-200 shadow-md ${className}`}
       >
         {renderContent()}
       </div>
@@ -590,7 +837,7 @@ export const CopilotTriggerButton: React.FC<CopilotTriggerButtonProps> = ({
   size = "sm",
   className = "",
   id,
-  title = "Open AI Linguistic Co-Pilot for phrasing help, nuance and translation",
+  title = "Open AI Linguistic Co-Pilot for phrasing help, nuance, translation & conjugation",
 }) => {
   const sizeClasses = {
     xs: "px-2.5 py-1 text-[11px] rounded-lg gap-1",

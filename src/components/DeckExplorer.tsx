@@ -3,6 +3,7 @@ import { Deck, Flashcard, SupportedLanguage, CardType } from "../types";
 import { playTextAloud } from "../utils/speech";
 import { ConjugationLookup } from "./ConjugationLookup";
 import { IS_CONJUGATION_LANGUAGE } from "../data/conjugations";
+import { LinguisticCopilot, CopilotTriggerButton } from "./LinguisticCopilot";
 import { formatPronunciation } from "../utils/pronunciation";
 import { fetchCloudDecks, User } from "../lib/firebase";
 import {
@@ -182,6 +183,7 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
   const [newFreqRank, setNewFreqRank] = useState<number>(deck.cards.length + 1);
   const [newExampleTarget, setNewExampleTarget] = useState("");
   const [newExampleTranslation, setNewExampleTranslation] = useState("");
+  const [isModalCopilotOpen, setIsModalCopilotOpen] = useState(false);
 
   const isConjugationLang = IS_CONJUGATION_LANGUAGE[targetLang.code] ?? false;
 
@@ -998,23 +1000,6 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
                         : "Active Review"}
                     </span>
 
-                    {/* Conjugation Form Lookup Button for Verbs */}
-                    {isConjugationLang && (
-                      <button
-                        onClick={() => {
-                          const rootCandidate = card.targetItem.split(/[\s(—\/:;,]/)[0].trim();
-                          setActiveLookupVerb(rootCandidate);
-                          setShowConjugationExplorer(true);
-                          window.scrollTo({ top: 0, behavior: "smooth" });
-                        }}
-                        className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-purple-50 hover:bg-purple-600 hover:text-white text-purple-700 text-xs font-bold transition cursor-pointer"
-                        title="View Conjugation Forms & Paradigm"
-                      >
-                        <Table className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Conjugations</span>
-                      </button>
-                    )}
-
                     <button
                       onClick={() => onStudyCard(card.id)}
                       className="flex items-center gap-1 px-3 py-1.5 rounded-xl bg-indigo-50 hover:bg-indigo-600 hover:text-white text-indigo-700 text-xs font-bold transition cursor-pointer"
@@ -1090,7 +1075,43 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
       {showAddCardModal && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl border border-slate-200 shadow-xl max-w-lg w-full p-6 space-y-4 max-h-[90vh] overflow-y-auto">
-            <h3 className="text-lg font-bold text-slate-900">Add Custom Frequency Card</h3>
+            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+              <h3 className="text-lg font-bold text-slate-900">Add Custom Frequency Card</h3>
+              <CopilotTriggerButton
+                id="modal-copilot-trigger-btn"
+                isOpen={isModalCopilotOpen}
+                onClick={() => setIsModalCopilotOpen(!isModalCopilotOpen)}
+                label="AI Co-Pilot"
+                size="xs"
+              />
+            </div>
+
+            {/* Modal Linguistic Copilot Panel */}
+            {isModalCopilotOpen && (
+              <div className="animate-fade-in">
+                <LinguisticCopilot
+                  targetLang={targetLang}
+                  knownLang={knownLang}
+                  pronunciationAid="romanized"
+                  onInsertText={(text) => {
+                    if (!newTargetItem) {
+                      setNewTargetItem(text);
+                    } else if (!newUsageNotes) {
+                      setNewUsageNotes(text);
+                    } else {
+                      setNewTargetItem((prev) => `${prev} ${text}`);
+                    }
+                  }}
+                  isOpen={isModalCopilotOpen}
+                  onClose={() => setIsModalCopilotOpen(false)}
+                  variant="inline"
+                  idPrefix="modal-deck-copilot"
+                  title="Linguistic Assistant"
+                  subtitle={`Query vocabulary, definitions, phrases, or conjugations in ${targetLang.name}`}
+                />
+              </div>
+            )}
+
             <form onSubmit={handleCreateCard} className="space-y-3 text-xs">
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Target Word / Concept</label>
@@ -1099,7 +1120,7 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
                   required
                   value={newTargetItem}
                   onChange={(e) => setNewTargetItem(e.target.value)}
-                  placeholder="e.g. haber, por vs para"
+                  placeholder="e.g. haber, por vs para, 食べる..."
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 focus:outline-none focus:border-indigo-500"
                 />
               </div>

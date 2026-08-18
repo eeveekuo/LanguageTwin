@@ -624,6 +624,29 @@ app.post("/api/quick-assist", async (req, res) => {
               },
               required: ["target", "translation"],
             },
+            conjugationAnalysis: {
+              type: Type.OBJECT,
+              description: "Detailed inflectional and morphological breakdown when query is a verb or conjugation request",
+              properties: {
+                infinitive: { type: Type.STRING, description: "Dictionary / base infinitive form" },
+                form: { type: Type.STRING, description: "Full name of the tense, mood, and person/number form" },
+                tense: { type: Type.STRING, description: "Grammatical tense / aspect / mood" },
+                personOrRegister: { type: Type.STRING, description: "Person, number, or formality register" },
+                ruleExplanation: { type: Type.STRING, description: "Explanation of how the stem and ending combine" },
+                relatedForms: {
+                  type: Type.ARRAY,
+                  description: "Other key conjugated forms of this verb",
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      form: { type: Type.STRING },
+                      conjugated: { type: Type.STRING },
+                    },
+                    required: ["form", "conjugated"],
+                  },
+                },
+              },
+            },
             nuanceTip: { type: Type.STRING, description: "1-2 sentence tip on cultural context or nuances" },
           },
           required: ["targetExpression", "phonetic", "meaningInKnown", "formalityVariants", "wordBreakdown", "exampleSentence", "nuanceTip"],

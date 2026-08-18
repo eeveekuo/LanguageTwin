@@ -432,7 +432,19 @@ export interface SavedConversation {
   evaluatedItemsCount: number;
 }
 
-export type QuickAssistQueryType = "how_to_say" | "lookup_word" | "check_nuance" | "conjugate" | "general";
+export type QuickAssistQueryType = "how_to_say" | "lookup_word" | "check_nuance" | "conjugate" | "deconjugate" | "general";
+
+export interface ConjugationAnalysis {
+  infinitive?: string;
+  form?: string;
+  tense?: string;
+  personOrRegister?: string;
+  ruleExplanation?: string;
+  relatedForms?: Array<{
+    form: string;
+    conjugated: string;
+  }>;
+}
 
 export interface QuickAssistResult {
   targetExpression: string;
@@ -450,9 +462,11 @@ export interface QuickAssistResult {
   }>;
   exampleSentence?: {
     target: string;
-    meaning: string;
+    meaning?: string;
+    translation?: string;
     phonetic?: string;
   };
+  conjugationAnalysis?: ConjugationAnalysis;
   grammarNote?: string;
   nuanceTip?: string;
 }

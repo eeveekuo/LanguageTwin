@@ -14,6 +14,7 @@ import { DEFAULT_READING_ARTICLES } from "../data/defaultArticles";
 import { playTextAloud, stopSpeech } from "../utils/speech";
 import { ConjugationLookup } from "./ConjugationLookup";
 import { IS_CONJUGATION_LANGUAGE } from "../data/conjugations";
+import { LinguisticCopilot, CopilotTriggerButton } from "./LinguisticCopilot";
 import { lookupBuiltinDictionary } from "../data/builtinDictionary";
 import { estimateStandardizedProficiency } from "../utils/proficiencyEstimation";
 import { formatPronunciation } from "../utils/pronunciation";
@@ -130,6 +131,8 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
   const [isRecording, setIsRecording] = useState<Record<string, boolean>>({});
   const [showQuestionTranslations, setShowQuestionTranslations] = useState<Record<string, boolean>>({});
   const [addedRemedyCardIds, setAddedRemedyCardIds] = useState<Set<string>>(new Set());
+  const [activeCopilotQuestionId, setActiveCopilotQuestionId] = useState<string | null>(null);
+  const [isTopicCopilotOpen, setIsTopicCopilotOpen] = useState<boolean>(false);
   const recognitionRef = useRef<any>(null);
 
   // Saved Articles Library State
@@ -1169,40 +1172,6 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
                       )}
                     </div>
 
-                    {/* Conjugation Lookup button for verbs */}
-                    {isConjugationLang && (
-                      <div className="pt-1">
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setExpandedConjugationWord(
-                              expandedConjugationWord === concept.targetItem ? null : concept.targetItem
-                            )
-                          }
-                          className="w-full py-1.5 px-2.5 rounded-xl text-[11px] font-bold border border-purple-200 bg-purple-50 hover:bg-purple-100 text-purple-700 flex items-center justify-center gap-1.5 transition cursor-pointer mb-2"
-                        >
-                          <Table className="w-3.5 h-3.5" />
-                          <span>
-                            {expandedConjugationWord === concept.targetItem
-                              ? "Hide Conjugations"
-                              : "Lookup Conjugations & Forms"}
-                          </span>
-                        </button>
-
-                        {expandedConjugationWord === concept.targetItem && (
-                          <div className="mb-2 p-2 bg-white rounded-2xl border border-purple-200 shadow-xs">
-                            <ConjugationLookup
-                              targetLang={targetLang}
-                              knownLang={knownLang}
-                              initialVerb={concept.targetItem.split(/[\s(—\/:;,]/)[0].trim()}
-                              isOnline={isOnline}
-                              onAddConjugationToDeck={(newCard) => onAddCardToDeck?.(newCard)}
-                            />
-                          </div>
-                        )}
-                      </div>
-                    )}
-
                     <button
                       type="button"
                       onClick={() => handleAddConceptToDeck(concept)}
@@ -1344,28 +1313,64 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
                     <label htmlFor={`response-input-${q.id}`}>
                       Your Answer in {targetLang.name}:
                     </label>
-                    <button
-                      type="button"
-                      onClick={() => toggleSpeechRecognition(q.id)}
-                      className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
-                        isQRecording
-                          ? "bg-rose-500 text-white animate-pulse shadow-md shadow-rose-200"
-                          : "bg-white border border-slate-200 text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200"
-                      }`}
-                    >
-                      {isQRecording ? (
-                        <>
-                          <MicOff className="w-3.5 h-3.5" />
-                          <span>Listening... (Tap to stop)</span>
-                        </>
-                      ) : (
-                        <>
-                          <Mic className="w-3.5 h-3.5 text-indigo-600" />
-                          <span>Dictate Speech</span>
-                        </>
-                      )}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <CopilotTriggerButton
+                        id={`copilot-q-btn-${q.id}`}
+                        isOpen={activeCopilotQuestionId === q.id}
+                        onClick={() =>
+                          setActiveCopilotQuestionId(
+                            activeCopilotQuestionId === q.id ? null : q.id
+                          )
+                        }
+                        label="AI Co-Pilot"
+                        size="xs"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => toggleSpeechRecognition(q.id)}
+                        className={`flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                          isQRecording
+                            ? "bg-rose-500 text-white animate-pulse shadow-md shadow-rose-200"
+                            : "bg-white border border-slate-200 text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200"
+                        }`}
+                      >
+                        {isQRecording ? (
+                          <>
+                            <MicOff className="w-3.5 h-3.5" />
+                            <span>Listening... (Tap to stop)</span>
+                          </>
+                        ) : (
+                          <>
+                            <Mic className="w-3.5 h-3.5 text-indigo-600" />
+                            <span>Dictate Speech</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Inline Linguistic Copilot Panel for Question Response */}
+                  {activeCopilotQuestionId === q.id && (
+                    <div className="animate-fade-in my-2">
+                      <LinguisticCopilot
+                        targetLang={targetLang}
+                        knownLang={knownLang}
+                        pronunciationAid="romanized"
+                        onInsertText={(text) => {
+                          setUserResponses((prev) => ({
+                            ...prev,
+                            [q.id]: prev[q.id] ? `${prev[q.id]} ${text}` : text,
+                          }));
+                        }}
+                        isOpen={activeCopilotQuestionId === q.id}
+                        onClose={() => setActiveCopilotQuestionId(null)}
+                        variant="inline"
+                        idPrefix={`q-copilot-${q.id}`}
+                        title="Linguistic Assistant"
+                        subtitle={`Craft phrasing, conjugate verbs, or lookup vocabulary for your response in ${targetLang.name}`}
+                      />
+                    </div>
+                  )}
 
                   <textarea
                     id={`response-input-${q.id}`}
@@ -1629,10 +1634,39 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="sm:col-span-2">
-            <label className="block text-[11px] font-bold text-slate-500 mb-1">
-              Custom Theme or Topic (Optional)
-            </label>
+          <div className="sm:col-span-2 space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="block text-[11px] font-bold text-slate-500">
+                Custom Theme or Topic (Optional)
+              </label>
+              <CopilotTriggerButton
+                id="article-topic-copilot-btn"
+                isOpen={isTopicCopilotOpen}
+                onClick={() => setIsTopicCopilotOpen(!isTopicCopilotOpen)}
+                label="AI Co-Pilot"
+                size="xs"
+              />
+            </div>
+
+            {isTopicCopilotOpen && (
+              <div className="animate-fade-in my-2">
+                <LinguisticCopilot
+                  targetLang={targetLang}
+                  knownLang={knownLang}
+                  pronunciationAid="romanized"
+                  onInsertText={(text) => {
+                    setCustomTopic((prev) => (prev ? `${prev} ${text}` : text));
+                  }}
+                  isOpen={isTopicCopilotOpen}
+                  onClose={() => setIsTopicCopilotOpen(false)}
+                  variant="inline"
+                  idPrefix="article-topic-copilot"
+                  title="Linguistic Assistant"
+                  subtitle={`Formulate themes or find vocabulary in ${targetLang.name}`}
+                />
+              </div>
+            )}
+
             <input
               type="text"
               value={customTopic}

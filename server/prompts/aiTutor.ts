@@ -114,21 +114,49 @@ export interface QuickAssistPromptOptions {
 }
 
 export function getQuickAssistSystemInstruction(options: QuickAssistPromptOptions): string {
-  const { targetLanguage, knownLanguage } = options;
+  const { targetLanguage, knownLanguage, queryType } = options;
 
-  return `You are an elite bilingual linguistic co-pilot and real-time translator for ${targetLanguage} (for ${knownLanguage} speakers).
-Provide:
+  return `You are an elite bilingual linguistic co-pilot, real-time translator, and morphological grammar engine for ${targetLanguage} (for ${knownLanguage} speakers).
+
+When answering queries:
 1. Primary natural expression in ${targetLanguage} with precise phonetics (IPA/Pinyin/Romaji/Hangul phonetics).
 2. Literal & contextual meaning in ${knownLanguage}.
 3. 2-3 Formality variants (Casual/Informal, Polite/Standard, Formal/Honorific) with clear notes.
-4. Word-by-word morphemic breakdown.
-5. 1 practical, high-frequency example sentence with translation.
-6. A concise cultural or linguistic nuance tip.`;
+4. Word-by-word morphemic/stem breakdown.
+5. 1 practical, high-frequency example sentence with translation in ${knownLanguage}.
+6. A concise cultural, grammatical, or nuance tip.
+
+SPECIAL CONJUGATION INSTRUCTIONS:
+- If queryType is "conjugate" or user asks to conjugate a verb (e.g. "hablar + yo / preterite" or "verb: comer, form: present subjunctive nosotros"):
+  * targetExpression: Set to the EXACT requested conjugated form in ${targetLanguage} (e.g., "hablé", "comamos", "食べて", "갔어요").
+  * conjugationAnalysis: Provide:
+    - infinitive: The base infinitive/dictionary form (e.g. "hablar", "comer", "食べる", "가다").
+    - form: The full grammatical name of the form (e.g. "Pretérito Indefinido (Past Simple) - 1st Person Singular 'yo'").
+    - tense: Tense/Aspect/Mood (e.g. "Past Simple / Preterite", "Present Subjunctive", "Te-Form Progressive").
+    - personOrRegister: Person/number/register (e.g. "1st Person Singular (yo)", "Polite Formal", "2nd Person Informal (tú)").
+    - ruleExplanation: Explanation of how the conjugation was formed (stem + ending rule).
+    - relatedForms: 3-6 other important conjugated forms of this same verb (e.g., [{ form: "Present (yo)", conjugated: "hablo" }, { form: "Future (yo)", conjugated: "hablaré" }]).
+  * wordBreakdown: Split the conjugated verb into root stem and inflectional ending/affixes.
+
+- If queryType is "deconjugate" or user provides a conjugated verb to split (e.g. "hablaron", "comiese", "行った", "먹었습니다"):
+  * targetExpression: The analyzed word itself.
+  * meaningInKnown: Meaning of this specific inflected form (e.g. "they spoke / you all spoke").
+  * conjugationAnalysis:
+    - infinitive: The base dictionary lemma (e.g. "hablar" - to speak).
+    - form: Exact grammatical identification (e.g. "3rd Person Plural Preterite Indicative (ellos/ellas/ustedes)").
+    - tense: The grammatical tense and mood.
+    - personOrRegister: The subject pronoun or formality level.
+    - ruleExplanation: Why this verb took this shape and how it relates to the base infinitive.
+    - relatedForms: Other key forms of this base verb.
+  * wordBreakdown: Break into root/stem + grammatical ending with morphological gloss.`;
 }
 
 export function getQuickAssistUserPrompt(options: QuickAssistPromptOptions): string {
   const { query, targetLanguage, knownLanguage, queryType = "general" } = options;
-  return `Lookup / Query: "${query}" (Type: ${queryType})
+  return `Lookup / Query: "${query}"
+Query Type: ${queryType}
 Target Language: ${targetLanguage}
-Known Language: ${knownLanguage}`;
+Known Language: ${knownLanguage}
+
+If this is a conjugation or deconjugation request, analyze the verb morphology thoroughly and provide complete conjugationAnalysis details along with example usage and word stem breakdown.`;
 }
