@@ -6,6 +6,7 @@ import { IS_CONJUGATION_LANGUAGE } from "../data/conjugations";
 import { LinguisticCopilot, CopilotTriggerButton } from "./LinguisticCopilot";
 import { formatPronunciation } from "../utils/pronunciation";
 import { fetchCloudDecks, User } from "../lib/firebase";
+import { AlignedTranslation } from "./AlignedTranslation";
 import {
   Search,
   Plus,
@@ -1043,21 +1044,19 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
                     {card.examples && card.examples.length > 0 && (
                       <div>
                         <span className="font-bold text-slate-500 uppercase text-[10px] block mb-1">
-                          Example Sentences:
+                          Example Sentences (Hover to highlight matching translation):
                         </span>
-                        <div className="space-y-1.5">
+                        <div className="space-y-2">
                           {card.examples.map((ex, idx) => (
-                            <div key={idx} className="bg-white p-2.5 rounded-xl border border-slate-200 space-y-0.5">
-                              <div className="flex items-center justify-between">
-                                <span className="font-bold text-slate-900">{ex.target}</span>
-                                <button
-                                  onClick={() => handlePlayAudio(ex.target)}
-                                  className="p-1 text-slate-400 hover:text-indigo-600"
-                                >
-                                  <Volume2 className="w-3 h-3" />
-                                </button>
-                              </div>
-                              <p className="text-slate-500 italic text-[11px]">{ex.translation}</p>
+                            <div key={idx} className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
+                              <AlignedTranslation
+                                targetText={ex.target}
+                                translationText={ex.translation}
+                                targetLangCode={targetLang.code}
+                                idPrefix={`deck-card-${card.id}-ex-${idx}`}
+                                onSpeak={(text) => handlePlayAudio(text)}
+                                size="sm"
+                              />
                             </div>
                           ))}
                         </div>

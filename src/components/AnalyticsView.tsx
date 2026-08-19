@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Deck, Flashcard, SupportedLanguage, LearnerError, DailyProgress } from "../types";
+import { Deck, Flashcard, SupportedLanguage, LearnerError, DailyProgress, PracticeMechanismType, PracticeActivityRecord } from "../types";
 import { getDeckStats } from "../utils/srs";
 import { getFrequencyBrackets, getActiveFrequencyBracket } from "../utils/frequencyProgression";
 import { estimateStandardizedProficiency } from "../utils/proficiencyEstimation";
@@ -35,6 +35,12 @@ import {
   XCircle,
   HelpCircle,
   LineChart as LineChartIcon,
+  Activity,
+  Compass,
+  Bot,
+  Languages,
+  PenTool,
+  Headphones,
 } from "lucide-react";
 
 interface AnalyticsViewProps {
@@ -69,11 +75,12 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   onAddCardToDeck,
 }) => {
   const [activeTab, setActiveTab] = useState<
-    "proficiency" | "progression" | "diagnosticHistory" | "mastered" | "errors" | "srs"
-  >("proficiency");
+    "dailyLog" | "proficiency" | "progression" | "diagnosticHistory" | "mastered" | "errors" | "srs"
+  >("dailyLog");
   const [masteredSearch, setMasteredSearch] = useState<string>("");
   const [errorFilter, setErrorFilter] = useState<"active" | "resolved" | "all">("active");
   const [errorSearch, setErrorSearch] = useState<string>("");
+  const [activityFilter, setActivityFilter] = useState<string>("all");
 
   // Diagnostic Test History State
   const [diagnosticHistory, setDiagnosticHistory] = useState<DiagnosticTestRecord[]>([]);
@@ -389,6 +396,26 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
       {/* Interactive Tabs Header (Flex Wrap to never hide tabs) */}
       <div className="flex flex-wrap items-center gap-2 border-b border-slate-200 pb-3 text-xs sm:text-sm font-bold">
         <button
+          id="analytics-tab-daily-log"
+          onClick={() => setActiveTab("dailyLog")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-2xl transition cursor-pointer ${
+            activeTab === "dailyLog"
+              ? "bg-indigo-600 text-white shadow-xs"
+              : "bg-white text-slate-600 hover:bg-slate-100 border border-slate-200"
+          }`}
+        >
+          <Activity className="w-4 h-4 shrink-0" />
+          <span>Daily Practice & Mechanism Log</span>
+          {dailyProgress.activityLog && dailyProgress.activityLog.length > 0 && (
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-black ${
+              activeTab === "dailyLog" ? "bg-white/20 text-white" : "bg-indigo-100 text-indigo-700"
+            }`}>
+              {dailyProgress.activityLog.length}
+            </span>
+          )}
+        </button>
+
+        <button
           id="analytics-tab-proficiency"
           onClick={() => setActiveTab("proficiency")}
           className={`flex items-center gap-2 px-4 py-2 rounded-2xl transition cursor-pointer ${
@@ -472,6 +499,250 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-3 rounded-2xl shadow-xl border border-slate-700 flex items-center gap-2.5 text-xs font-bold animate-bounce">
           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           <span>{toastMessage}</span>
+        </div>
+      )}
+
+      {/* TAB: DAILY PRACTICE LOG & MECHANISM BREAKDOWN */}
+      {activeTab === "dailyLog" && (
+        <div className="space-y-6 animate-fade-in">
+          {/* Header Summary */}
+          <div className="p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-indigo-900 via-indigo-800 to-slate-900 text-white shadow-xl space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="space-y-2 max-w-2xl">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-3 py-1 rounded-full bg-white/20 backdrop-blur text-white text-xs font-black uppercase tracking-wider border border-white/20 flex items-center gap-1.5">
+                    <Calendar className="w-3.5 h-3.5" />
+                    <span>Today's Multi-Modal Practice Ledger</span>
+                  </span>
+                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/30 text-emerald-300 text-xs font-bold border border-emerald-400/30">
+                    Streak: {dailyProgress.streak} Days Active 🔥
+                  </span>
+                </div>
+                <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
+                  Daily Practice Mechanisms & Activity Details
+                </h3>
+                <p className="text-xs sm:text-sm text-indigo-100 leading-relaxed">
+                  Every active output, sentence structure analysis, reading comprehension challenge, AI conversation, and translation session is tracked in your permanent practice log.
+                </p>
+              </div>
+
+              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/20 text-center shrink-0 min-w-[180px]">
+                <div className="text-3xl font-black text-white">
+                  {dailyProgress.reviewedToday}
+                </div>
+                <div className="text-xs font-bold text-indigo-200 mt-0.5">
+                  Total Activities Today
+                </div>
+                <div className="text-[11px] text-emerald-300 font-semibold mt-1">
+                  Goal Target: {dailyProgress.target} ({dailyPercent}%)
+                </div>
+              </div>
+            </div>
+
+            {/* Practice Mechanism Breakdown Counters */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 pt-2 border-t border-white/10">
+              <div className="p-3 rounded-2xl bg-white/10 backdrop-blur border border-white/15 space-y-1">
+                <div className="flex items-center gap-1.5 text-xs text-indigo-200 font-bold">
+                  <GraduationCap className="w-3.5 h-3.5 text-indigo-300" />
+                  <span>Active Study</span>
+                </div>
+                <div className="text-xl font-black text-white">
+                  {dailyProgress.breakdown?.study || 0}
+                </div>
+                <p className="text-[10px] text-indigo-200/80">SRS recall reviews</p>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-white/10 backdrop-blur border border-white/15 space-y-1">
+                <div className="flex items-center gap-1.5 text-xs text-indigo-200 font-bold">
+                  <Layers className="w-3.5 h-3.5 text-indigo-300" />
+                  <span>Deck Hub</span>
+                </div>
+                <div className="text-xl font-black text-white">
+                  {dailyProgress.breakdown?.deck || 0}
+                </div>
+                <p className="text-[10px] text-indigo-200/80">Cards curated</p>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-white/10 backdrop-blur border border-white/15 space-y-1">
+                <div className="flex items-center gap-1.5 text-xs text-indigo-200 font-bold">
+                  <Compass className="w-3.5 h-3.5 text-indigo-300" />
+                  <span>Structure</span>
+                </div>
+                <div className="text-xl font-black text-white">
+                  {dailyProgress.breakdown?.grammar || 0}
+                </div>
+                <p className="text-[10px] text-indigo-200/80">Formulas analyzed</p>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-white/10 backdrop-blur border border-white/15 space-y-1">
+                <div className="flex items-center gap-1.5 text-xs text-indigo-200 font-bold">
+                  <Headphones className="w-3.5 h-3.5 text-indigo-300" />
+                  <span>Reading & Audio</span>
+                </div>
+                <div className="text-xl font-black text-white">
+                  {dailyProgress.breakdown?.reading || 0}
+                </div>
+                <p className="text-[10px] text-indigo-200/80">Articles parsed</p>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-white/10 backdrop-blur border border-white/15 space-y-1">
+                <div className="flex items-center gap-1.5 text-xs text-indigo-200 font-bold">
+                  <Bot className="w-3.5 h-3.5 text-indigo-300" />
+                  <span>AI Tutor</span>
+                </div>
+                <div className="text-xl font-black text-white">
+                  {dailyProgress.breakdown?.tutor || 0}
+                </div>
+                <p className="text-[10px] text-indigo-200/80">Conversations</p>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-white/10 backdrop-blur border border-white/15 space-y-1">
+                <div className="flex items-center gap-1.5 text-xs text-indigo-200 font-bold">
+                  <Languages className="w-3.5 h-3.5 text-indigo-300" />
+                  <span>Translate</span>
+                </div>
+                <div className="text-xl font-black text-white">
+                  {dailyProgress.breakdown?.translate || 0}
+                </div>
+                <p className="text-[10px] text-indigo-200/80">Phrases explained</p>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-white/10 backdrop-blur border border-white/15 space-y-1">
+                <div className="flex items-center gap-1.5 text-xs text-indigo-200 font-bold">
+                  <PenTool className="w-3.5 h-3.5 text-indigo-300" />
+                  <span>Journal</span>
+                </div>
+                <div className="text-xl font-black text-white">
+                  {dailyProgress.breakdown?.journal || 0}
+                </div>
+                <p className="text-[10px] text-indigo-200/80">Entries logged</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Activity Timeline and Details */}
+          <div className="bg-white rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h4 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-indigo-600" />
+                  <span>Detailed Practice Activity Log</span>
+                </h4>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Detailed timeline of what you practiced in {targetLang.name} today.
+                </p>
+              </div>
+
+              {/* Mechanism Filter */}
+              <div className="flex items-center gap-1.5 flex-wrap text-xs font-bold">
+                {["all", "study", "deck", "grammar", "reading", "tutor", "translate", "journal"].map((mech) => (
+                  <button
+                    key={mech}
+                    type="button"
+                    onClick={() => setActivityFilter(mech)}
+                    className={`px-3 py-1.5 rounded-xl border transition cursor-pointer capitalize ${
+                      activityFilter === mech
+                        ? "bg-indigo-600 text-white border-indigo-600"
+                        : "bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200"
+                    }`}
+                  >
+                    {mech === "all" ? "All Practice Types" : mech}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* List of Activity Records */}
+            {(() => {
+              const logs = (dailyProgress.activityLog || []).filter((item) =>
+                activityFilter === "all" ? true : item.mechanism === activityFilter
+              );
+
+              if (logs.length === 0) {
+                return (
+                  <div className="p-8 text-center rounded-2xl bg-slate-50 border border-dashed border-slate-200 text-slate-500 space-y-2">
+                    <Activity className="w-8 h-8 text-slate-400 mx-auto" />
+                    <p className="font-bold text-sm text-slate-700">No practice sessions logged yet today</p>
+                    <p className="text-xs text-slate-400 max-w-md mx-auto">
+                      Choose any practice mechanism above—Active Study, Sentence Structure Primer, Reading & Listening, AI Conversation, Translate & Explain, or Language Journal—to log your daily effort!
+                    </p>
+                  </div>
+                );
+              }
+
+              return (
+                <div className="space-y-3">
+                  {logs.map((item) => {
+                    const timeStr = new Date(item.timestamp).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    });
+
+                    const mechBadge =
+                      item.mechanism === "study"
+                        ? { label: "Active Study", icon: GraduationCap, color: "bg-indigo-50 text-indigo-700 border-indigo-200" }
+                        : item.mechanism === "grammar"
+                        ? { label: "Sentence Structure", icon: Compass, color: "bg-purple-50 text-purple-700 border-purple-200" }
+                        : item.mechanism === "reading"
+                        ? { label: "Reading & Listening", icon: Headphones, color: "bg-sky-50 text-sky-700 border-sky-200" }
+                        : item.mechanism === "tutor"
+                        ? { label: "AI Tutor", icon: Bot, color: "bg-amber-50 text-amber-800 border-amber-200" }
+                        : item.mechanism === "translate"
+                        ? { label: "Translate & Explain", icon: Languages, color: "bg-teal-50 text-teal-700 border-teal-200" }
+                        : item.mechanism === "journal"
+                        ? { label: "Language Journal", icon: PenTool, color: "bg-rose-50 text-rose-700 border-rose-200" }
+                        : { label: "Deck Hub", icon: Layers, color: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+
+                    const IconComp = mechBadge.icon;
+
+                    return (
+                      <div
+                        key={item.id}
+                        className="p-4 rounded-2xl bg-slate-50 hover:bg-slate-100/80 border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition"
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className={`p-2 rounded-xl border shrink-0 ${mechBadge.color}`}>
+                            <IconComp className="w-4 h-4" />
+                          </div>
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-md border ${mechBadge.color}`}>
+                                {mechBadge.label}
+                              </span>
+                              <span className="font-bold text-xs sm:text-sm text-slate-900">
+                                {item.title}
+                              </span>
+                            </div>
+                            <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                              {item.details}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-3 self-end sm:self-center shrink-0">
+                          {item.score !== undefined && (
+                            <span className={`px-2.5 py-1 rounded-xl text-xs font-black border ${
+                              item.score >= 80
+                                ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                : item.score >= 60
+                                ? "bg-amber-50 text-amber-800 border-amber-200"
+                                : "bg-slate-100 text-slate-700 border-slate-200"
+                            }`}>
+                              Score: {item.score}%
+                            </span>
+                          )}
+                          <span className="text-[11px] text-slate-400 font-mono flex items-center gap-1">
+                            <Clock className="w-3 h-3 text-slate-400" />
+                            <span>{timeStr}</span>
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
         </div>
       )}
 

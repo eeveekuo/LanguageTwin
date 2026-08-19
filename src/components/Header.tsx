@@ -24,11 +24,12 @@ import {
   User as UserIcon,
   RefreshCw,
   PenTool,
+  Compass,
 } from "lucide-react";
 
 interface HeaderProps {
-  activeTab: "study" | "deck" | "reading" | "journal" | "tutor" | "stats";
-  setActiveTab: (tab: "study" | "deck" | "reading" | "journal" | "tutor" | "stats") => void;
+  activeTab: "study" | "grammar" | "deck" | "reading" | "journal" | "tutor" | "translate" | "stats";
+  setActiveTab: (tab: "study" | "grammar" | "deck" | "reading" | "journal" | "tutor" | "translate" | "stats") => void;
   activeDeck: Deck;
   allDecks?: Deck[];
   onSelectDeck?: (deck: Deck) => void;
@@ -187,11 +188,32 @@ export const Header: React.FC<HeaderProps> = ({
               />
             </div>
 
+            {/* Top-Level Mastery & Progress Button */}
+            <button
+              id="top-mastery-btn"
+              type="button"
+              onClick={() => setActiveTab("stats")}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer shadow-2xs border ${
+                activeTab === "stats"
+                  ? "bg-indigo-600 text-white border-indigo-600 shadow-indigo-100"
+                  : "bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200"
+              }`}
+              title="View Standardized Mastery, CEFR Level, SRS Brackets & Daily Practice Activity Logs"
+            >
+              <BarChart3 className={`w-3.5 h-3.5 ${activeTab === "stats" ? "text-white" : "text-indigo-600"}`} />
+              <span>Mastery</span>
+              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
+                activeTab === "stats" ? "bg-white/20 text-white" : "bg-indigo-100 text-indigo-700"
+              }`}>
+                {dailyProgress.streak}🔥
+              </span>
+            </button>
+
             {/* Daily Goal Pill */}
             <div
               onClick={() => setActiveTab("stats")}
               className="hidden lg:flex items-center bg-indigo-50/80 hover:bg-indigo-100 text-indigo-800 rounded-full px-3.5 py-1.5 border border-indigo-100 shadow-xs gap-2 text-xs font-bold transition cursor-pointer"
-              title="Daily Target Progress - Click to view analytics"
+              title="Daily Target Progress - Click to view detailed activity breakdown"
             >
               <Target className="w-3.5 h-3.5 text-indigo-600" />
               <span>
@@ -359,7 +381,7 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Navigation Tabs */}
+        {/* Navigation Tabs (Practice Mechanisms) */}
         <div className="flex items-center space-x-1.5 py-2.5 border-t border-slate-100 overflow-x-auto no-scrollbar text-xs sm:text-sm font-semibold">
           <button
             id="tab-study"
@@ -399,6 +421,19 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           <button
+            id="tab-grammar"
+            onClick={() => setActiveTab("grammar")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-2xl transition whitespace-nowrap cursor-pointer ${
+              activeTab === "grammar"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-100"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            }`}
+          >
+            <Compass className="w-4 h-4" />
+            <span>Sentence Structure</span>
+          </button>
+
+          <button
             id="tab-reading"
             onClick={() => setActiveTab("reading")}
             className={`flex items-center gap-2 px-4 py-2 rounded-2xl transition whitespace-nowrap cursor-pointer ${
@@ -409,19 +444,6 @@ export const Header: React.FC<HeaderProps> = ({
           >
             <Headphones className="w-4 h-4" />
             <span>Reading & Listening</span>
-          </button>
-
-          <button
-            id="tab-journal"
-            onClick={() => setActiveTab("journal")}
-            className={`flex items-center gap-2 px-4 py-2 rounded-2xl transition whitespace-nowrap cursor-pointer ${
-              activeTab === "journal"
-                ? "bg-indigo-600 text-white shadow-md shadow-indigo-100"
-                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
-            }`}
-          >
-            <PenTool className="w-4 h-4" />
-            <span>Language Journal</span>
           </button>
 
           <button
@@ -455,16 +477,29 @@ export const Header: React.FC<HeaderProps> = ({
           </button>
 
           <button
-            id="tab-stats"
-            onClick={() => setActiveTab("stats")}
+            id="tab-translate"
+            onClick={() => setActiveTab("translate")}
             className={`flex items-center gap-2 px-4 py-2 rounded-2xl transition whitespace-nowrap cursor-pointer ${
-              activeTab === "stats"
+              activeTab === "translate"
                 ? "bg-indigo-600 text-white shadow-md shadow-indigo-100"
                 : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
             }`}
           >
-            <BarChart3 className="w-4 h-4" />
-            <span>Mastery & Level</span>
+            <Languages className="w-4 h-4" />
+            <span>Translate & Explain</span>
+          </button>
+
+          <button
+            id="tab-journal"
+            onClick={() => setActiveTab("journal")}
+            className={`flex items-center gap-2 px-4 py-2 rounded-2xl transition whitespace-nowrap cursor-pointer ${
+              activeTab === "journal"
+                ? "bg-indigo-600 text-white shadow-md shadow-indigo-100"
+                : "text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            }`}
+          >
+            <PenTool className="w-4 h-4" />
+            <span>Language Journal</span>
           </button>
         </div>
       </div>

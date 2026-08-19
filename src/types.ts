@@ -115,12 +115,44 @@ export interface EvaluatedItemInChat {
   identifiedErrors?: IdentifiedError[];
 }
 
+export type PracticeMechanismType =
+  | "study"
+  | "deck"
+  | "grammar"
+  | "reading"
+  | "tutor"
+  | "translate"
+  | "journal";
+
+export interface PracticeActivityRecord {
+  id: string;
+  timestamp: number;
+  date: string; // YYYY-MM-DD
+  mechanism: PracticeMechanismType;
+  title: string;
+  details: string;
+  score?: number;
+  targetItem?: string;
+}
+
+export interface PracticeBreakdownCounts {
+  study: number;
+  deck: number;
+  grammar: number;
+  reading: number;
+  tutor: number;
+  translate: number;
+  journal: number;
+}
+
 export interface DailyProgress {
   target: number; // e.g. 10
   reviewedToday: number;
   date: string; // YYYY-MM-DD
   streak: number;
   lastCompletedDate?: string | null;
+  breakdown?: PracticeBreakdownCounts;
+  activityLog?: PracticeActivityRecord[];
 }
 
 export interface FrequencyBracket {

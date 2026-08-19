@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import { formatPronunciation } from "../utils/pronunciation";
 import { LinguisticCopilot, CopilotTriggerButton } from "./LinguisticCopilot";
+import { AlignedTranslation } from "./AlignedTranslation";
 
 interface StudySessionProps {
   cards: Flashcard[];
@@ -834,7 +835,7 @@ export const StudySession: React.FC<StudySessionProps> = ({
           )}
         </div>
 
-        {/* Daily Goal Pill & Randomized Mode Indicator */}
+        {/* Randomized Challenge Mode Indicator */}
         <div className="flex items-center gap-2.5">
           <div
             id="random-mode-badge"
@@ -845,19 +846,6 @@ export const StudySession: React.FC<StudySessionProps> = ({
             <span>
               {promptMode === "target_word" ? "Mode: Word Display" : "Mode: Meaning Recall"}
             </span>
-          </div>
-
-          <div className="hidden sm:flex items-center gap-1.5 bg-slate-50 px-3 py-1 rounded-xl border border-slate-200">
-            <Target className="w-3.5 h-3.5 text-indigo-600" />
-            <span className="text-slate-500 font-medium">Goal:</span>
-            <span className="text-slate-900 font-bold">
-              {dailyProgress.reviewedToday}/{dailyProgress.target}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-1 bg-slate-50 px-2.5 py-1 rounded-xl border border-slate-200 font-bold text-slate-800">
-            <span>{targetLang.flag}</span>
-            <span>{targetLang.name}</span>
           </div>
         </div>
       </div>
@@ -1245,38 +1233,30 @@ export const StudySession: React.FC<StudySessionProps> = ({
                   )}
 
                   {/* Selected Example display */}
-                  <div className="p-3.5 rounded-xl bg-indigo-50/50 border border-indigo-100 space-y-1">
-                    <div className="flex items-center justify-between gap-2">
-                      <p className="text-sm font-bold text-indigo-950 font-sans">
-                        "{activeExample.target}"
-                      </p>
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => handlePlayAudio(activeExample.target, `repeat-ex-${selectedExampleIndex}`)}
-                          className={`p-1.5 rounded-lg border transition cursor-pointer ${
-                            playingAudioId === `repeat-ex-${selectedExampleIndex}`
-                              ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
-                              : "bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-600 hover:text-white"
-                          }`}
-                          title="Listen to sentence"
-                        >
-                          <Volume2 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={handleFillExample}
-                          className="p-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 transition cursor-pointer text-xs font-bold flex items-center gap-1"
-                          title="Auto-fill example"
-                        >
-                          <Copy className="w-3.5 h-3.5 text-slate-500" />
-                          <span className="hidden sm:inline">Copy</span>
-                        </button>
-                      </div>
+                  <div className="p-3.5 rounded-xl bg-indigo-50/50 border border-indigo-100 space-y-2">
+                    <div className="flex items-center justify-between gap-2 border-b border-indigo-100/60 pb-2">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">
+                        Interactive Aligned Model Sentence:
+                      </span>
+                      <button
+                        type="button"
+                        onClick={handleFillExample}
+                        className="p-1 px-2 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 transition cursor-pointer text-xs font-bold flex items-center gap-1 shadow-2xs"
+                        title="Auto-fill example"
+                      >
+                        <Copy className="w-3.5 h-3.5 text-slate-500" />
+                        <span>Copy Model</span>
+                      </button>
                     </div>
-                    <p className="text-xs text-slate-500 italic">
-                      {activeExample.translation}
-                    </p>
+
+                    <AlignedTranslation
+                      targetText={activeExample.target}
+                      translationText={activeExample.translation}
+                      targetLangCode={targetLang.code}
+                      idPrefix={`repeat-ex-${selectedExampleIndex}`}
+                      onSpeak={(text) => handlePlayAudio(text, `repeat-ex-${selectedExampleIndex}`)}
+                      size="sm"
+                    />
                   </div>
 
                   {/* Example input + Mic */}
@@ -1551,22 +1531,17 @@ export const StudySession: React.FC<StudySessionProps> = ({
                   </div>
 
                   <div className="p-3.5 rounded-2xl bg-emerald-50 border border-emerald-200">
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="font-bold text-emerald-700 uppercase text-[10px]">Natural Corrected</p>
-                      <button
-                        onClick={() => handlePlayAudio(evaluation.correctedSentence, "corrected")}
-                        className="p-1 rounded-full bg-white text-emerald-700 hover:bg-emerald-700 hover:text-white transition cursor-pointer"
-                        title="Listen"
-                      >
-                        <Volume2 className="w-3 h-3" />
-                      </button>
-                    </div>
-                    <p className="text-sm font-bold text-emerald-900">"{evaluation.correctedSentence}"</p>
-                    {evaluation.correctedSentenceTranslation && (
-                      <p className="text-[11px] text-emerald-700 italic mt-0.5">
-                        {evaluation.correctedSentenceTranslation}
-                      </p>
-                    )}
+                    <p className="font-bold text-emerald-700 uppercase text-[10px] mb-1.5">
+                      Natural Corrected (Hover to highlight words)
+                    </p>
+                    <AlignedTranslation
+                      targetText={evaluation.correctedSentence}
+                      translationText={evaluation.correctedSentenceTranslation || ""}
+                      targetLangCode={targetLang.code}
+                      idPrefix="eval-corrected"
+                      onSpeak={(text) => handlePlayAudio(text, "corrected")}
+                      size="sm"
+                    />
                   </div>
                 </div>
 
@@ -1790,23 +1765,16 @@ export const StudySession: React.FC<StudySessionProps> = ({
                   {(explanationData?.examples || activeCard.examples || []).map((ex, idx) => (
                     <div
                       key={idx}
-                      className="p-3.5 rounded-2xl bg-indigo-50/40 border border-indigo-100 space-y-1"
+                      className="p-3.5 rounded-2xl bg-indigo-50/40 border border-indigo-100"
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-bold text-indigo-950">{ex.target}</p>
-                        <button
-                          onClick={() => handlePlayAudio(ex.target, `ex-audio-${idx}`)}
-                          className={`p-1.5 rounded-xl border transition cursor-pointer ${
-                            playingAudioId === `ex-audio-${idx}`
-                              ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
-                              : "bg-white text-indigo-600 border-indigo-200 hover:bg-indigo-600 hover:text-white"
-                          }`}
-                          title="Read aloud"
-                        >
-                          <Volume2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                      <p className="text-xs text-slate-500 italic">{ex.translation}</p>
+                      <AlignedTranslation
+                        targetText={ex.target}
+                        translationText={ex.translation}
+                        targetLangCode={targetLang.code}
+                        idPrefix={`tile3-ex-${idx}`}
+                        onSpeak={(text) => handlePlayAudio(text, `ex-audio-${idx}`)}
+                        size="sm"
+                      />
                     </div>
                   ))}
                 </div>

@@ -1039,9 +1039,6 @@ ${entry.correctionResult.errors
                     <div className="flex items-center gap-2 px-3 py-1 rounded-xl bg-slate-50 border border-slate-200/80 text-xs font-bold text-slate-700">
                       <Calendar className="w-3.5 h-3.5 text-indigo-600" />
                       <span>{formattedActiveDate}</span>
-                      <span className="text-[10px] text-slate-400 font-normal">
-                        (Auto-logged)
-                      </span>
                     </div>
 
                     {/* Explicit Example Entry Pill Badge */}

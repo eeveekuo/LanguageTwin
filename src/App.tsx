@@ -67,6 +67,8 @@ import { AITutorChat } from "./components/AITutorChat";
 import { AnalyticsView } from "./components/AnalyticsView";
 import { LanguagePairModal } from "./components/LanguagePairModal";
 import { LanguagePlacementModal } from "./components/LanguagePlacementModal";
+import { SentenceStructurePrimer } from "./components/SentenceStructurePrimer";
+import { TranslateAndExplain } from "./components/TranslateAndExplain";
 
 const STORAGE_KEY_DECKS = "frequency_srs_decks_v1";
 const STORAGE_KEY_ACTIVE_DECK = "frequency_srs_active_deck_id_v1";
@@ -74,7 +76,7 @@ const STORAGE_KEY_ACTIVE_DECK = "frequency_srs_active_deck_id_v1";
 export default function App() {
   const isOnline = useOnlineStatus();
   const [activeTab, setActiveTab] = useState<
-    "study" | "deck" | "reading" | "journal" | "tutor" | "stats"
+    "study" | "grammar" | "deck" | "reading" | "journal" | "tutor" | "translate" | "stats"
   >("study");
 
   // User & Cloud Sync State
@@ -799,6 +801,17 @@ export default function App() {
           />
         )}
 
+        {activeTab === "grammar" && (
+          <SentenceStructurePrimer
+            key={`primer-${targetLang.code}`}
+            targetLang={targetLang}
+            knownLang={knownLang}
+            isOnline={isOnline}
+            onNavigateToStudy={() => setActiveTab("study")}
+            onNavigateToDeck={() => setActiveTab("deck")}
+          />
+        )}
+
         {activeTab === "reading" && (
           <ReadingListeningPractice
             key={activeDeck.id}
@@ -834,6 +847,17 @@ export default function App() {
             isOnline={isOnline}
             currentUser={currentUser}
             pronunciationAid={currentPronunciationAid}
+          />
+        )}
+
+        {activeTab === "translate" && (
+          <TranslateAndExplain
+            key={`${targetLang.code}-${knownLang.code}`}
+            targetLang={targetLang}
+            knownLang={knownLang}
+            isOnline={isOnline}
+            pronunciationAid={currentPronunciationAid}
+            onAddCardToDeck={handleAddCard}
           />
         )}
 

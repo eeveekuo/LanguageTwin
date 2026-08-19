@@ -16,6 +16,7 @@ import {
   getFallbackQuickAssist,
   getFallbackReadingArticle,
   getFallbackJournalCheck,
+  getFallbackTranslateAndExplain,
 } from "./server/geminiResilience";
 import {
   getDeckGenerationSystemInstruction,
@@ -48,6 +49,8 @@ import {
   getExplainCardUserPrompt,
   getJournalCheckSystemInstruction,
   getJournalCheckUserPrompt,
+  getTranslateAndExplainSystemInstruction,
+  getTranslateAndExplainUserPrompt,
 } from "./server/prompts";
 
 dotenv.config();
@@ -1563,6 +1566,123 @@ app.post("/api/check-journal-prose", async (req, res) => {
     res.status(500).json({ error: error.message || "Failed to check journal prose" });
   }
 });
+
+// Translation & Linguistic Breakdown with Token-Level Alignment and Pedagogical Insights
+app.post("/api/translate-and-explain", async (req, res) => {
+  try {
+    const { text, sourceLanguage, targetLanguage, pronunciationAid } = req.body;
+    if (!text || !text.trim()) {
+      return res.status(400).json({ error: "Text is required for translation" });
+    }
+
+    const sLang = sourceLanguage || { code: "en", name: "English" };
+    const tLang = targetLanguage || { code: "zh-TW", name: "Traditional Chinese" };
+
+    try {
+      const ai = getGeminiClient();
+      const systemInstruction = getTranslateAndExplainSystemInstruction();
+      const userPrompt = getTranslateAndExplainUserPrompt({
+        text: text.trim(),
+        sourceLanguage: sLang,
+        targetLanguage: tLang,
+        pronunciationAid,
+      });
+
+      const response = await generateWithFallback(ai, {
+        primaryModel: "gemini-3.7-flash",
+        contents: userPrompt,
+        config: {
+          systemInstruction,
+          temperature: 0.2,
+          responseMimeType: "application/json",
+          responseSchema: {
+            type: Type.OBJECT,
+            properties: {
+              translatedText: { type: Type.STRING },
+              phonetic: { type: Type.STRING },
+              literalTranslation: { type: Type.STRING },
+              summaryExplanation: { type: Type.STRING },
+              structuralFormula: { type: Type.STRING },
+              formalityVariants: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    register: { type: Type.STRING },
+                    phrase: { type: Type.STRING },
+                    explanation: { type: Type.STRING },
+                  },
+                  required: ["register", "phrase", "explanation"],
+                },
+              },
+              tokenBreakdown: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    token: { type: Type.STRING },
+                    translatedToken: { type: Type.STRING },
+                    partOfSpeech: { type: Type.STRING },
+                    roleOrNuance: { type: Type.STRING },
+                  },
+                  required: ["token", "translatedToken", "partOfSpeech"],
+                },
+              },
+              grammarPoints: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    pattern: { type: Type.STRING },
+                    meaning: { type: Type.STRING },
+                    rule: { type: Type.STRING },
+                    exampleSentence: {
+                      type: Type.OBJECT,
+                      properties: {
+                        target: { type: Type.STRING },
+                        translation: { type: Type.STRING },
+                      },
+                      required: ["target", "translation"],
+                    },
+                  },
+                  required: ["pattern", "meaning", "rule"],
+                },
+              },
+              culturalOrIdiomNote: { type: Type.STRING },
+            },
+            required: [
+              "translatedText",
+              "summaryExplanation",
+              "structuralFormula",
+              "formalityVariants",
+              "tokenBreakdown",
+              "grammarPoints",
+            ],
+          },
+        },
+      });
+
+      const parsed = safeParseJson(response.text);
+      if (parsed && parsed.translatedText) {
+        return res.json(parsed);
+      }
+    } catch (aiErr: any) {
+      console.warn("AI translation & explain failed, using fallback resilience:", aiErr?.message || aiErr);
+    }
+
+    const fallback = getFallbackTranslateAndExplain({
+      text: text.trim(),
+      sourceLanguage: sLang,
+      targetLanguage: tLang,
+      pronunciationAid,
+    });
+    return res.json(fallback);
+  } catch (error: any) {
+    console.error("Translate and explain error:", error);
+    res.status(500).json({ error: error.message || "Failed to translate and explain text" });
+  }
+});
+
 
 // Text-to-Speech API using gemini-3.1-flash-tts-preview as server-side high-quality audio fallback
 app.post("/api/tts", async (req, res) => {

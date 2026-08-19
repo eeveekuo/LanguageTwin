@@ -924,3 +924,65 @@ export function getFallbackJournalCheck(params: {
   };
 }
 
+/**
+ * Fallback Translation and Linguistic Explanation
+ */
+export function getFallbackTranslateAndExplain(params: {
+  text: string;
+  sourceLanguage: { code: string; name: string };
+  targetLanguage: { code: string; name: string };
+  pronunciationAid?: string;
+}) {
+  const { text, sourceLanguage, targetLanguage } = params;
+  const isChinese = targetLanguage.code.toLowerCase().includes("zh");
+  const isJapanese = targetLanguage.code.toLowerCase().includes("ja");
+  const isKorean = targetLanguage.code.toLowerCase().includes("ko");
+  const isSpanish = targetLanguage.code.toLowerCase().includes("es");
+
+  return {
+    translatedText: text,
+    phonetic: isChinese ? "fānyì yǔ jiěshì" : isJapanese ? "ほんやく と かいせつ" : isKorean ? "beon-yeok gwa seolmyeong" : isSpanish ? "traducción y explicación" : "pronunciation",
+    literalTranslation: text,
+    summaryExplanation: `This sentence demonstrates standard word order and communicative structure from ${sourceLanguage.name} to ${targetLanguage.name}. Notice how clauses and topic markers establish clear context.`,
+    structuralFormula: isJapanese || isKorean ? "[Topic/Subject] + [Time/Location] + [Object] + [Verb]" : isChinese ? "[Subject] + [Time] + [Verb] + [Object]" : "[Subject] + [Verb] + [Object] + [Adverbial]",
+    formalityVariants: [
+      {
+        register: "Polite / Standard",
+        phrase: text,
+        explanation: "Appropriate for general conversation with colleagues, acquaintances, and strangers.",
+      },
+      {
+        register: "Casual / Informal",
+        phrase: text,
+        explanation: "Used among close friends, peers, or family members in relaxed settings.",
+      },
+      {
+        register: "Formal / Professional",
+        phrase: text,
+        explanation: "Suitable for business communications, formal announcements, or academic presentations.",
+      },
+    ],
+    tokenBreakdown: text
+      .split(/[\s,.;!?，。！？]+/)
+      .filter(Boolean)
+      .map((tok, idx) => ({
+        token: tok,
+        translatedToken: `[Meaning of ${tok}]`,
+        partOfSpeech: idx === 0 ? "Subject / Topic" : idx === 1 ? "Verb / Predicate" : "Object / Modifier",
+        roleOrNuance: `Carries the core meaning in this position of the clause.`,
+      })),
+    grammarPoints: [
+      {
+        pattern: "Natural clause structure",
+        meaning: `Standard grammatical arrangement in ${targetLanguage.name}`,
+        rule: `Keep modifiers preceding nouns and pay attention to verb conjugation and aspect markers.`,
+        exampleSentence: {
+          target: text,
+          translation: `Translation of example sentence`,
+        },
+      },
+    ],
+    culturalOrIdiomNote: `In ${targetLanguage.name}, polite phrasing often relies on indirect phrasing and context markers rather than direct imperatives.`,
+  };
+}
+
