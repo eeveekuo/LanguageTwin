@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from "react";
 import { getAlignedSentencePair, Token } from "../utils/alignment";
+import { formatPronunciation } from "../utils/pronunciation";
 import { Volume2, Link as LinkIcon, Sparkles } from "lucide-react";
 
 interface AlignedTranslationProps {
@@ -7,6 +8,8 @@ interface AlignedTranslationProps {
   translationText: string;
   targetLangCode: string;
   phonetic?: string;
+  pronunciationAid?: string;
+  tokenBreakdown?: Array<{ token: string; translatedToken: string }>;
   idPrefix?: string;
   onSpeak?: (text: string) => void;
   showAudioButton?: boolean;
@@ -22,6 +25,8 @@ export const AlignedTranslation: React.FC<AlignedTranslationProps> = ({
   translationText,
   targetLangCode,
   phonetic,
+  pronunciationAid,
+  tokenBreakdown,
   idPrefix = "align",
   onSpeak,
   showAudioButton = true,
@@ -40,9 +45,10 @@ export const AlignedTranslation: React.FC<AlignedTranslationProps> = ({
       targetText || "",
       translationText || "",
       targetLangCode,
-      idPrefix
+      idPrefix,
+      tokenBreakdown
     );
-  }, [targetText, translationText, targetLangCode, idPrefix]);
+  }, [targetText, translationText, targetLangCode, idPrefix, tokenBreakdown]);
 
   // Determine which target tokens are currently active/highlighted
   const activeTargetTokenIds = useMemo(() => {
@@ -75,6 +81,17 @@ export const AlignedTranslation: React.FC<AlignedTranslationProps> = ({
   }, [hoveredTargetId, hoveredTranslationId, targetTokens]);
 
   const hasActiveHighlight = activeTargetTokenIds.size > 0 || activeTranslationTokenIds.size > 0;
+
+  // Pronunciation formatting: strictly suppressed if aidMode is 'none'
+  const displayPhonetic = useMemo(() => {
+    if (!phonetic || pronunciationAid === "none") {
+      return null;
+    }
+    if (pronunciationAid) {
+      return formatPronunciation(targetText, phonetic, targetLangCode, pronunciationAid);
+    }
+    return phonetic;
+  }, [phonetic, pronunciationAid, targetText, targetLangCode]);
 
   // Font sizing maps
   const targetTextSize =
@@ -125,10 +142,10 @@ export const AlignedTranslation: React.FC<AlignedTranslationProps> = ({
             })}
           </div>
 
-          {/* Optional Phonetic Transcription */}
-          {phonetic && (
+          {/* Optional Phonetic Transcription (Only shown when pronunciationAid is enabled) */}
+          {displayPhonetic && (
             <p className="text-xs font-serif text-indigo-700/80 mt-0.5 italic">
-              {phonetic}
+              {displayPhonetic}
             </p>
           )}
         </div>

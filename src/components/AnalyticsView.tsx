@@ -514,8 +514,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                     <Calendar className="w-3.5 h-3.5" />
                     <span>Today's Multi-Modal Practice Ledger</span>
                   </span>
-                  <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/30 text-emerald-300 text-xs font-bold border border-emerald-400/30">
-                    Streak: {dailyProgress.streak} Days Active 🔥
+                  <span className="px-2.5 py-0.5 rounded-full bg-indigo-500/30 text-indigo-200 text-xs font-bold border border-indigo-400/30">
+                    Daily Practice Active
                   </span>
                 </div>
                 <h3 className="text-2xl sm:text-3xl font-black tracking-tight text-white">
@@ -1480,7 +1480,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                           <CheckCircle2 className="w-3 h-3" /> {card.srs.masteryScore}%
                         </span>
                         <p className="text-[10px] text-slate-400 font-mono mt-0.5">
-                          {card.srs.consecutiveSuccesses} streak
+                          {card.srs.consecutiveSuccesses} reviews passed
                         </p>
                       </div>
                     </div>

@@ -202,11 +202,6 @@ export const Header: React.FC<HeaderProps> = ({
             >
               <BarChart3 className={`w-3.5 h-3.5 ${activeTab === "stats" ? "text-white" : "text-indigo-600"}`} />
               <span>Mastery</span>
-              <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
-                activeTab === "stats" ? "bg-white/20 text-white" : "bg-indigo-100 text-indigo-700"
-              }`}>
-                {dailyProgress.streak}🔥
-              </span>
             </button>
 
             {/* Daily Goal Pill */}

@@ -8,6 +8,7 @@ export interface ExampleSentence {
   target: string;
   translation: string;
   phonetic?: string;
+  tokenBreakdown?: Array<{ token: string; translatedToken: string }>;
 }
 
 export interface SRSRecord {

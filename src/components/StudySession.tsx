@@ -1253,6 +1253,9 @@ export const StudySession: React.FC<StudySessionProps> = ({
                       targetText={activeExample.target}
                       translationText={activeExample.translation}
                       targetLangCode={targetLang.code}
+                      phonetic={activeExample.phonetic}
+                      pronunciationAid={pronunciationAid}
+                      tokenBreakdown={activeExample.tokenBreakdown}
                       idPrefix={`repeat-ex-${selectedExampleIndex}`}
                       onSpeak={(text) => handlePlayAudio(text, `repeat-ex-${selectedExampleIndex}`)}
                       size="sm"
@@ -1771,6 +1774,9 @@ export const StudySession: React.FC<StudySessionProps> = ({
                         targetText={ex.target}
                         translationText={ex.translation}
                         targetLangCode={targetLang.code}
+                        phonetic={ex.phonetic}
+                        pronunciationAid={pronunciationAid}
+                        tokenBreakdown={ex.tokenBreakdown}
                         idPrefix={`tile3-ex-${idx}`}
                         onSpeak={(text) => handlePlayAudio(text, `ex-audio-${idx}`)}
                         size="sm"

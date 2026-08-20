@@ -189,7 +189,7 @@ export const BUILTIN_DICTIONARY: Record<string, Record<string, DictionaryEntry>>
       },
     },
     友達: {
-      targetItem: "友達 (ともだち)",
+      targetItem: "友達",
       translation: "friend, companion",
       partOfSpeech: "Noun",
       phonetic: "tomodachi",

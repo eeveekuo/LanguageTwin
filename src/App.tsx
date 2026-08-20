@@ -11,6 +11,7 @@ import {
   LearnerError,
   DailyProgress,
   EvaluationResult,
+  PracticeMechanismType,
 } from "./types";
 import { DEFAULT_DECKS } from "./data/defaultDecks";
 import { SUPPORTED_LANGUAGES, getLanguageByCode } from "./data/languages";
@@ -20,6 +21,7 @@ import {
   saveDailyProgress,
   recordCardReview,
   updateDailyTarget,
+  logPracticeActivity,
 } from "./utils/dailyGoals";
 import {
   loadLearnerErrors,
@@ -73,6 +75,24 @@ import { TranslateAndExplain } from "./components/TranslateAndExplain";
 const STORAGE_KEY_DECKS = "frequency_srs_decks_v1";
 const STORAGE_KEY_ACTIVE_DECK = "frequency_srs_active_deck_id_v1";
 
+function sanitizeDeckCards(decksList: Deck[]): Deck[] {
+  return decksList.map((deck) => ({
+    ...deck,
+    cards: deck.cards.map((card) => {
+      let cleanedTargetItem = card.targetItem || "";
+      // Strip parenthetical readings like "是 (shì)" -> "是", "友達 (ともだち)" -> "友達"
+      cleanedTargetItem = cleanedTargetItem
+        .replace(/\s*\([a-zA-Zāáǎàēéěèīíǐìōóǒòūúǔùǖǘǚǜüê̄ếê̌ềêńňǹ\u3040-\u309F\u30A0-\u30FF\u3100-\u312F\s\-~—–./]+\)/g, "")
+        .trim();
+
+      return {
+        ...card,
+        targetItem: cleanedTargetItem || card.targetItem,
+      };
+    }),
+  }));
+}
+
 export default function App() {
   const isOnline = useOnlineStatus();
   const [activeTab, setActiveTab] = useState<
@@ -92,14 +112,14 @@ export default function App() {
         if (saved) {
           const parsed = JSON.parse(saved);
           if (Array.isArray(parsed) && parsed.length > 0) {
-            return parsed;
+            return sanitizeDeckCards(parsed);
           }
         }
       } catch (e) {
         console.warn("Failed to load decks from local storage:", e);
       }
     }
-    return DEFAULT_DECKS;
+    return sanitizeDeckCards(DEFAULT_DECKS);
   });
 
   const [activeDeckId, setActiveDeckId] = useState<string>(() => {
@@ -195,13 +215,11 @@ export default function App() {
 
             // Restore / merge user decks
             if (Array.isArray(cloudData.decks) && cloudData.decks.length > 0) {
+              const sanitizedCloudDecks = sanitizeDeckCards(cloudData.decks);
               setDecks((prevDecks) => {
-                const cloudDeckMap = new Map(
-                  cloudData.decks.map((d: Deck) => [d.id, d])
-                );
                 // Keep default decks + merge with cloud decks
                 const merged = [...prevDecks];
-                cloudData.decks.forEach((cd: Deck) => {
+                sanitizedCloudDecks.forEach((cd: Deck) => {
                   const existingIdx = merged.findIndex((d) => d.id === cd.id);
                   if (existingIdx >= 0) {
                     merged[existingIdx] = cd;
@@ -209,7 +227,7 @@ export default function App() {
                     merged.push(cd);
                   }
                 });
-                return merged;
+                return sanitizeDeckCards(merged);
               });
             }
 
@@ -540,6 +558,24 @@ export default function App() {
 
     // Increment daily target progress
     const { updated } = recordCardReview(dailyProgress);
+    const updatedWithLog = logPracticeActivity(updated, {
+      mechanism: "tutor",
+      title: `Conversation with AI Tutor (${evaluatedItems.length} items)`,
+      details: userMessage.slice(0, 80),
+      score: evaluatedItems[0]?.score || 85,
+      targetItem: evaluatedItems[0]?.targetItem,
+    });
+    setDailyProgress(updatedWithLog);
+  };
+
+  const handleLogPracticeActivity = (activity: {
+    mechanism: PracticeMechanismType;
+    title: string;
+    details: string;
+    score?: number;
+    targetItem?: string;
+  }) => {
+    const updated = logPracticeActivity(dailyProgress, activity);
     setDailyProgress(updated);
   };
 
@@ -807,8 +843,10 @@ export default function App() {
             targetLang={targetLang}
             knownLang={knownLang}
             isOnline={isOnline}
+            pronunciationAid={currentPronunciationAid}
             onNavigateToStudy={() => setActiveTab("study")}
             onNavigateToDeck={() => setActiveTab("deck")}
+            onLogPracticeActivity={handleLogPracticeActivity}
           />
         )}
 
@@ -823,6 +861,7 @@ export default function App() {
             learnerErrors={learnerErrors}
             onNavigateTab={(tab) => setActiveTab(tab as any)}
             pronunciationAid={currentPronunciationAid}
+            onLogPracticeActivity={handleLogPracticeActivity}
           />
         )}
 
@@ -858,6 +897,7 @@ export default function App() {
             isOnline={isOnline}
             pronunciationAid={currentPronunciationAid}
             onAddCardToDeck={handleAddCard}
+            onLogPracticeActivity={handleLogPracticeActivity}
           />
         )}
 

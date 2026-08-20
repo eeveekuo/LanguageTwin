@@ -30,6 +30,7 @@ interface SentenceStructurePrimerProps {
   onNavigateToStudy?: () => void;
   onNavigateToDeck?: () => void;
   isOnline?: boolean;
+  pronunciationAid?: string;
   onLogPracticeActivity?: (activity: {
     mechanism: "grammar";
     title: string;
@@ -98,6 +99,7 @@ export const SentenceStructurePrimer: React.FC<SentenceStructurePrimerProps> = (
   onNavigateToStudy,
   onNavigateToDeck,
   isOnline = true,
+  pronunciationAid,
   onLogPracticeActivity,
 }) => {
   const guide: LanguageStructureGuide = useMemo(() => {
@@ -460,6 +462,7 @@ export const SentenceStructurePrimer: React.FC<SentenceStructurePrimerProps> = (
                               translationText={ex.translation}
                               targetLangCode={targetLang.code}
                               phonetic={ex.phonetic}
+                              pronunciationAid={pronunciationAid}
                               idPrefix={`formula-${formula.id}-${i}`}
                               onSpeak={(text) => playTextAloud(text, targetLang.code)}
                             />

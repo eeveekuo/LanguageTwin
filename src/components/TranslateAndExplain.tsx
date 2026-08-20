@@ -494,10 +494,12 @@ export const TranslateAndExplain: React.FC<TranslateAndExplainProps> = ({
               <AlignedTranslation
                 targetText={alignedTarget}
                 translationText={alignedTranslation}
-                targetLangCode={targetLang.code}
-                phonetic={formattedPhonetic || undefined}
+                targetLangCode={direction === "known-to-target" ? targetLang.code : knownLang.code}
+                phonetic={result.phonetic}
+                pronunciationAid={pronunciationAid}
+                tokenBreakdown={result.tokenBreakdown}
                 idPrefix="live-trans"
-                onSpeak={(text) => playTextAloud(text, targetLang.code)}
+                onSpeak={(text) => playTextAloud(text, direction === "known-to-target" ? targetLang.code : knownLang.code)}
                 size="lg"
                 layout="stacked"
               />

@@ -177,7 +177,7 @@ Después de comer, ellos compran queso manchego y aceitunas para llevar a casa. 
         translation: "While savoring our coffee, we shared our insights from the week. I want to record all the beautiful moments in life and slow down to appreciate the city's warmth.",
       },
     ],
-    targetWordsUsed: ["是 (shì)", "有 (yǒu)", "把 (bǎ) 字句", "雖然...但是... (suīrán... dànshì...)", "想 (xiǎng)"],
+    targetWordsUsed: ["是", "有", "把字句", "雖然...但是...", "想"],
     summary: "Exploring the artistic alleys of Chifeng Street in Taipei, savoring local Alishan pour-over coffee, and embracing mindful slow living.",
     followUpQuestions: [
       {

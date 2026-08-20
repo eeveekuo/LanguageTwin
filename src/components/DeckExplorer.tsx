@@ -1053,6 +1053,9 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
                                 targetText={ex.target}
                                 translationText={ex.translation}
                                 targetLangCode={targetLang.code}
+                                phonetic={ex.phonetic}
+                                pronunciationAid={pronunciationAid}
+                                tokenBreakdown={ex.tokenBreakdown}
                                 idPrefix={`deck-card-${card.id}-ex-${idx}`}
                                 onSpeak={(text) => handlePlayAudio(text)}
                                 size="sm"
