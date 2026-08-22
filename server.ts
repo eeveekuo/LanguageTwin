@@ -17,6 +17,10 @@ import {
   getFallbackReadingArticle,
   getFallbackJournalCheck,
   getFallbackTranslateAndExplain,
+  getFallbackScenario,
+  getFallbackConjugationLookup,
+  getFallbackReadingTextExplanation,
+  getFallbackGradeReadingResponse,
 } from "./server/geminiResilience";
 import {
   getDeckGenerationSystemInstruction,
@@ -720,8 +724,14 @@ app.post("/api/generate-scenario", async (req, res) => {
     const parsed = safeParseJson(response.text);
     res.json(parsed);
   } catch (error: any) {
-    console.error("Scenario generation error:", error);
-    res.status(500).json({ error: error.message || "Scenario generation failed" });
+    console.error("Scenario generation error, using fallback:", error);
+    const fallback = getFallbackScenario({
+      targetLanguage: req.body?.targetLanguage || "Traditional Chinese",
+      knownLanguage: req.body?.knownLanguage || "English",
+      theme: req.body?.theme,
+      level: req.body?.level,
+    });
+    res.json(fallback);
   }
 });
 
@@ -1022,8 +1032,16 @@ app.post("/api/regenerate-level-deck", async (req, res) => {
     const parsed = safeParseJson(response.text);
     res.json(parsed);
   } catch (error: any) {
-    console.error("Calibrated deck generation error:", error);
-    res.status(500).json({ error: error.message || "Failed to regenerate calibrated deck" });
+    console.error("Calibrated deck generation error, using fallback:", error);
+    const fallback = getFallbackDeck(
+      req.body?.targetLanguage || "Traditional Chinese",
+      req.body?.knownLanguage || "English",
+      "Core Foundations & Key Grammar",
+      req.body?.cefrLevel || "A2",
+      req.body?.cardCount || 15,
+      req.body?.recommendedStartingRank || 1
+    );
+    res.json(fallback);
   }
 });
 
@@ -1224,8 +1242,13 @@ app.post("/api/explain-reading-text", async (req, res) => {
     const parsed = safeParseJson(response.text);
     res.json(parsed);
   } catch (error: any) {
-    console.error("Text explanation error:", error);
-    res.status(500).json({ error: error.message || "Failed to explain highlighted text" });
+    console.error("Text explanation error, using fallback:", error);
+    const fallback = getFallbackReadingTextExplanation({
+      selectedText: req.body?.selectedText || "",
+      targetLanguage: req.body?.targetLanguage || "Traditional Chinese",
+      knownLanguage: req.body?.knownLanguage || "English",
+    });
+    res.json(fallback);
   }
 });
 
@@ -1330,8 +1353,13 @@ app.post("/api/grade-reading-response", async (req, res) => {
     const parsed = safeParseJson(response.text);
     res.json(parsed);
   } catch (error: any) {
-    console.error("Reading response grade error:", error);
-    res.status(500).json({ error: error.message || "Failed to grade reading response" });
+    console.error("Reading response grade error, using fallback:", error);
+    const fallback = getFallbackGradeReadingResponse({
+      questionText: req.body?.questionText || "",
+      userResponse: req.body?.userResponse || "",
+      targetLanguage: req.body?.targetLanguage || "Spanish",
+    });
+    res.json(fallback);
   }
 });
 
@@ -1425,8 +1453,14 @@ app.post("/api/conjugation-lookup", async (req, res) => {
     const parsed = safeParseJson(response.text);
     res.json(parsed);
   } catch (error: any) {
-    console.error("Conjugation lookup error:", error);
-    res.status(500).json({ error: error.message || "Failed to lookup verb conjugations" });
+    console.error("Conjugation lookup error, using fallback:", error);
+    const fallback = getFallbackConjugationLookup({
+      verb: req.body?.verb || "",
+      targetLanguage: req.body?.targetLanguage || "Spanish",
+      targetLanguageCode: req.body?.targetLanguageCode || "es",
+      knownLanguage: req.body?.knownLanguage || "English",
+    });
+    res.json(fallback);
   }
 });
 

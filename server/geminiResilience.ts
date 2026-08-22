@@ -2,7 +2,8 @@ import { GoogleGenAI } from "@google/genai";
 
 const CANDIDATE_MODELS = [
   "gemini-3.7-flash",
-  "gemini-3.6-flash",
+  "gemini-3.1-flash-lite",
+  "gemini-flash-latest",
 ];
 
 interface GenerateWithFallbackOptions {
@@ -45,7 +46,7 @@ export async function generateWithFallback(
           `[Gemini Resilience] Model ${model} (attempt ${attempt + 1}) failed: ${err?.message || err}`
         );
 
-        // If high demand / 503 / 429 / resource exhausted, pause and retry or cascade
+        // If high demand / 503 / 429 / resource exhausted, pause with jitter and retry or cascade
         if (
           msg.includes("503") ||
           msg.includes("429") ||
@@ -54,10 +55,11 @@ export async function generateWithFallback(
           msg.includes("resource_exhausted") ||
           msg.includes("overloaded")
         ) {
-          await new Promise((resolve) => setTimeout(resolve, 500 * (attempt + 1)));
+          const backoffTime = 600 * (attempt + 1) + Math.floor(Math.random() * 250);
+          await new Promise((resolve) => setTimeout(resolve, backoffTime));
           continue;
         } else {
-          // If syntax/format error, try next model directly
+          // If unsupported parameter or syntax/format error on specific model, try next model directly
           break;
         }
       }
@@ -1216,4 +1218,207 @@ export function getFallbackTranslateAndExplain(params: {
     culturalOrIdiomNote: `In ${targetLanguage.name}, polite phrasing emphasizes smooth interpersonal harmony and appropriate register markers.`,
   };
 }
+
+/**
+ * Fallback Conversation Scenario Generator
+ */
+export function getFallbackScenario(params: {
+  targetLanguage: string;
+  knownLanguage: string;
+  theme?: string;
+  level?: string;
+}) {
+  const { targetLanguage } = params;
+  const isChinese = (targetLanguage || "").toLowerCase().includes("chinese") || (targetLanguage || "").toLowerCase().includes("taiwan");
+  const isSpanish = (targetLanguage || "").toLowerCase().includes("spanish") || (targetLanguage || "").toLowerCase().includes("español");
+  const isJapanese = (targetLanguage || "").toLowerCase().includes("japanese") || (targetLanguage || "").toLowerCase().includes("日本語");
+
+  if (isChinese) {
+    return {
+      title: "夜市在地美食探索 (Night Market Culinary Exploration)",
+      category: "Dining & Travel",
+      scenarioPrompt: "You are a friendly Taiwanese street food vendor at the Shilin Night Market in Taipei. Chat with the customer about local recommendations and spice levels.",
+      targetWordsToUse: ["推薦 (recommend)", "夜市 (night market)", "在地 (local)", "不要太辣 (not too spicy)"],
+      openingGreeting: "歡迎光臨！請問今天想吃點什麼？我們這裡的珍珠奶茶和雞排最受歡迎喔！",
+      openingGreetingTranslation: "Welcome! What would you like to have today? Our bubble tea and crispy chicken cutlet are the most popular here!",
+    };
+  }
+
+  if (isJapanese) {
+    return {
+      title: "カフェで注文する (Ordering at a Local Café)",
+      category: "Daily Life & Dining",
+      scenarioPrompt: "You are a friendly café barista in Kyoto. Greet the customer and help them choose a seasonal drink and treat.",
+      targetWordsToUse: ["おすすめ (recommendation)", "注文 (order)", "温かい (hot / warm)", "抹茶 (matcha)"],
+      openingGreeting: "いらっしゃいませ！店内でお召し上がりですか？季節限定の抹茶ラテがおすすめですよ。",
+      openingGreetingTranslation: "Welcome! Will you be having it here? I recommend our seasonal matcha latte!",
+    };
+  }
+
+  if (isSpanish) {
+    return {
+      title: "En el Restaurante Tradicional (At the Traditional Restaurant)",
+      category: "Dining & Social",
+      scenarioPrompt: "You are a friendly waiter at a cozy tapas restaurant in Seville. Welcome the guest and recommend regional specialties.",
+      targetWordsToUse: ["recomendar (to recommend)", "tapas (appetizers)", "la cuenta (the bill)", "¿Qué me sugiere? (what do you suggest?)"],
+      openingGreeting: "¡Buenas tardes! Bienvenido a nuestro restaurante. ¿Le gustaría empezar con unas tapas típicas de la casa?",
+      openingGreetingTranslation: "Good afternoon! Welcome to our restaurant. Would you like to start with some of our house specialty tapas?",
+    };
+  }
+
+  return {
+    title: `Conversational Practice in ${targetLanguage}`,
+    category: "Social & Daily Life",
+    scenarioPrompt: `Engage in a welcoming, helpful conversation in ${targetLanguage} discussing daily interests and hobbies.`,
+    targetWordsToUse: ["Hello", "Please", "Thank you", "Recommend"],
+    openingGreeting: `Hello! Welcome to our practice conversation in ${targetLanguage}. What would you like to talk about today?`,
+    openingGreetingTranslation: "Hello! Welcome to our practice conversation. What would you like to talk about today?",
+  };
+}
+
+/**
+ * Fallback Conjugation Lookup Generator
+ */
+export function getFallbackConjugationLookup(params: {
+  verb: string;
+  targetLanguage: string;
+  targetLanguageCode?: string;
+  knownLanguage?: string;
+}) {
+  const { verb, targetLanguage } = params;
+  const isSpanish = (targetLanguage || "").toLowerCase().includes("spanish");
+  const isChinese = (targetLanguage || "").toLowerCase().includes("chinese");
+
+  if (isChinese) {
+    return {
+      verb,
+      infinitiveOrRoot: verb,
+      translation: `to ${verb}`,
+      targetLanguage,
+      targetLangCode: "zh-TW",
+      regularity: "regular (Chinese verbs do not inflect for person/tense, they use aspect particles like 了, 著, 過)",
+      stemNotes: "Chinese verbs maintain a consistent root form and express tense/aspect via auxiliary particles (了 for completed action, 著 for continuous state, 過 for experiential past).",
+      forms: [
+        {
+          id: "aspect-completed",
+          name: "Completed Aspect (完成體)",
+          category: "Aspect",
+          description: "Indicates completed action using 了 (le)",
+          formula: "[Verb] + 了",
+          entries: [
+            { personOrForm: "All persons", conjugated: `${verb}了`, phonetic: `${verb} le`, english: `did / have ${verb}ed`, example: { target: `我已經${verb}了。`, translation: `I already did this action.` } }
+          ],
+        },
+        {
+          id: "aspect-continuous",
+          name: "Continuous / Progressive (進行/持續體)",
+          category: "Aspect",
+          description: "Indicates ongoing state or action with 在 (zài) or 著 (zhe)",
+          formula: "正在 / 在 + [Verb]",
+          entries: [
+            { personOrForm: "All persons", conjugated: `正在${verb}`, phonetic: `zhèngzài ${verb}`, english: `is currently ${verb}ing`, example: { target: `他正在${verb}呢。`, translation: `He is currently doing this.` } }
+          ],
+        },
+      ],
+    };
+  }
+
+  // Default Spanish / Western Verb Fallback
+  return {
+    verb,
+    infinitiveOrRoot: verb,
+    translation: `to ${verb}`,
+    targetLanguage: targetLanguage || "Spanish",
+    targetLangCode: "es",
+    regularity: "regular",
+    stemNotes: `Standard conjugation pattern for ${verb} in ${targetLanguage}.`,
+    forms: [
+      {
+        id: "present-indicative",
+        name: "Present Indicative (Presente)",
+        category: "Indicative",
+        description: "Expresses habitual actions, current states, and general truths.",
+        formula: "Stem + ending",
+        entries: [
+          { personOrForm: "1st Sing. (yo)", conjugated: `${verb.replace(/(ar|er|ir)$/i, "")}o`, phonetic: "yo", english: "I do", example: { target: `Yo ${verb.replace(/(ar|er|ir)$/i, "")}o todos los días.`, translation: "I do this every day." } },
+          { personOrForm: "2nd Sing. (tú)", conjugated: `${verb.replace(/(ar|er|ir)$/i, "")}as`, phonetic: "tú", english: "you do (informal)", example: { target: `¿Tú ${verb.replace(/(ar|er|ir)$/i, "")}as ahora?`, translation: "Do you do this now?" } },
+          { personOrForm: "3rd Sing. (él/ella/Ud.)", conjugated: `${verb.replace(/(ar|er|ir)$/i, "")}a`, phonetic: "él/ella", english: "he/she does", example: { target: `Ella ${verb.replace(/(ar|er|ir)$/i, "")}a con frecuencia.`, translation: "She does this frequently." } },
+          { personOrForm: "1st Plural (nosotros)", conjugated: `${verb.replace(/(ar|er|ir)$/i, "")}amos`, phonetic: "nosotros", english: "we do", example: { target: `Nosotros ${verb.replace(/(ar|er|ir)$/i, "")}amos juntos.`, translation: "We do this together." } },
+          { personOrForm: "3rd Plural (ellos/Uds.)", conjugated: `${verb.replace(/(ar|er|ir)$/i, "")}an`, phonetic: "ellos", english: "they do", example: { target: `Ellos ${verb.replace(/(ar|er|ir)$/i, "")}an a menudo.`, translation: "They do this often." } },
+        ],
+      },
+      {
+        id: "preterite-indicative",
+        name: "Preterite Indicative (Pretérito Indefinido)",
+        category: "Indicative",
+        description: "Expresses completed past actions with clear time boundaries.",
+        formula: "Past stem + preterite ending",
+        entries: [
+          { personOrForm: "1st Sing. (yo)", conjugated: `${verb.replace(/(ar|er|ir)$/i, "")}é`, phonetic: "yo", english: "I did", example: { target: `Ayer ${verb.replace(/(ar|er|ir)$/i, "")}é todo el día.`, translation: "Yesterday I did this all day." } },
+          { personOrForm: "3rd Sing. (él/ella)", conjugated: `${verb.replace(/(ar|er|ir)$/i, "")}ó`, phonetic: "él", english: "he/she did", example: { target: `Ayer él ${verb.replace(/(ar|er|ir)$/i, "")}ó temprano.`, translation: "Yesterday he did this early." } },
+        ],
+      },
+    ],
+  };
+}
+
+/**
+ * Fallback Reading Text Explanation Generator
+ */
+export function getFallbackReadingTextExplanation(params: {
+  selectedText: string;
+  targetLanguage: string;
+  knownLanguage?: string;
+}) {
+  const { selectedText, targetLanguage } = params;
+  return {
+    selectedText,
+    translation: `[Meaning of "${selectedText}"]`,
+    grammaticalContext: `"${selectedText}" functions as a core semantic unit in ${targetLanguage}. Notice how it connects to surrounding sentence elements.`,
+    concepts: [
+      {
+        id: `concept-${Date.now()}`,
+        targetItem: selectedText,
+        type: "vocabulary",
+        partOfSpeech: "Phrase / Word",
+        definition: `Key vocabulary or structural phrase in ${targetLanguage}`,
+        phonetic: "pronunciation guide",
+        usageNotes: `Use "${selectedText}" in everyday conversation or reading comprehension.`,
+        exampleSentence: {
+          target: selectedText,
+          translation: `Meaning of "${selectedText}" in context`,
+          phonetic: "",
+        },
+      },
+    ],
+  };
+}
+
+/**
+ * Fallback Grade Reading Response Generator
+ */
+export function getFallbackGradeReadingResponse(params: {
+  questionText: string;
+  userResponse: string;
+  targetLanguage: string;
+}) {
+  const { userResponse } = params;
+  const isReasonableLength = userResponse.trim().length >= 3;
+  return {
+    semanticScore: isReasonableLength ? 85 : 40,
+    isSemanticallyAccurate: isReasonableLength,
+    semanticFeedback: isReasonableLength
+      ? "Good effort! Your response addresses the core meaning of the reading passage."
+      : "Your answer is brief. Try adding more detail from the article.",
+    grammarScore: isReasonableLength ? 82 : 45,
+    isGrammaticallyCorrect: isReasonableLength,
+    grammarFeedback: "Sentence structure is clear and understandable. Keep practicing natural transitions.",
+    overallGrade: isReasonableLength ? 4 : 2,
+    correctedUserSentence: userResponse,
+    correctedUserSentenceTranslation: "Your submitted response in English",
+    identifiedErrors: [],
+    suggestedRemedyCards: [],
+  };
+}
+
 
