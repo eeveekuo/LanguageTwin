@@ -28,6 +28,7 @@ export async function generateWithFallback(
   let lastError: any = null;
 
   for (const model of modelList) {
+    // For 503 high demand spikes, try 1 quick retry on the first model, then immediately cascade to the next candidate model
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         const response = await ai.models.generateContent({
@@ -42,20 +43,22 @@ export async function generateWithFallback(
       } catch (err: any) {
         lastError = err;
         const msg = (err?.message || String(err)).toLowerCase();
-        console.warn(
-          `[Gemini Resilience] Model ${model} (attempt ${attempt + 1}) failed: ${err?.message || err}`
-        );
 
-        // If high demand / 503 / 429 / resource exhausted, pause with jitter and retry or cascade
+        // If 503 / high demand on attempt 1, immediately switch to alternate candidate model on next loop
+        if (msg.includes("503") || msg.includes("unavailable") || msg.includes("high demand") || msg.includes("spikes in demand")) {
+          console.warn(
+            `[Gemini Resilience] Model ${model} is experiencing high demand (503). Cascading to alternate model immediately.`
+          );
+          break; // Cascade to the next model immediately
+        }
+
+        // If rate limited 429, pause with brief jitter
         if (
-          msg.includes("503") ||
           msg.includes("429") ||
-          msg.includes("unavailable") ||
-          msg.includes("demand") ||
           msg.includes("resource_exhausted") ||
           msg.includes("overloaded")
         ) {
-          const backoffTime = 600 * (attempt + 1) + Math.floor(Math.random() * 250);
+          const backoffTime = 500 * (attempt + 1) + Math.floor(Math.random() * 200);
           await new Promise((resolve) => setTimeout(resolve, backoffTime));
           continue;
         } else {
