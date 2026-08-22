@@ -151,3 +151,13 @@ LanguageTwin Platform
    ```bash
    npm run build
    ```
+
+---
+
+## 📋 Quality Assurance & Verification TODOs
+
+- [ ] **Verify sentence alignment and mastery tracking behavior with actual usage**:
+  - Audit bidirectional token-level alignment highlights across diverse writing/speaking sessions (Traditional Chinese `zh-TW`, Japanese `ja`, Spanish `es`, Korean `ko`, Taiwanese Hokkien `nan`).
+  - Track SM-2 interval expansion, consecutive success increments, and error remediation transitions during continuous daily practice runs.
+  - Verify that the active study AI Co-Pilot remains cleanly reserved for post-"I Don't Know This Yet" guided reinforcement to foster genuine active recall.
+

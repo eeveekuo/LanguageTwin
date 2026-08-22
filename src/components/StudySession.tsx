@@ -140,6 +140,7 @@ export const StudySession: React.FC<StudySessionProps> = ({
     setOvercomeCelebration(null);
     setShowConjugationLookup(false);
     setIsDontKnowMode(false);
+    setIsCopilotOpen(false);
     setRepeatWordInput("");
     setRepeatExampleInput("");
     setSelectedExampleIndex(0);
@@ -1068,23 +1069,57 @@ export const StudySession: React.FC<StudySessionProps> = ({
             {/* GUIDED REINFORCEMENT MODE: Triggered when user selects "I Don't Know This Yet" */}
             {!evaluation && isDontKnowMode && (
               <div className="w-full max-w-xl text-left space-y-4 mt-3 animate-fade-in">
-                {/* Pedagogical Guidance Banner */}
-                <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-50 via-purple-50 to-blue-50 border border-indigo-100 shadow-2xs">
-                  <div className="flex items-center justify-between">
+                {/* Pedagogical Guidance Banner & AI Copilot Trigger */}
+                <div className="p-4 rounded-2xl bg-gradient-to-r from-indigo-50 via-purple-50 to-blue-50 border border-indigo-100 shadow-2xs space-y-2.5">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <div className="flex items-center gap-2">
                       <Repeat className="w-4 h-4 text-indigo-600" />
                       <h4 className="text-xs font-black uppercase tracking-wider text-indigo-950">
                         Guided Reinforcement & Shadowing
                       </h4>
                     </div>
-                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
-                      Active Recall Building
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-700">
+                        Active Recall Building
+                      </span>
+                      <CopilotTriggerButton
+                        id="study-dont-know-copilot-trigger-btn"
+                        isOpen={isCopilotOpen}
+                        onClick={() => setIsCopilotOpen(!isCopilotOpen)}
+                        label="AI Co-Pilot"
+                        size="xs"
+                      />
+                    </div>
                   </div>
-                  <p className="text-xs text-slate-600 mt-1 leading-relaxed">
-                    You indicated you don't know this word yet. Active vocal and written repetition builds strong neural memory traces. Please repeat or copy the word and at least one example sentence below.
+                  <p className="text-xs text-slate-600 leading-relaxed">
+                    You indicated you don't know this word yet. Active vocal and written repetition builds strong neural memory traces. Use the AI Co-Pilot for extra grammar breakdown, word lookups, or phrasing ideas, and practice the target word and example sentence below.
                   </p>
                 </div>
+
+                {/* AI Linguistic Co-Pilot Helper Panel: Only accessible after selecting "I Don't Know This Yet" */}
+                {isCopilotOpen && (
+                  <div className="animate-fade-in">
+                    <LinguisticCopilot
+                      targetLang={targetLang}
+                      knownLang={knownLang}
+                      pronunciationAid={pronunciationAid}
+                      initialQuery={activeCard?.targetItem || ""}
+                      onInsertText={(text) => {
+                        if (!isWordRepeated) {
+                          setRepeatWordInput(text);
+                        } else {
+                          setRepeatExampleInput((prev) => (prev ? `${prev} ${text}` : text));
+                        }
+                      }}
+                      isOpen={isCopilotOpen}
+                      onClose={() => setIsCopilotOpen(false)}
+                      variant="inline"
+                      idPrefix="study-dont-know-copilot"
+                      title="AI Linguistic Co-Pilot"
+                      subtitle={`Need deeper explanation, word lookup, or phrasing assistance for "${activeCard?.targetItem || targetLang.name}"?`}
+                    />
+                  </div>
+                )}
 
                 {/* STEP 1: REPEAT TARGET WORD */}
                 <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-3">
@@ -1344,34 +1379,7 @@ export const StudySession: React.FC<StudySessionProps> = ({
                   <label className="block text-left text-xs font-bold text-slate-500 uppercase ml-1 tracking-wider">
                     Your Sentence in {targetLang.name}
                   </label>
-                  <CopilotTriggerButton
-                    id="study-copilot-trigger-btn"
-                    isOpen={isCopilotOpen}
-                    onClick={() => setIsCopilotOpen(!isCopilotOpen)}
-                    label="AI Co-Pilot"
-                    size="xs"
-                  />
                 </div>
-
-                {/* Linguistic Co-Pilot Helper Panel */}
-                {isCopilotOpen && (
-                  <div className="animate-fade-in">
-                    <LinguisticCopilot
-                      targetLang={targetLang}
-                      knownLang={knownLang}
-                      pronunciationAid={pronunciationAid}
-                      onInsertText={(text) => {
-                        setUserSentence((prev) => (prev ? `${prev} ${text}` : text));
-                      }}
-                      isOpen={isCopilotOpen}
-                      onClose={() => setIsCopilotOpen(false)}
-                      variant="inline"
-                      idPrefix="study-copilot"
-                      title="Linguistic Co-Pilot"
-                      subtitle={`Need phrasing ideas or word lookup for "${activeCard?.targetItem || targetLang.name}"?`}
-                    />
-                  </div>
-                )}
 
                 <div className="relative">
                   <textarea
