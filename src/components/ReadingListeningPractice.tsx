@@ -24,7 +24,6 @@ import {
   loadSavedArticles,
 } from "../utils/savedArticlesStorage";
 import { SavedArticlesModal } from "./SavedArticlesModal";
-import { AlignedTranslation } from "./AlignedTranslation";
 import {
   BookOpen,
   Headphones,
@@ -1047,29 +1046,22 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
                 }`}
               >
                 <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    {isTranslationActive ? (
-                      <AlignedTranslation
-                        targetText={p.targetText}
-                        translationText={p.translation}
-                        targetLangCode={targetLang.code}
-                        phonetic={phon || undefined}
-                        idPrefix={`article-para-${idx}`}
-                        onSpeak={(t) => handlePlayParagraph(idx, t)}
-                        showAudioButton={false}
-                        size="md"
-                        layout="stacked"
-                      />
-                    ) : (
-                      <div className="space-y-1">
-                        <p className="text-base sm:text-lg font-medium text-slate-900 leading-relaxed tracking-normal select-text">
-                          {p.targetText}
+                  <div className="flex-1 space-y-2">
+                    <div className="space-y-1">
+                      <p className="text-base sm:text-lg font-medium text-slate-900 leading-relaxed tracking-normal select-text">
+                        {p.targetText}
+                      </p>
+                      {phon && (
+                        <p className="text-xs font-serif text-indigo-600">
+                          {phon}
                         </p>
-                        {phon && (
-                          <p className="text-xs font-serif text-indigo-600">
-                            {phon}
-                          </p>
-                        )}
+                      )}
+                    </div>
+                    {isTranslationActive && (
+                      <div className="pt-2 border-t border-slate-100/80 animate-fade-in">
+                        <p className="text-sm sm:text-base font-normal text-slate-600 leading-relaxed select-text">
+                          {p.translation}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -1211,15 +1203,23 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
                       </p>
 
                       {concept.exampleSentence && (
-                        <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 mt-2">
-                          <AlignedTranslation
-                            targetText={concept.exampleSentence.target}
-                            translationText={concept.exampleSentence.translation}
-                            targetLangCode={targetLang.code}
-                            idPrefix={`reading-concept-${idx}`}
-                            onSpeak={(text) => playTextAloud(text, targetLang.code)}
-                            size="sm"
-                          />
+                        <div className="p-2.5 rounded-xl bg-white border border-slate-200/80 mt-2 space-y-1">
+                          <div className="flex items-start justify-between gap-2">
+                            <p className="text-xs font-bold text-slate-900 leading-snug">
+                              {concept.exampleSentence.target}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => playTextAloud(concept.exampleSentence!.target, targetLang.code)}
+                              className="p-1 rounded text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 transition shrink-0 cursor-pointer"
+                              title="Play audio"
+                            >
+                              <Volume2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <p className="text-xs text-slate-500 italic leading-snug">
+                            {concept.exampleSentence.translation}
+                          </p>
                         </div>
                       )}
                     </div>
@@ -1546,31 +1546,23 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
                             <span>Native / Polished Expression</span>
                           </span>
                         </div>
-                        {qEval.correctedTranslation ? (
-                          <AlignedTranslation
-                            targetText={qEval.correctedResponse}
-                            translationText={qEval.correctedTranslation}
-                            targetLangCode={targetLang.code}
-                            idPrefix={`reading-eval-${q.id}`}
-                            onSpeak={(t) => playTextAloud(t, targetLang.code, playbackSpeed)}
-                            targetClassName="text-white font-bold"
-                            translationClassName="text-slate-300"
-                            size="sm"
-                          />
-                        ) : (
-                          <div className="flex items-start justify-between gap-2">
-                            <p className="text-sm font-bold text-white">
-                              {qEval.correctedResponse}
-                            </p>
-                            <button
-                              type="button"
-                              onClick={() => playTextAloud(qEval.correctedResponse, targetLang.code, playbackSpeed)}
-                              className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer"
-                              title="Play corrected audio"
-                            >
-                              <Volume2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-bold text-white leading-relaxed">
+                            {qEval.correctedResponse}
+                          </p>
+                          <button
+                            type="button"
+                            onClick={() => playTextAloud(qEval.correctedResponse, targetLang.code, playbackSpeed)}
+                            className="p-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 transition cursor-pointer shrink-0"
+                            title="Play corrected audio"
+                          >
+                            <Volume2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                        {qEval.correctedTranslation && (
+                          <p className="text-xs text-slate-300 italic leading-normal">
+                            {qEval.correctedTranslation}
+                          </p>
                         )}
                       </div>
                     )}
