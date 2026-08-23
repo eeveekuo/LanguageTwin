@@ -1,5 +1,12 @@
 import React, { useState, useMemo } from "react";
-import { getAlignedSentencePair, isNonSpacedCJK, Token } from "../utils/alignment";
+import {
+  getAlignedSentencePair,
+  isNonSpacedCJK,
+  Token,
+  generateMorphologicalFormula,
+  parseMorphologicalFormula,
+  MorphologicalChunkItem,
+} from "../utils/alignment";
 import { formatPronunciation } from "../utils/pronunciation";
 import { Volume2, Link as LinkIcon, Sparkles } from "lucide-react";
 
@@ -9,7 +16,9 @@ interface AlignedTranslationProps {
   targetLangCode: string;
   phonetic?: string;
   pronunciationAid?: string;
-  tokenBreakdown?: Array<{ token: string; translatedToken: string }>;
+  tokenBreakdown?: Array<{ token: string; translatedToken: string; partOfSpeech?: string; roleOrNuance?: string }>;
+  structuralFormula?: string;
+  showStructuralFormula?: boolean;
   idPrefix?: string;
   onSpeak?: (text: string) => void;
   showAudioButton?: boolean;
@@ -27,6 +36,8 @@ export const AlignedTranslation: React.FC<AlignedTranslationProps> = ({
   phonetic,
   pronunciationAid,
   tokenBreakdown,
+  structuralFormula,
+  showStructuralFormula = true,
   idPrefix = "align",
   onSpeak,
   showAudioButton = true,
@@ -49,6 +60,18 @@ export const AlignedTranslation: React.FC<AlignedTranslationProps> = ({
       tokenBreakdown
     );
   }, [targetText, translationText, targetLangCode, idPrefix, tokenBreakdown]);
+
+  // Generate morphological arrow flow formula e.g. "저 (I) + 는 (topic) -> 도서관 (library) + 에서 (at) -> ..."
+  const formulaString = useMemo(() => {
+    if (structuralFormula && structuralFormula.includes("->")) {
+      return structuralFormula;
+    }
+    return generateMorphologicalFormula(targetText, translationText, targetLangCode, tokenBreakdown);
+  }, [structuralFormula, targetText, translationText, targetLangCode, tokenBreakdown]);
+
+  const formulaChunks = useMemo<MorphologicalChunkItem[]>(() => {
+    return parseMorphologicalFormula(formulaString);
+  }, [formulaString]);
 
   // Determine which target tokens are currently active/highlighted
   const activeTargetTokenIds = useMemo(() => {
@@ -220,6 +243,77 @@ export const AlignedTranslation: React.FC<AlignedTranslationProps> = ({
           </span>
         )}
       </div>
+
+      {/* Morphological Particle & Structural Alignment Flow */}
+      {showStructuralFormula && formulaChunks.length > 0 && (
+        <div className="mt-2.5 pt-2 border-t border-slate-100/90 space-y-1.5 animate-fade-in">
+          <div className="flex items-center justify-between gap-1.5 text-[10px] sm:text-[11px] font-bold text-indigo-700">
+            <div className="flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-indigo-500" />
+              <span className="uppercase tracking-wider">Structural Alignment Flow:</span>
+            </div>
+            <span className="text-[10px] text-slate-400 font-mono hidden sm:inline">
+              Stem + Particle ➔ Word Order
+            </span>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 text-xs">
+            {formulaChunks.map((chunk, idx) => {
+              const isChunkHovered =
+                hoveredTargetId &&
+                targetTokens.some(
+                  (t) =>
+                    t.id === hoveredTargetId &&
+                    (t.cleanText.includes(chunk.stem) || chunk.stem.includes(t.cleanText))
+                );
+
+              return (
+                <React.Fragment key={idx}>
+                  <div
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border font-medium transition-all duration-100 select-text ${
+                      isChunkHovered
+                        ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs scale-[1.02] ring-2 ring-indigo-300"
+                        : "bg-indigo-50/70 border-indigo-200/70 text-slate-800 hover:bg-indigo-100/80 hover:border-indigo-300"
+                    }`}
+                  >
+                    <span className={isChunkHovered ? "text-white font-bold" : "text-slate-900 font-semibold"}>
+                      {chunk.stem}
+                    </span>
+                    {chunk.stemMeaning && (
+                      <span
+                        className={
+                          isChunkHovered ? "text-indigo-100 text-[11px]" : "text-indigo-600 text-[11px] font-normal"
+                        }
+                      >
+                        ({chunk.stemMeaning})
+                      </span>
+                    )}
+                    {chunk.particle && (
+                      <>
+                        <span className={isChunkHovered ? "text-indigo-200 text-[10px]" : "text-slate-400 text-[10px]"}>
+                          +
+                        </span>
+                        <span className={isChunkHovered ? "text-amber-200 font-bold" : "text-amber-700 font-bold"}>
+                          {chunk.particle}
+                        </span>
+                        {chunk.particleRole && (
+                          <span className={isChunkHovered ? "text-amber-100 text-[10px]" : "text-amber-600 text-[10px]"}>
+                            ({chunk.particleRole})
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
+                  {idx < formulaChunks.length - 1 && (
+                    <span className="text-slate-400 font-bold text-xs select-none">➔</span>
+                  )}
+                </React.Fragment>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
+

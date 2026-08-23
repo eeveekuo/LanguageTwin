@@ -498,6 +498,7 @@ export const TranslateAndExplain: React.FC<TranslateAndExplainProps> = ({
                 phonetic={result.phonetic}
                 pronunciationAid={pronunciationAid}
                 tokenBreakdown={result.tokenBreakdown}
+                structuralFormula={result.structuralFormula}
                 idPrefix="live-trans"
                 onSpeak={(text) => playTextAloud(text, direction === "known-to-target" ? targetLang.code : knownLang.code)}
                 size="lg"

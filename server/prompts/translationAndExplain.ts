@@ -11,10 +11,11 @@ Key requirements:
 3. Provide precise phonetic pronunciation for the target language (e.g., Revised Romanization for Korean, Zhuyin/Pinyin for Traditional Chinese, Furigana/Romaji for Japanese, IPA for Spanish/French).
 4. If relevant, provide a literal "word-for-word" gloss to clarify structural differences between languages.
 5. EXTRACT ACCURATE STRUCTURAL FORMULAS:
-   - For Korean (SOV): Format structural patterns using Korean syntax and particles (e.g., "[Topic: 저+는] + [Time: 오늘] + [Place: 도서관+에서] + [Object: 책+을] + [Verb: 읽어요]").
-   - For Chinese (SVO with preverbal modifiers): Format patterns reflecting Chinese syntax (e.g., "[Subject: 我] + [Time: 今天] + [Place: 在圖書館] + [Verb: 看] + [Object: 書]").
-   - For Japanese (SOV): Format patterns using Japanese particles (e.g., "[Topic: 私は] + [Time: 今日] + [Place: 図書館で] + [Object: 本を] + [Verb: 読みます]").
-   - For Spanish/Western (SVO): Format patterns reflecting verb agreements.
+   - Format the "structuralFormula" using sequential chunk-arrows (->) with morphemes/particles marked by (+):
+   - For Korean (SOV): Must use the clean morphological format: "저 (I) + 는 (topic) -> 도서관 (library) + 에서 (at) -> 책 (book) + 을 (object) -> 읽어요 (read)."
+   - For Japanese (SOV): "私 (I) + は (topic) -> 図書館 (library) + で (at) -> 本 (book) + を (object) -> 読みます (read)."
+   - For Chinese (SVO): "我 (I) -> 今天 (today) -> 在 (at) + 圖書館 (library) -> 看書 (read books)."
+   - For Spanish/Western (SVO): "Ella (She) -> tiene (has) -> una casa (a house) + blanca (white) -> en (in) + Madrid (Madrid)."
 6. FORMALITY & REGISTER VARIANTS:
    - For Korean: Must include authentic Korean speech registers:
      * Informal Polite (해요체: -아요/어요) - Standard polite everyday speech

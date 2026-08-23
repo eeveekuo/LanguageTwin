@@ -139,8 +139,8 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
   const [isRecording, setIsRecording] = useState<Record<string, boolean>>({});
   const [showQuestionTranslations, setShowQuestionTranslations] = useState<Record<string, boolean>>({});
   const [addedRemedyCardIds, setAddedRemedyCardIds] = useState<Set<string>>(new Set());
-  const [activeCopilotQuestionId, setActiveCopilotQuestionId] = useState<string | null>(null);
-  const [isTopicCopilotOpen, setIsTopicCopilotOpen] = useState<boolean>(false);
+  const [isCopilotSideTabOpen, setIsCopilotSideTabOpen] = useState<boolean>(false);
+  const [selectedCopilotQuestionId, setSelectedCopilotQuestionId] = useState<string | null>(null);
   const recognitionRef = useRef<any>(null);
 
   // Saved Articles Library State
@@ -1258,7 +1258,7 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
       <div className="p-6 sm:p-8 rounded-3xl bg-white border border-slate-200 shadow-sm space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-slate-100">
           <div className="space-y-1">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold uppercase tracking-wider border border-emerald-100 flex items-center gap-1.5">
                 <HelpCircle className="w-3.5 h-3.5" />
                 <span>Comprehension & Speaking Production</span>
@@ -1274,10 +1274,29 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
               Type or dictate your answers in {targetLang.name}. AI grades your responses for both semantic story comprehension and grammatical precision, auto-generating remedy flashcards for any errors.
             </p>
           </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            <CopilotTriggerButton
+              id="reading-copilot-side-toggle"
+              isOpen={isCopilotSideTabOpen}
+              onClick={() => {
+                const nextState = !isCopilotSideTabOpen;
+                setIsCopilotSideTabOpen(nextState);
+                if (nextState && !selectedCopilotQuestionId) {
+                  const defaultQId = (article.followUpQuestions && article.followUpQuestions[0]?.id) || "q-default-1";
+                  setSelectedCopilotQuestionId(defaultQId);
+                }
+              }}
+              label={isCopilotSideTabOpen ? "Hide AI Co-Pilot" : "AI Co-Pilot Assistant"}
+              size="sm"
+            />
+          </div>
         </div>
 
-        <div className="space-y-6">
-          {(article.followUpQuestions && article.followUpQuestions.length > 0
+        {/* Responsive layout: Side tab on large screens, stacked on smaller screens */}
+        <div className={isCopilotSideTabOpen ? "grid grid-cols-1 lg:grid-cols-12 gap-6 items-start" : "space-y-6"}>
+          <div className={isCopilotSideTabOpen ? "lg:col-span-7 xl:col-span-7 space-y-6" : "space-y-6"}>
+            {(article.followUpQuestions && article.followUpQuestions.length > 0
             ? article.followUpQuestions
             : [
                 {
@@ -1302,17 +1321,31 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
             const isQRecording = !!isRecording[q.id];
             const showQTrans = !!showQuestionTranslations[q.id];
 
+            const isCurrentCopilotTarget = isCopilotSideTabOpen && selectedCopilotQuestionId === q.id;
+
             return (
               <div
                 key={q.id}
-                className="p-5 sm:p-6 rounded-2xl border border-slate-200 bg-slate-50/50 space-y-4 transition hover:border-slate-300"
+                className={`p-5 sm:p-6 rounded-2xl border transition ${
+                  isCurrentCopilotTarget
+                    ? "border-indigo-400 bg-indigo-50/30 ring-2 ring-indigo-200 shadow-sm"
+                    : "border-slate-200 bg-slate-50/50 hover:border-slate-300"
+                } space-y-4`}
               >
                 {/* Question Header */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between gap-2 flex-wrap">
-                    <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-slate-900 text-white">
-                      Question {qIdx + 1}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-black px-2.5 py-0.5 rounded-full bg-slate-900 text-white">
+                        Question {qIdx + 1}
+                      </span>
+                      {isCurrentCopilotTarget && (
+                        <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100 border border-indigo-200 px-2 py-0.5 rounded-md flex items-center gap-1">
+                          <Sparkles className="w-3 h-3 text-indigo-600" />
+                          Co-Pilot Active
+                        </span>
+                      )}
+                    </div>
                     {q.focusGrammarOrConcept && (
                       <span className="text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-full">
                         Focus: {q.focusGrammarOrConcept}
@@ -1361,22 +1394,27 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
 
                 {/* Response Input Area with Dictation */}
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-slate-600">
+                  <div className="flex items-center justify-between text-xs font-bold text-slate-600 flex-wrap gap-2">
                     <label htmlFor={`response-input-${q.id}`}>
                       Your Answer in {targetLang.name}:
                     </label>
                     <div className="flex items-center gap-2">
-                      <CopilotTriggerButton
-                        id={`copilot-q-btn-${q.id}`}
-                        isOpen={activeCopilotQuestionId === q.id}
-                        onClick={() =>
-                          setActiveCopilotQuestionId(
-                            activeCopilotQuestionId === q.id ? null : q.id
-                          )
-                        }
-                        label="AI Co-Pilot"
-                        size="xs"
-                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedCopilotQuestionId(q.id);
+                          setIsCopilotSideTabOpen(true);
+                        }}
+                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
+                          isCurrentCopilotTarget
+                            ? "bg-indigo-600 text-white shadow-2xs"
+                            : "bg-white border border-slate-200 text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200"
+                        }`}
+                        title="Open AI linguistic assistant for this question"
+                      >
+                        <Sparkles className={`w-3.5 h-3.5 ${isCurrentCopilotTarget ? "text-amber-300" : "text-indigo-600"}`} />
+                        <span>AI Co-Pilot</span>
+                      </button>
                       <button
                         type="button"
                         onClick={() => toggleSpeechRecognition(q.id)}
@@ -1401,33 +1439,15 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
                     </div>
                   </div>
 
-                  {/* Inline Linguistic Copilot Panel for Question Response */}
-                  {activeCopilotQuestionId === q.id && (
-                    <div className="animate-fade-in my-2">
-                      <LinguisticCopilot
-                        targetLang={targetLang}
-                        knownLang={knownLang}
-                        pronunciationAid="romanized"
-                        onInsertText={(text) => {
-                          setUserResponses((prev) => ({
-                            ...prev,
-                            [q.id]: prev[q.id] ? `${prev[q.id]} ${text}` : text,
-                          }));
-                        }}
-                        isOpen={activeCopilotQuestionId === q.id}
-                        onClose={() => setActiveCopilotQuestionId(null)}
-                        variant="inline"
-                        idPrefix={`q-copilot-${q.id}`}
-                        title="Linguistic Assistant"
-                        subtitle={`Craft phrasing, conjugate verbs, or lookup vocabulary for your response in ${targetLang.name}`}
-                      />
-                    </div>
-                  )}
-
                   <textarea
                     id={`response-input-${q.id}`}
                     rows={3}
                     value={userAns}
+                    onFocus={() => {
+                      if (isCopilotSideTabOpen && selectedCopilotQuestionId !== q.id) {
+                        setSelectedCopilotQuestionId(q.id);
+                      }
+                    }}
                     onChange={(e) =>
                       setUserResponses((prev) => ({
                         ...prev,
@@ -1670,6 +1690,72 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
               </div>
             );
           })}
+          </div>
+
+          {/* Single AI Copilot Instance as Side Tab */}
+          {isCopilotSideTabOpen && (
+            <aside className="lg:col-span-5 xl:col-span-5 lg:sticky lg:top-24 space-y-3 animate-fade-in">
+              <div className="bg-slate-50/80 border-2 border-indigo-200/90 rounded-3xl p-3 shadow-md shadow-indigo-100/40 space-y-2">
+                <div className="flex items-center justify-between px-2 pb-2 border-b border-indigo-100">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                    <span className="text-xs font-extrabold text-indigo-950">
+                      Co-Pilot Side Assistant
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[11px] font-bold text-slate-500 hidden sm:inline">Target:</span>
+                    <select
+                      value={
+                        selectedCopilotQuestionId ||
+                        (article.followUpQuestions && article.followUpQuestions[0]?.id) ||
+                        "q-default-1"
+                      }
+                      onChange={(e) => setSelectedCopilotQuestionId(e.target.value)}
+                      className="bg-white border border-indigo-200 text-indigo-950 text-xs rounded-xl px-2 py-1 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-400 cursor-pointer shadow-2xs"
+                    >
+                      {(article.followUpQuestions && article.followUpQuestions.length > 0
+                        ? article.followUpQuestions
+                        : [
+                            { id: "q-default-1", questionText: "Question 1" },
+                            { id: "q-default-2", questionText: "Question 2" },
+                          ]
+                      ).map((item, idx) => (
+                        <option key={item.id} value={item.id}>
+                          Q{idx + 1}: {item.questionText.slice(0, 20)}...
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <LinguisticCopilot
+                  targetLang={targetLang}
+                  knownLang={knownLang}
+                  pronunciationAid={pronunciationAid}
+                  onInsertText={(text) => {
+                    const activeQList =
+                      article.followUpQuestions && article.followUpQuestions.length > 0
+                        ? article.followUpQuestions
+                        : [{ id: "q-default-1" }, { id: "q-default-2" }];
+                    const targetQId = selectedCopilotQuestionId || activeQList[0]?.id;
+                    if (targetQId) {
+                      setUserResponses((prev) => ({
+                        ...prev,
+                        [targetQId]: prev[targetQId] ? `${prev[targetQId]} ${text}` : text,
+                      }));
+                    }
+                  }}
+                  isOpen={isCopilotSideTabOpen}
+                  onClose={() => setIsCopilotSideTabOpen(false)}
+                  variant="card"
+                  idPrefix="reading-side-copilot"
+                  title="Linguistic Assistant"
+                  subtitle={`Craft responses or explore vocabulary in ${targetLang.name}`}
+                />
+              </div>
+            </aside>
+          )}
         </div>
       </div>
 
@@ -1689,37 +1775,9 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="sm:col-span-2 space-y-1.5">
-            <div className="flex items-center justify-between">
-              <label className="block text-[11px] font-bold text-slate-500">
-                Custom Theme or Topic (Optional)
-              </label>
-              <CopilotTriggerButton
-                id="article-topic-copilot-btn"
-                isOpen={isTopicCopilotOpen}
-                onClick={() => setIsTopicCopilotOpen(!isTopicCopilotOpen)}
-                label="AI Co-Pilot"
-                size="xs"
-              />
-            </div>
-
-            {isTopicCopilotOpen && (
-              <div className="animate-fade-in my-2">
-                <LinguisticCopilot
-                  targetLang={targetLang}
-                  knownLang={knownLang}
-                  pronunciationAid="romanized"
-                  onInsertText={(text) => {
-                    setCustomTopic((prev) => (prev ? `${prev} ${text}` : text));
-                  }}
-                  isOpen={isTopicCopilotOpen}
-                  onClose={() => setIsTopicCopilotOpen(false)}
-                  variant="inline"
-                  idPrefix="article-topic-copilot"
-                  title="Linguistic Assistant"
-                  subtitle={`Formulate themes or find vocabulary in ${targetLang.name}`}
-                />
-              </div>
-            )}
+            <label className="block text-[11px] font-bold text-slate-500">
+              Custom Theme or Topic (Optional)
+            </label>
 
             <input
               type="text"

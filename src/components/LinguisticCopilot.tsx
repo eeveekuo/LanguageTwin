@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { SupportedLanguage, QuickAssistResult, QuickAssistQueryType } from "../types";
 import { playTextAloud } from "../utils/speech";
 import { formatPronunciation } from "../utils/pronunciation";
+import { AlignedTranslation } from "./AlignedTranslation";
 import {
   Bot,
   Search,
@@ -722,32 +723,22 @@ export const LinguisticCopilot: React.FC<LinguisticCopilotProps> = ({
             </div>
           )}
 
-          {/* Practical Example Sentence */}
+          {/* Practical Example Sentence with Morphological Alignment */}
           {result.exampleSentence && (
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 space-y-1">
-              <span className="text-[10px] font-bold uppercase text-slate-400 tracking-wider block">
-                Example in Context:
+            <div className="p-3.5 rounded-2xl bg-indigo-50/40 border border-indigo-100/90 space-y-1.5">
+              <span className="text-[10px] font-bold uppercase text-indigo-700 tracking-wider block">
+                Aligned Example in Context:
               </span>
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <p className="text-xs font-bold text-slate-900">
-                    {result.exampleSentence.target}
-                  </p>
-                  <p className="text-[11px] text-slate-500 italic">
-                    {result.exampleSentence.translation || result.exampleSentence.meaning}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    playTextAloud(result.exampleSentence!.target, targetLang.code)
-                  }
-                  className="p-1.5 rounded-lg text-indigo-600 hover:bg-white border border-transparent hover:border-slate-200 transition shrink-0"
-                  title="Listen to example"
-                >
-                  <Volume2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
+              <AlignedTranslation
+                targetText={result.exampleSentence.target}
+                translationText={result.exampleSentence.translation || result.exampleSentence.meaning || ""}
+                targetLangCode={targetLang.code}
+                phonetic={result.exampleSentence.phonetic}
+                pronunciationAid={pronunciationAid}
+                idPrefix={`copilot-ex-${result.targetExpression}`}
+                onSpeak={(text) => playTextAloud(text, targetLang.code)}
+                size="sm"
+              />
             </div>
           )}
 

@@ -1273,6 +1273,7 @@ export const StudySession: React.FC<StudySessionProps> = ({
                       phonetic={activeExample.phonetic}
                       pronunciationAid={pronunciationAid}
                       tokenBreakdown={activeExample.tokenBreakdown}
+                      structuralFormula={activeExample.structuralFormula}
                       idPrefix={`repeat-ex-${selectedExampleIndex}`}
                       onSpeak={(text) => handlePlayAudio(text, `repeat-ex-${selectedExampleIndex}`)}
                       size="sm"

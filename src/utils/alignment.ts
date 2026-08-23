@@ -785,3 +785,307 @@ export function getAlignedSentencePair(
   alignmentCache.set(cacheKey, aligned);
   return aligned;
 }
+
+// Korean particle meanings for pedagogical structural formula explanations
+const KOREAN_PARTICLE_ROLES: Record<string, string> = {
+  "에서는": "at (topic)",
+  "에서도": "at (also)",
+  "에게서는": "from (topic)",
+  "한테서는": "from (topic)",
+  "에게서": "from",
+  "한테서": "from",
+  "에는": "to/at (topic)",
+  "에도": "to/at (also)",
+  "에서": "at",
+  "에게": "to",
+  "한테": "to",
+  "으로는": "by (topic)",
+  "으로": "by/to",
+  "부터는": "from (topic)",
+  "부터": "from",
+  "까지는": "until (topic)",
+  "까지": "to/until",
+  "처럼": "like",
+  "만큼": "as much as",
+  "하고": "with/and",
+  "이랑": "with/and",
+  "이라": "is",
+  "이나": "or/as many as",
+  "은": "topic",
+  "는": "topic",
+  "이": "subject",
+  "가": "subject",
+  "을": "object",
+  "를": "object",
+  "에": "to/at",
+  "의": "'s",
+  "도": "also",
+  "로": "by/to",
+  "와": "with/and",
+  "과": "with/and",
+  "랑": "with/and",
+  "만": "only",
+  "나": "or",
+};
+
+// Japanese particle meanings for pedagogical structural formulas
+const JAPANESE_PARTICLE_ROLES: Record<string, string> = {
+  "は": "topic",
+  "が": "subject",
+  "を": "object",
+  "で": "at/by",
+  "に": "at/to",
+  "へ": "to",
+  "と": "with/and",
+  "から": "from",
+  "まで": "until",
+  "も": "also",
+  "の": "'s/of",
+  "ね": "right?",
+  "よ": "emphasis",
+  "か": "?",
+  "より": "than",
+  "だけ": "only",
+  "しか": "only",
+};
+
+// Inverted dictionary from BILINGUAL_ALIGNMENT_MAP for fast stem translation lookup
+const TARGET_TO_ENG_CACHE: Record<string, string> = {};
+for (const [eng, targets] of Object.entries(BILINGUAL_ALIGNMENT_MAP)) {
+  for (const t of targets) {
+    if (!TARGET_TO_ENG_CACHE[t]) {
+      TARGET_TO_ENG_CACHE[t] = eng;
+    }
+  }
+}
+
+/**
+ * Finds the best English translation for a target stem/word.
+ */
+function findStemMeaning(
+  targetWord: string,
+  fullTarget: string,
+  fullEnglish: string,
+  tokenBreakdown?: Array<{ token: string; translatedToken: string; partOfSpeech?: string; roleOrNuance?: string }>
+): string {
+  const clean = targetWord.replace(PUNCTUATION_REGEX, "").trim();
+  if (!clean) return "";
+
+  // 1. Direct match in provided tokenBreakdown
+  if (tokenBreakdown && tokenBreakdown.length > 0) {
+    const found = tokenBreakdown.find((tb) => tb.token === clean || clean.includes(tb.token) || tb.token.includes(clean));
+    if (found && found.translatedToken) {
+      return found.translatedToken.replace(/\s*\([^)]*\)/g, "").trim().toLowerCase();
+    }
+  }
+
+  // 2. Direct match in TARGET_TO_ENG_CACHE
+  if (TARGET_TO_ENG_CACHE[clean]) {
+    return TARGET_TO_ENG_CACHE[clean];
+  }
+
+  // 3. Korean morphological stem checks
+  const variants = getKoreanMorphologicalVariants(clean);
+  for (const v of variants) {
+    if (TARGET_TO_ENG_CACHE[v]) {
+      return TARGET_TO_ENG_CACHE[v];
+    }
+  }
+
+  // 4. Token alignment search
+  const cleanEngWords = fullEnglish.toLowerCase().replace(/[.,!?;:()[\]{}'"]/g, "").split(/\s+/).filter(Boolean);
+  for (const eng of cleanEngWords) {
+    const candidateTargets = BILINGUAL_ALIGNMENT_MAP[eng] || [];
+    if (candidateTargets.some((ct) => ct === clean || clean.includes(ct) || ct.includes(clean))) {
+      return eng;
+    }
+  }
+
+  return clean;
+}
+
+export interface MorphologicalChunkItem {
+  raw: string; // e.g. "저 (I) + 는 (topic)"
+  stem: string;
+  stemMeaning: string;
+  particle?: string;
+  particleRole?: string;
+}
+
+/**
+ * Generates an intuitive morphological arrow-flow explanation
+ * Example output:
+ * "저 (I) + 는 (topic) -> 도서관 (library) + 에서 (at) -> 책 (book) + 을 (object) -> 읽어요 (read)."
+ */
+export function generateMorphologicalFormula(
+  targetText: string,
+  translationText: string,
+  targetLangCode: string,
+  tokenBreakdown?: Array<{ token: string; translatedToken: string; partOfSpeech?: string; roleOrNuance?: string }>
+): string {
+  if (!targetText) return "";
+
+  const cleanTarget = targetText.trim();
+  const cleanTrans = translationText ? translationText.trim() : "";
+  const lang = (targetLangCode || "").toLowerCase();
+
+  // 1. Korean SOV Morphological Arrow Flow
+  if (lang === "ko" || Array.from(cleanTarget).some(isHangul)) {
+    const trailingPunctMatch = cleanTarget.match(/([.!?~]+)$/);
+    const trailingPunct = trailingPunctMatch ? trailingPunctMatch[1] : ".";
+    const textWithoutEndingPunct = cleanTarget.replace(/[.!?~]+$/, "").trim();
+    const words = textWithoutEndingPunct.split(/\s+/).filter(Boolean);
+
+    const chunks: string[] = [];
+    const sortedParticles = Object.keys(KOREAN_PARTICLE_ROLES).sort((a, b) => b.length - a.length);
+
+    for (const word of words) {
+      let matchedParticle: string | null = null;
+      let matchedRole: string | null = null;
+
+      for (const p of sortedParticles) {
+        if (word.endsWith(p) && word.length > p.length) {
+          matchedParticle = p;
+          matchedRole = KOREAN_PARTICLE_ROLES[p];
+          break;
+        }
+      }
+
+      if (matchedParticle && matchedRole) {
+        const stem = word.slice(0, -matchedParticle.length);
+        const stemMeaning = findStemMeaning(stem, cleanTarget, cleanTrans, tokenBreakdown);
+        chunks.push(`${stem} (${stemMeaning}) + ${matchedParticle} (${matchedRole})`);
+      } else {
+        const meaning = findStemMeaning(word, cleanTarget, cleanTrans, tokenBreakdown);
+        chunks.push(`${word} (${meaning})`);
+      }
+    }
+
+    return chunks.join(" -> ") + trailingPunct;
+  }
+
+  // 2. Japanese SOV Particle Arrow Flow
+  if (lang === "ja") {
+    const trailingPunctMatch = cleanTarget.match(/([。!?~]+)$/);
+    const trailingPunct = trailingPunctMatch ? trailingPunctMatch[1] : "。";
+    const textWithoutEndingPunct = cleanTarget.replace(/[。!?~]+$/, "").trim();
+
+    // Segment Japanese using compound lexicon and particle boundaries
+    const rawTokens = tokenizeSentence(textWithoutEndingPunct, "ja", "ja-form");
+    const chunks: string[] = [];
+    let currentStem = "";
+
+    for (let i = 0; i < rawTokens.length; i++) {
+      const token = rawTokens[i];
+      if (token.isPunctuation) continue;
+
+      if (JAPANESE_PARTICLE_ROLES[token.text]) {
+        const role = JAPANESE_PARTICLE_ROLES[token.text];
+        if (currentStem) {
+          const stemMeaning = findStemMeaning(currentStem, cleanTarget, cleanTrans, tokenBreakdown);
+          chunks.push(`${currentStem} (${stemMeaning}) + ${token.text} (${role})`);
+          currentStem = "";
+        } else {
+          chunks.push(`${token.text} (${role})`);
+        }
+      } else {
+        if (currentStem) {
+          const stemMeaning = findStemMeaning(currentStem, cleanTarget, cleanTrans, tokenBreakdown);
+          chunks.push(`${currentStem} (${stemMeaning})`);
+        }
+        currentStem = token.text;
+      }
+    }
+
+    if (currentStem) {
+      const stemMeaning = findStemMeaning(currentStem, cleanTarget, cleanTrans, tokenBreakdown);
+      chunks.push(`${currentStem} (${stemMeaning})`);
+    }
+
+    return chunks.join(" -> ") + trailingPunct;
+  }
+
+  // 3. Traditional Chinese & Hokkien SVO Semantic Arrow Flow
+  if (lang === "zh-tw" || lang === "zh" || lang === "nan") {
+    const trailingPunctMatch = cleanTarget.match(/([。!?~]+)$/);
+    const trailingPunct = trailingPunctMatch ? trailingPunctMatch[1] : "。";
+    const textWithoutEndingPunct = cleanTarget.replace(/[。!?~]+$/, "").trim();
+
+    const rawTokens = tokenizeSentence(textWithoutEndingPunct, lang, "cjk-form");
+    const chunks: string[] = [];
+
+    for (let i = 0; i < rawTokens.length; i++) {
+      const token = rawTokens[i];
+      if (token.isPunctuation) continue;
+
+      const meaning = findStemMeaning(token.text, cleanTarget, cleanTrans, tokenBreakdown);
+      if (["在", "佇", "把", "共", "對", "向"].includes(token.text) && i + 1 < rawTokens.length && !rawTokens[i + 1].isPunctuation) {
+        const nextToken = rawTokens[i + 1];
+        const nextMeaning = findStemMeaning(nextToken.text, cleanTarget, cleanTrans, tokenBreakdown);
+        chunks.push(`${token.text} (${meaning}) + ${nextToken.text} (${nextMeaning})`);
+        i++; // skip next
+      } else {
+        chunks.push(`${token.text} (${meaning})`);
+      }
+    }
+
+    return chunks.join(" -> ") + trailingPunct;
+  }
+
+  // 4. Spanish / French / German / Italian / Western Languages
+  const words = cleanTarget.replace(/[.,!?;:()[\]{}'"]+$/, "").split(/\s+/).filter(Boolean);
+  const chunks: string[] = [];
+
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i].replace(PUNCTUATION_REGEX, "");
+    const meaning = findStemMeaning(word, cleanTarget, cleanTrans, tokenBreakdown);
+
+    const lower = word.toLowerCase();
+    if (NOUN_ARTICLES_AND_DETERMINERS.has(lower) && i + 1 < words.length) {
+      const nextWord = words[i + 1].replace(PUNCTUATION_REGEX, "");
+      const nextMeaning = findStemMeaning(nextWord, cleanTarget, cleanTrans, tokenBreakdown);
+      chunks.push(`${word} ${nextWord} (${meaning} ${nextMeaning})`);
+      i++;
+    } else {
+      chunks.push(`${word} (${meaning})`);
+    }
+  }
+
+  return chunks.join(" -> ") + ".";
+}
+
+/**
+ * Parses a morphological formula string into structured chunks for interactive UI rendering
+ */
+export function parseMorphologicalFormula(formulaString: string): MorphologicalChunkItem[] {
+  if (!formulaString) return [];
+
+  // Remove trailing period or punctuation
+  const clean = formulaString.replace(/[.。!?~]+$/, "").trim();
+  const rawChunks = clean.split("->").map((c) => c.trim()).filter(Boolean);
+
+  return rawChunks.map((chunkStr) => {
+    // Check if chunk contains a particle "+ particle" e.g. "저 (I) + 는 (topic)"
+    if (chunkStr.includes("+")) {
+      const parts = chunkStr.split("+").map((p) => p.trim());
+      const stemMatch = parts[0].match(/^(.*?)\s*\((.*?)\)$/);
+      const particleMatch = parts[1] ? parts[1].match(/^(.*?)\s*\((.*?)\)$/) : null;
+
+      return {
+        raw: chunkStr,
+        stem: stemMatch ? stemMatch[1].trim() : parts[0],
+        stemMeaning: stemMatch ? stemMatch[2].trim() : "",
+        particle: particleMatch ? particleMatch[1].trim() : parts[1] || "",
+        particleRole: particleMatch ? particleMatch[2].trim() : "",
+      };
+    }
+
+    const match = chunkStr.match(/^(.*?)\s*\((.*?)\)$/);
+    return {
+      raw: chunkStr,
+      stem: match ? match[1].trim() : chunkStr,
+      stemMeaning: match ? match[2].trim() : "",
+    };
+  });
+}
+

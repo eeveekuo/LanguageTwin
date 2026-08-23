@@ -517,7 +517,7 @@ export const SentenceStructurePrimer: React.FC<SentenceStructurePrimerProps> = (
                         {formula.examples.map((ex, i) => (
                           <div
                             key={i}
-                            className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-1.5"
+                            className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2"
                           >
                             <AlignedTranslation
                               targetText={ex.target}
@@ -525,14 +525,10 @@ export const SentenceStructurePrimer: React.FC<SentenceStructurePrimerProps> = (
                               targetLangCode={targetLang.code}
                               phonetic={ex.phonetic}
                               pronunciationAid={pronunciationAid}
+                              structuralFormula={ex.breakdownNote}
                               idPrefix={`formula-${formula.id}-${i}`}
                               onSpeak={(text) => playTextAloud(text, targetLang.code)}
                             />
-                            {ex.breakdownNote && (
-                              <p className="text-[11px] text-indigo-700 font-medium bg-white p-2 rounded-xl border border-slate-100">
-                                💡 {ex.breakdownNote}
-                              </p>
-                            )}
                           </div>
                         ))}
                       </div>
