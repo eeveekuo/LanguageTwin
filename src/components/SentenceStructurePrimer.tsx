@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { SupportedLanguage } from "../types";
 import {
   getSentenceStructureGuide,
@@ -91,6 +91,45 @@ const BUILDER_CHALLENGES: Record<string, BuilderChallenge[]> = {
       explanation: "The verb (勉強します) must conclude the sentence, with particles marking topic (は) and object (を).",
     },
   ],
+  "ko": [
+    {
+      id: "ko-b1",
+      instruction: "Arrange the tiles into Korean SOV word order (Verb at the end with topic and location particles).",
+      englishMeaning: "I read books at the library today.",
+      correctTiles: ["저는", "오늘", "도서관에서", "책을", "읽어요"],
+      explanation: "Topic (저는) -> Time (오늘) -> Action Venue (도서관에서) -> Object (책을) -> Verb (읽어요).",
+    },
+    {
+      id: "ko-b2",
+      instruction: "Place the modifier clause directly before the noun.",
+      englishMeaning: "This is the book that I bought yesterday.",
+      correctTiles: ["이것은", "내가", "어제 산", "책이에요"],
+      explanation: "Korean relative clauses like '어제 산' (bought yesterday) stand directly BEFORE the noun '책이에요'.",
+    },
+    {
+      id: "ko-b3",
+      instruction: "Arrange sequential actions with the connector suffix -아서/어서.",
+      englishMeaning: "I met a friend and watched a movie.",
+      correctTiles: ["친구를", "만나서", "영화를", "봤어요"],
+      explanation: "Verb stem 만나- attaches -아서 to link chronologically with the past tense verb 봤어요.",
+    },
+  ],
+  "nan": [
+    {
+      id: "nan-b1",
+      instruction: "Arrange into Taiwanese Hokkien word order with progressive aspect 咧 (teh).",
+      englishMeaning: "I am reading books at the library.",
+      correctTiles: ["我", "佇圖書館", "咧看冊"],
+      explanation: "Subject (我) -> Location (佇圖書館) -> Progressive aspect + Verb (咧看冊).",
+    },
+    {
+      id: "nan-b2",
+      instruction: "Arrange with the disposal particle 共 (kā).",
+      englishMeaning: "Please close this door.",
+      correctTiles: ["請你", "共這扇門", "關起來"],
+      explanation: "共 (kā) moves the target object 這扇門 before the resultative action verb 關起來.",
+    },
+  ],
 };
 
 export const SentenceStructurePrimer: React.FC<SentenceStructurePrimerProps> = ({
@@ -137,6 +176,29 @@ export const SentenceStructurePrimer: React.FC<SentenceStructurePrimerProps> = (
   const [aiQuery, setAiQuery] = useState<string>("");
   const [isAiLoading, setIsAiLoading] = useState<boolean>(false);
   const [aiExplanation, setAiExplanation] = useState<string | null>(null);
+
+  // Synchronize state when target language changes
+  useEffect(() => {
+    setSelectedFormulaId(guide.formulas[0]?.id || "");
+    setActiveCategory("all");
+    setChallengeIndex(0);
+    const activeChallenges = BUILDER_CHALLENGES[targetLang.code] || [
+      {
+        id: "gen-1",
+        instruction: "Arrange the slots in standard word order.",
+        englishMeaning: `A foundational sentence in ${targetLang.name}.`,
+        correctTiles: ["Subject", "Verb", "Object"],
+        explanation: `Standard Subject-Verb-Object progression in ${targetLang.name}.`,
+      },
+    ];
+    const firstChallenge = activeChallenges[0];
+    if (firstChallenge) {
+      setPlacedTiles([]);
+      setAvailableTiles([...firstChallenge.correctTiles].sort(() => Math.random() - 0.5));
+      setIsBuilderSubmitted(false);
+      setIsBuilderCorrect(false);
+    }
+  }, [targetLang.code, guide]);
 
   // Reset challenge when switching
   const handleSelectChallenge = (index: number) => {

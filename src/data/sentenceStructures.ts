@@ -287,6 +287,251 @@ export const LANGUAGE_STRUCTURE_GUIDES: Record<string, LanguageStructureGuide> =
       },
     ],
   },
+  "ko": {
+    langCode: "ko",
+    langName: "Korean",
+    flag: "🇰🇷",
+    wordOrderType: "SOV (Subject-Object-Verb)",
+    overview:
+      "Korean is strictly a Verb-Final (SOV) agglutinative language. Words do not change their root stems; grammatical functions are marked by particles (은/는, 이/가, 을/를, 에/에서) attached directly to nouns, and verbs/adjectives conjugate with speech levels (-아요/어요, -(스)ㅂ니다) at the very end of the clause.",
+    topDifferencesFromEnglish: [
+      "Strict SOV word order: The main verb or descriptive adjective ALWAYS anchors the sentence at the end",
+      "Particles dictate grammatical function (Topic: 은/는, Subject: 이/가, Object: 을/를, Location/Time: 에/에서)",
+      "Subject pronouns are routinely omitted when clear from conversational context",
+      "Adjectives function as descriptive verbs (상태동사) and conjugate directly with polite endings (e.g. 예뻐요 = 'is pretty')",
+      "Modifiers and relative clauses always precede the noun using participle suffixes (-는, -(으)ㄴ, -(으)ㄹ)",
+    ],
+    formulas: [
+      {
+        id: "ko-basic-sov",
+        name: "Standard Action Sentence (SOV)",
+        category: "word_order",
+        summary: "Topic (은/는) + Time + Location (에서) + Object (을/를) + Verb",
+        formulaSlots: [
+          { label: "Topic", role: "Who (Context)", exampleTarget: "저는", exampleEng: "As for me", color: "bg-blue-100 text-blue-900 border-blue-200" },
+          { label: "Time", role: "When", exampleTarget: "오늘", exampleEng: "today", color: "bg-amber-100 text-amber-900 border-amber-200" },
+          { label: "Place + 에서", role: "Action Location", exampleTarget: "도서관에서", exampleEng: "at the library", color: "bg-emerald-100 text-emerald-900 border-emerald-200" },
+          { label: "Object + 을/를", role: "What", exampleTarget: "한국어를", exampleEng: "Korean (obj)", color: "bg-purple-100 text-purple-900 border-purple-200" },
+          { label: "Verb", role: "Action (Final)", exampleTarget: "공부해요", exampleEng: "study", color: "bg-rose-100 text-rose-900 border-rose-200" },
+        ],
+        explanation:
+          "In Korean, circumstantial context (Time, Location) and Objects must be stated before the verb. The conjugated verb (-해요 / -합니다) closes the sentence. Particles attach directly to nouns with no spaces.",
+        keyRule: "Word order is Topic/Subject -> Time -> Place -> Object -> Verb.",
+        examples: [
+          {
+            target: "저는 도서관에서 책을 읽어요.",
+            translation: "I read books at the library.",
+            phonetic: "jeo-neun do-seo-gwan-e-seo chaeg-eul ilg-eo-yo",
+            breakdownNote: "저 (I) + 는 (topic) -> 도서관 (library) + 에서 (at) -> 책 (book) + 을 (object) -> 읽어요 (read).",
+          },
+          {
+            target: "친구가 카페에서 커피를 마셔요.",
+            translation: "A friend drinks coffee at the cafe.",
+            phonetic: "chin-gu-ga ka-pe-e-seo keo-pi-reul ma-syeo-yo",
+            breakdownNote: "친구 (friend) + 가 (subject) -> 카페 (cafe) + 에서 (at) -> 커피 (coffee) + 를 (object) -> 마셔요 (drink).",
+          },
+        ],
+      },
+      {
+        id: "ko-particles-topic-subject",
+        name: "Topic (은/는) vs Subject (이/가)",
+        category: "particles",
+        summary: "Context / Contrast (은/는) vs Specific Agent / New Info (이/가)",
+        formulaSlots: [
+          { label: "Topic (은/는)", role: "Old Info / Contrast", exampleTarget: "이것은 사과예요", exampleEng: "As for this, it's an apple", color: "bg-indigo-100 text-indigo-900 border-indigo-200" },
+          { label: "Subject (이/가)", role: "Focus / Perception", exampleTarget: "비가 와요", exampleEng: "Rain is falling", color: "bg-amber-100 text-amber-900 border-amber-200" },
+        ],
+        explanation:
+          "은/는 introduces or shifts the conversational topic ('as for X...') or creates contrast between items. 이/가 points out the specific subject doing an action or answers 'who/which'. Note morphophonology: use 는/가 after vowels, 은/이 after consonants (받침).",
+        keyRule: "Vowel ending -> 는 / 가. Consonant ending (받침) -> 은 / 이.",
+        examples: [
+          {
+            target: "저는 미국 사람이에요. 하지만 친구는 한국 사람이에요.",
+            translation: "I am American. But as for my friend, they are Korean.",
+            phonetic: "jeo-neun mi-guk sa-ram-i-e-yo. ha-ji-man chin-gu-neun han-guk sa-ram-i-e-yo.",
+            breakdownNote: "Shows contrast between 'I' (저 + 는) and 'friend' (친구 + 는).",
+          },
+          {
+            target: "누가 한국어를 가르쳐요?",
+            translation: "Who teaches Korean?",
+            phonetic: "nu-ga han-guk-eo-reul ga-reu-chyeo-yo?",
+            breakdownNote: "누가 (누구 + 가) focuses specifically on identifying the actor.",
+          },
+        ],
+      },
+      {
+        id: "ko-location-particles",
+        name: "Location Particles: 에 vs 에서",
+        category: "particles",
+        summary: "Destination / Existence (에) vs Dynamic Action Location (에서)",
+        formulaSlots: [
+          { label: "Static / Destination (에)", role: "Where to / at [time]", exampleTarget: "서울에 가요", exampleEng: "go to Seoul", color: "bg-teal-100 text-teal-900 border-teal-200" },
+          { label: "Action Location (에서)", role: "Where action occurs", exampleTarget: "식당에서 먹어요", exampleEng: "eat at restaurant", color: "bg-emerald-100 text-emerald-900 border-emerald-200" },
+        ],
+        explanation:
+          "에 is used with movement verbs (가다, 오다, 다니다), static existence verbs (있다, 없다), and specific times. 에서 is strictly used for the venue where an active physical action is carried out.",
+        keyRule: "Going to / existing in -> 에. Doing an action at -> 에서.",
+        examples: [
+          {
+            target: "저는 내일 공항에 가요.",
+            translation: "I am going to the airport tomorrow.",
+            phonetic: "jeo-neun nae-il gong-hang-e ga-yo",
+            breakdownNote: "공항 (airport) + 에 (destination) + 가요 (go).",
+          },
+          {
+            target: "공원에서 친구와 운동했어요.",
+            translation: "I exercised with a friend in the park.",
+            phonetic: "gong-won-e-seo chin-gu-wa un-dong-haess-eo-yo",
+            breakdownNote: "공원 (park) + 에서 (action location) + 운동했어요 (exercised).",
+          },
+        ],
+      },
+      {
+        id: "ko-noun-modifiers",
+        name: "Noun Modifiers & Relative Clauses",
+        category: "modifiers",
+        summary: "Verb/Adjective Stem + Modifier Ending (-는 / -(으)ㄴ / -(으)ㄹ) + Noun",
+        formulaSlots: [
+          { label: "Modifier Phrase", role: "Description / Action", exampleTarget: "내가 어제 산", exampleEng: "that I bought yesterday", color: "bg-indigo-100 text-indigo-900 border-indigo-200" },
+          { label: "Core Noun", role: "Head Word", exampleTarget: "책", exampleEng: "book", color: "bg-purple-100 text-purple-900 border-purple-200" },
+          { label: "Copula / Verb", role: "Ending", exampleTarget: "이에요", exampleEng: "is", color: "bg-rose-100 text-rose-900 border-rose-200" },
+        ],
+        explanation:
+          "Korean does not use relative pronouns (no 'that', 'which', or 'who'). Instead, the entire descriptive clause is attached directly in front of the noun using modifier endings: -는 (present action), -(으)ㄴ (past action or descriptive adjective), -(으)ㄹ (future/prospective).",
+        keyRule: "Modifiers strictly precede the noun: Present action -> -는; Adjective -> -(으)ㄴ; Past action -> -(으)ㄴ.",
+        examples: [
+          {
+            target: "이것은 내가 제일 좋아하는 노래예요.",
+            translation: "This is the song that I like the most.",
+            phonetic: "i-geos-eun nae-ga je-il jo-ha-ha-neun no-rae-ye-yo",
+            breakdownNote: "좋아하다 (to like) + -는 (present modifier) -> 노래 (song).",
+          },
+          {
+            target: "따뜻한 차를 마시고 싶어요.",
+            translation: "I want to drink warm tea.",
+            phonetic: "tta-tteut-han cha-reul ma-si-go sip-eo-yo",
+            breakdownNote: "따뜻하다 (warm) + -ㄴ -> 따뜻한 (warm modifier) -> 차 (tea).",
+          },
+        ],
+      },
+      {
+        id: "ko-negation",
+        name: "Negation & Inability (안 vs 못)",
+        category: "negation_questions",
+        summary: "안 / 못 + Verb (Short form) OR Verb + -지 않다 / -지 못하다 (Long form)",
+        formulaSlots: [
+          { label: "General Not (안)", role: "Will not / Do not", exampleTarget: "안 먹어요", exampleEng: "do not eat", color: "bg-rose-100 text-rose-900 border-rose-200" },
+          { label: "Inability (못)", role: "Cannot / Unable", exampleTarget: "못 가요", exampleEng: "cannot go", color: "bg-amber-100 text-amber-900 border-amber-200" },
+        ],
+        explanation:
+          "Korean distinguishes between intentional/general negation (안 / -지 않다: 'I do not want to / do not') and situational inability (못 / -지 못하다: 'I cannot / am unable to despite wanting to').",
+        keyRule: "안 = intentional choice ('do not'); 못 = external inability or lack of skill ('cannot').",
+        examples: [
+          {
+            target: "저는 매운 음식을 안 먹어요.",
+            translation: "I do not eat spicy food (personal preference).",
+            phonetic: "jeo-neun mae-un eum-sig-eul an meog-eo-yo",
+            breakdownNote: "안 + 먹어요 expresses an intentional habit or preference.",
+          },
+          {
+            target: "바빠서 파티에 못 갔어요.",
+            translation: "I could not go to the party because I was busy.",
+            phonetic: "ba-ppa-seo pa-ti-e mot gass-eo-yo",
+            breakdownNote: "못 + 갔어요 expresses inability caused by circumstances.",
+          },
+        ],
+      },
+      {
+        id: "ko-clause-connectors",
+        name: "Clause Linkers & Sequence (-고, -아서/어서)",
+        category: "advanced",
+        summary: "Clause 1 Stem + Connector (-고 / -아서/어서 / -(으)면) + Clause 2",
+        formulaSlots: [
+          { label: "Clause 1 + Linker", role: "First Action / Reason", exampleTarget: "친구를 만나서", exampleEng: "met a friend and...", color: "bg-indigo-100 text-indigo-900 border-indigo-200" },
+          { label: "Clause 2", role: "Next Action / Result", exampleTarget: "영화를 봤어요", exampleEng: "watched a movie", color: "bg-rose-100 text-rose-900 border-rose-200" },
+        ],
+        explanation:
+          "Clauses are joined by attaching connective suffixes directly to the verb stem of the first clause. -고 expresses sequential or parallel addition; -아서/어서 expresses tightly connected chronological cause-and-effect; -(으)면 creates conditional clauses ('if/when').",
+        keyRule: "Never use English conjunctions ('And', 'Because') to start separate sentences—attach suffixes directly to the verb stem.",
+        examples: [
+          {
+            target: "주말에 날씨가 좋으면 등산할 거예요.",
+            translation: "If the weather is good this weekend, I will go hiking.",
+            phonetic: "ju-mal-e nal-ssi-ga joh-eu-myeon deung-san-hal geo-ye-yo",
+            breakdownNote: "좋다 (good) + -(으)면 (if) creates the conditional clause.",
+          },
+          {
+            target: "숙제를 다 하고 게임을 했어요.",
+            translation: "I finished all my homework and then played games.",
+            phonetic: "suk-je-reul da ha-go ge-im-eul haess-eo-yo",
+            breakdownNote: "하다 (do) + -고 (and then) links two actions in sequence.",
+          },
+        ],
+      },
+    ],
+  },
+  "nan": {
+    langCode: "nan",
+    langName: "Taiwanese Hokkien",
+    flag: "🇹🇼",
+    wordOrderType: "Topic-Comment + SVO",
+    overview:
+      "Taiwanese Hokkien (臺灣話 / Tâi-gí) features Topic-Comment and Subject-Verb-Object word order with pre-verbal aspect markers (有, 無, 咧, 矣), disposal structures (共 ká/kā), and tone sandhi rules where syllables change tone when followed by another word.",
+    topDifferencesFromEnglish: [
+      "Time, location, and progressive markers (咧 teh) precede the main verb",
+      "Aspect and negation are handled by specialized pre-verbal auxiliaries (有, 無, 毋, 袂, 莫)",
+      "Disposal particle 共 (kā) brings direct or indirect objects before the verb",
+      "Modifiers precede nouns using the connector particle 的/个 (ê)",
+    ],
+    formulas: [
+      {
+        id: "nan-basic-svo",
+        name: "Standard Action & Progressive Aspect",
+        category: "word_order",
+        summary: "Subject + Time/Place + Progressive (咧 teh) + Verb + Object",
+        formulaSlots: [
+          { label: "Subject", role: "Who", exampleTarget: "我", exampleEng: "I (guá)", color: "bg-blue-100 text-blue-900 border-blue-200" },
+          { label: "Place", role: "Where", exampleTarget: "佇圖書館", exampleEng: "at library (tī)", color: "bg-emerald-100 text-emerald-900 border-emerald-200" },
+          { label: "Progressive", role: "Aspect Marker", exampleTarget: "咧", exampleEng: "in progress (teh)", color: "bg-amber-100 text-amber-900 border-amber-200" },
+          { label: "Verb + Object", role: "Action & Object", exampleTarget: "看冊", exampleEng: "read books (khuànn-tsheh)", color: "bg-rose-100 text-rose-900 border-rose-200" },
+        ],
+        explanation:
+          "In Taiwanese Hokkien, location (佇 tī...) and progressive aspect (咧 teh) set the scene immediately in front of the main verb phrase.",
+        keyRule: "Subject -> Location (佇) -> Progressive Aspect (咧) -> Verb -> Object.",
+        examples: [
+          {
+            target: "我佇客廳咧聽音樂。",
+            translation: "I am listening to music in the living room.",
+            phonetic: "Guá tī khek-thiann teh thiann im-ga̍k.",
+            breakdownNote: "我 (I) -> 佇客廳 (in living room) -> 咧 (progressive) -> 聽音樂 (listen to music).",
+          },
+        ],
+      },
+      {
+        id: "nan-disposal-ka",
+        name: "Disposal & Dative Particle (共 kā)",
+        category: "particles",
+        summary: "Subject + 共 (kā) + Object/Person + Verb Phrase",
+        formulaSlots: [
+          { label: "Subject", role: "Agent", exampleTarget: "請你", exampleEng: "Please you", color: "bg-blue-100 text-blue-900 border-blue-200" },
+          { label: "共 kā", role: "Disposal / Target Marker", exampleTarget: "共", exampleEng: "take / to (kā)", color: "bg-rose-100 text-rose-900 border-rose-200" },
+          { label: "Object", role: "Target", exampleTarget: "這扇門", exampleEng: "this door", color: "bg-purple-100 text-purple-900 border-purple-200" },
+          { label: "Resultative Verb", role: "Action & Result", exampleTarget: "關起來", exampleEng: "close shut", color: "bg-emerald-100 text-emerald-900 border-emerald-200" },
+        ],
+        explanation:
+          "共 (kā) serves as both the disposal particle (moving an affected object before the verb) and the marker for 'to / for / on behalf of' someone.",
+        keyRule: "Use 共 (kā) before an object to express doing an action to it or for someone.",
+        examples: [
+          {
+            target: "伊共我講一個秘密。",
+            translation: "He told me a secret.",
+            phonetic: "I kā guá kóng tsi̍t ê pì-bi̍t.",
+            breakdownNote: "共我 (kā guá = to me) precedes the verb 講 (kóng = tell).",
+          },
+        ],
+      },
+    ],
+  },
   "fr": {
     langCode: "fr",
     langName: "French",
