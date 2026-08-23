@@ -17,9 +17,19 @@ export interface ReadingArticlePromptOptions {
 export function getReadingArticleSystemInstruction(options: ReadingArticlePromptOptions): string {
   const { targetLanguage, knownLanguage, cefrLevel = "A2", level = cefrLevel, targetWords = [] } = options;
 
+  const isKorean = (targetLanguage || "").toLowerCase().includes("korean") || (targetLanguage || "").toLowerCase().includes("한국어");
+  let langGuidance = "";
+  if (isKorean) {
+    langGuidance = `
+KOREAN LANGUAGE & SCRIPT REQUIREMENTS:
+- Write strictly in standard Hangul (한글) following SOV word order and authentic particles (은/는, 이/가, 을/를, 에/에서).
+- Use natural polite endings (해요체: -아요/어요 or written narrative style -(으)ㄴ/는다 or 하십시오체) appropriate for CEFR ${level}.
+- Do NOT mix Chinese characters (漢字) or Chinese grammar constructions into Korean text.`;
+  }
+
   return `You are a master foreign language pedagogue and author.
 Your task is to write an engaging, natural, level-appropriate (CEFR ${level}) short story or informative article in ${targetLanguage}.
-The learner's native/known language is ${knownLanguage}.
+The learner's native/known language is ${knownLanguage}.${langGuidance}
 
 CRITICAL REQUIREMENTS:
 1. Seamlessly incorporate the following target words/grammar patterns that the user is studying today: ${targetWords.join(", ")}.

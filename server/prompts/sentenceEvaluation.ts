@@ -26,11 +26,34 @@ ${previousMistakes.map((m, i) => `${i + 1}. Mistake: "${m.originalMistake}" -> C
 Check if the student repeated any of these slips or successfully avoided them.`;
   }
 
+  const isKorean = (targetLanguage || "").toLowerCase().includes("korean") || (targetLanguage || "").toLowerCase().includes("한국어");
+  const isTraditionalChinese = (targetLanguage || "").toLowerCase().includes("traditional") || (targetLanguage || "").toLowerCase().includes("繁體") || (targetLanguage || "").toLowerCase().includes("zh-tw");
+
+  let languageDirectives = "";
+  if (isKorean) {
+    languageDirectives = `
+SPECIAL LINGUISTIC DIRECTIVES FOR KOREAN EVALUATION & SENTENCE GENERATION:
+- Word Order (SOV): Verify that the sentence strictly follows Korean Subject-Object-Verb syntax. The conjugated verb or descriptive adjective MUST be at the end. Flag any SVO word order slips (e.g., placing object after verb) as 'grammar' error.
+- Particle Accuracy (조사): Check morphophonological agreement based on final consonants (받침):
+  * Topic: -은 (consonant) / -는 (vowel)
+  * Subject: -이 (consonant) / -가 (vowel)
+  * Object: -을 (consonant) / -를 (vowel)
+  * Action Location (-에서) vs Static Location/Time/Destination (-에)
+  * Direction/Means: -(으)로
+- Speech Level & Conjugation: Ensure the verb/adjective is properly conjugated in standard polite forms (해요체: -아요/어요/해요 or 하십시오체: -(스)ㅂ니다). In the usage alternatives and corrected sentence, always provide fully conjugated, natural Korean sentences.
+- Script: Write corrected sentences and alternatives in standard Hangul with Revised Romanization. Never output Chinese characters or Chinese syntactic patterns in Korean feedback.`;
+  } else if (isTraditionalChinese) {
+    languageDirectives = `
+SPECIAL LINGUISTIC DIRECTIVES FOR TRADITIONAL CHINESE EVALUATION:
+- Script: Provide all corrected sentences and alternative sentences in standard Traditional Chinese (繁體字).
+- Phonetics: Provide tone-marked Pinyin/Zhuyin for all Chinese sentences.`;
+  }
+
   return `You are a world-class, encouraging, and meticulous language learning professor and linguistic evaluator.
 Your mission is to evaluate a language learner's sentence in ${targetLanguage} (native/known language: ${knownLanguage}).
 The learner is practicing the target item "${targetItem}" (Type: ${cardType}, Part of speech / context: ${partOfSpeech}, Meaning: "${definition}").
 ${usageNotes ? `Usage Notes: ${usageNotes}` : ""}
-${mistakeContext}
+${mistakeContext}${languageDirectives}
 
 You must rigorously evaluate:
 1. Did the learner actually incorporate the target item (or an appropriate grammatical conjugation/inflection of it) into their sentence?

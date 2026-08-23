@@ -41,12 +41,24 @@ SPECIAL SCRIPT REQUIREMENT FOR TAIWANESE HOKKIEN:
 - Write target expressions with standard Han characters (漢羅 / 漢字) and Pe̍h-ōe-jī (POJ) or Tâi-lô romanization with tone diacritics in the phonetic field.`;
   } else if (isJapanese) {
     scriptDirectives = `
-SPECIAL SCRIPT REQUIREMENT FOR JAPANESE:
-- Provide Kanji with Kana in the target item and accurate Romaji / Hiragana pronunciation in the phonetic field.`;
+SPECIAL SCRIPT & GRAMMAR REQUIREMENT FOR JAPANESE:
+- Provide Kanji with Kana in the target item and accurate Romaji / Hiragana pronunciation in the phonetic field.
+- Strictly adhere to Japanese SOV word order (Topic は, Subject が, Object を, Time/Place に/で, Verb concluding the sentence).`;
   } else if (isKorean) {
     scriptDirectives = `
-SPECIAL SCRIPT REQUIREMENT FOR KOREAN:
-- Provide standard Hangul in target sentences and Revised Romanization in the phonetic field.`;
+CRITICAL GRAMMAR & SCRIPT RULES FOR KOREAN:
+1. WORD ORDER (SOV): Korean is strictly Subject-Object-Verb. The conjugated predicate (verb/adjective) MUST ALWAYS anchor the clause or sentence at the very end. NEVER use Chinese or English SVO structures.
+2. POSTPOSITIONAL PARTICLES (조사): Attach correct Korean particles directly to preceding nouns without spaces:
+   - Topic: -은 (after consonant/batchim) / -는 (after vowel)
+   - Subject: -이 (after consonant/batchim) / -가 (after vowel)
+   - Object: -을 (after consonant/batchim) / -를 (after vowel)
+   - Time & Destination / Static Location: -에 (e.g., 8시에, 서울에 가요, 방에 있어요)
+   - Dynamic Action Location: -에서 (e.g., 카페에서 커피를 마셔요, 도서관에서 공부해요)
+   - Means / Direction / Instrument: -(으)로 (e.g., 버스로, 한국어로)
+   - Comitative / With: -와/과, -(이)랑, -하고 (e.g., 친구와 함께)
+3. SPEECH LEVEL & CONJUGATION: All example sentences must be fully conjugated in natural standard polite Korean (Informal Polite 해요체: -아요/어요/해요, or Formal Polite 하십시오체: -(스)ㅂ니다). NEVER output raw unconjugated dictionary citation forms (-다) as standalone sentences.
+4. SCRIPT & PHONETICS: Write purely in authentic modern Hangul (한글) for all target items, definitions, and sentences. In the 'phonetic' field, provide accurate Revised Romanization.
+5. NO CHINESE PATTERNS: Do NOT use Chinese characters (漢字), Chinese grammatical aspect markers (了, 著, 過), Chinese preverbal time/location SVO patterns, or Chinese measure words in Korean sentences.`;
   }
 
   return `You are an expert computational linguist and language curriculum designer.
@@ -86,12 +98,32 @@ export interface CalibratedDeckPromptOptions {
 export function getCalibratedDeckSystemInstruction(options: CalibratedDeckPromptOptions): string {
   const { targetLanguage, knownLanguage, cefrLevel = "B1", assessedLevel = cefrLevel, recommendedStartingRank = 1, cardCount = 15, identifiedErrors = [] } = options;
 
+  const isKorean = (targetLanguage || "").toLowerCase().includes("korean") || (targetLanguage || "").toLowerCase().includes("한국어");
+  const isTraditionalChinese =
+    (targetLanguage || "").toLowerCase().includes("traditional") ||
+    (targetLanguage || "").toLowerCase().includes("繁體") ||
+    (targetLanguage || "").toLowerCase().includes("zh-tw");
+
+  let languageDirectives = "";
+  if (isKorean) {
+    languageDirectives = `
+KOREAN GRAMMATICAL RULES:
+- Word Order: Strictly Subject-Object-Verb (SOV) with verb/adjective concluding the sentence.
+- Particles: Accurate attachable particles (-은/는 Topic, -이/가 Subject, -을/를 Object, -에/에서 Location/Time, -(으)로 Direction/Means).
+- Conjugation: Conjugate all example sentences in natural polite forms (해요체: -아요/어요/해요, or 하십시오체: -(스)ㅂ니다).
+- Script: Pure standard modern Hangul (한글). No Chinese characters. Accurate Revised Romanization in phonetic fields.`;
+  } else if (isTraditionalChinese) {
+    languageDirectives = `
+TRADITIONAL CHINESE SCRIPT RULES:
+- Strictly write in Traditional Chinese characters (繁體字 / 正體字). Provide tone-marked Pinyin/Zhuyin in phonetic fields.`;
+  }
+
   return `You are an elite language curriculum architect.
 Generate a custom-calibrated spaced repetition deck for learning ${targetLanguage} (for ${knownLanguage} speakers).
 Diagnosed Level: ${assessedLevel}
 Starting Frequency Rank: #${recommendedStartingRank}
 Card Count: ${cardCount}
-Learner Test Slips / Errors to Remedy: ${JSON.stringify(identifiedErrors.slice(0, 5))}
+Learner Test Slips / Errors to Remedy: ${JSON.stringify(identifiedErrors.slice(0, 5))}${languageDirectives}
 
 Requirements:
 1. Generate ${Math.max(8, cardCount - identifiedErrors.length)} frequency-ranked cards appropriate for CEFR ${assessedLevel}, starting from frequency rank #${recommendedStartingRank}. Skip basic words already mastered.

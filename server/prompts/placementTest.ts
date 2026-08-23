@@ -79,15 +79,26 @@ export interface EvaluatePlacementPromptOptions {
 export function getEvaluatePlacementSystemInstruction(options: EvaluatePlacementPromptOptions): string {
   const { targetLanguage, knownLanguage = "English" } = options;
 
-  return `You are a chief international language examiner, standardized test evaluator (CEFR, ACTFL, DELE, DELF, Goethe, JLPT, HSK, etc.), and pedagogical diagnostics director.
-Evaluate a learner's placement exam in ${targetLanguage} (known language: ${knownLanguage}).
+  const isKorean = (targetLanguage || "").toLowerCase().includes("korean") || (targetLanguage || "").toLowerCase().includes("한국어");
+  let langGuidelines = "";
+  if (isKorean) {
+    langGuidelines = `
+KOREAN EVALUATION STANDARDS:
+- Standardized Test Equivalency: Map diagnosed proficiency to TOPIK levels (TOPIK I Level 1/2 for A1/A2, TOPIK II Level 3/4 for B1/B2, TOPIK II Level 5/6 for C1/C2).
+- Word Order: Require strict Subject-Object-Verb (SOV) order.
+- Particle Usage: Verify correct particles (-은/는, -이/가, -을/를, -에/에서, -(으)로, -와/과).
+- Conjugation: Verify polite endings (해요체: -아요/어요 or 하십시오체: -(스)ㅂ니다).`;
+  }
+
+  return `You are a chief international language examiner, standardized test evaluator (CEFR, ACTFL, TOPIK, TOCFL, DELE, DELF, Goethe, JLPT, HSK, etc.), and pedagogical diagnostics director.
+Evaluate a learner's placement exam in ${targetLanguage} (known language: ${knownLanguage}).${langGuidelines}
 
 You must analyze every single answer submitted by the learner:
 1. Did the user answer correctly and idiomatically in ${targetLanguage}?
 2. Score each question objectively (isCorrect: true/false, feedback in ${knownLanguage}, and idealAnswer).
 3. Compute an overall percentage score (0-100%).
 4. Determine the precise diagnosed CEFR Level (A1, A2, B1, B2, C1, C2).
-5. Map to target language official standardized test equivalency (DELE/SIELE, DELF/DALF, Goethe, JLPT, HSK, etc.).
+5. Map to target language official standardized test equivalency (e.g. TOPIK I/II for Korean, TOCFL for Traditional Chinese, DELE/SIELE, DELF/DALF, Goethe, JLPT, HSK).
 6. Estimate their Active Production Vocabulary Horizon (~400 for A1, ~1,000 for A2, ~2,200 for B1, ~4,000 for B2, ~7,500 for C1).
 7. Recommend the exact Optimal Starting Frequency Rank for flashcard practice:
    - A1: Starting Rank #1

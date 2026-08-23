@@ -812,6 +812,194 @@ export function getFallbackDeck(
     };
   }
 
+  // Korean Specific Frequency Deck Fallback
+  if (langLower.includes("korean") || langLower.includes("한국어") || langLower.includes("한국") || langLower === "ko") {
+    const koreanCards = [
+      {
+        type: "vocabulary",
+        targetItem: "배우다",
+        frequencyRank: startFrequencyRank,
+        partOfSpeech: "Verb",
+        definition: "to learn, to study",
+        phonetic: "bae-u-da (Present: 배워요 / bae-wo-yo)",
+        usageNotes: "SOV word order: [Topic/Subject + 은/는] + [Object + 을/를] + 배워요. Direct object takes 을/를.",
+        examples: [
+          {
+            target: "저는 매일 한국어를 열심히 배워요.",
+            translation: "I study Korean hard every day.",
+            phonetic: "Jeo-neun mae-il han-guk-eo-reul yeol-sim-hi bae-wo-yo.",
+          },
+          {
+            target: "새로운 언어를 배우는 것은 정말 재미있어요.",
+            translation: "Learning a new language is really fun.",
+            phonetic: "Sae-ro-un eon-eo-reul bae-u-neun geos-eun jeong-mal jae-mi-iss-eo-yo.",
+          },
+        ],
+        tags: ["core-vocab", "education", "topik-1"],
+      },
+      {
+        type: "vocabulary",
+        targetItem: "만나다",
+        frequencyRank: startFrequencyRank + 1,
+        partOfSpeech: "Verb",
+        definition: "to meet, to see (a person)",
+        phonetic: "man-na-da (Present: 만나요 / man-na-yo)",
+        usageNotes: "Pattern: [Person + 을/를 or 와/과] + 만나요. Location takes 에서 (e.g. 카페에서).",
+        examples: [
+          {
+            target: "오늘 오후에 카페에서 친구를 만나요.",
+            translation: "I meet my friend at the cafe this afternoon.",
+            phonetic: "O-neul o-hu-e ka-pe-e-seo chin-gu-reul man-na-yo.",
+          },
+          {
+            target: "만나서 반갑습니다!",
+            translation: "Pleased to meet you!",
+            phonetic: "Man-na-seo ban-gap-seum-ni-da!",
+          },
+        ],
+        tags: ["core-vocab", "social", "topik-1"],
+      },
+      {
+        type: "grammar",
+        targetItem: "-아서/어서",
+        frequencyRank: startFrequencyRank + 2,
+        partOfSpeech: "Connective Suffix",
+        definition: "because / so (cause & effect) OR sequential action (and then)",
+        phonetic: "-a-seo / -eo-seo",
+        usageNotes: "Vowel harmony: use -아서 after ㅏ/ㅗ; use -어서 after other vowels; 하다 becomes 해서. Connects two clauses in SOV order.",
+        examples: [
+          {
+            target: "날씨가 좋아서 한강 공원에 산책하러 갔어요.",
+            translation: "Because the weather was nice, I went for a walk at the Han River park.",
+            phonetic: "Nal-ssi-ga joh-a-seo han-gang gong-won-e san-chaek-ha-reo gass-eo-yo.",
+          },
+          {
+            target: "한국 음식이 맛있어서 자주 먹어요.",
+            translation: "Because Korean food is delicious, I eat it often.",
+            phonetic: "Han-guk eum-sig-i mas-iss-eo-seo ja-ju meog-eo-yo.",
+          },
+        ],
+        tags: ["grammar", "connectors", "causality"],
+      },
+      {
+        type: "vocabulary",
+        targetItem: "좋아하다",
+        frequencyRank: startFrequencyRank + 3,
+        partOfSpeech: "Transitive Verb",
+        definition: "to like, to be fond of",
+        phonetic: "joh-a-ha-da (Present: 좋아해요 / joh-a-hae-yo)",
+        usageNotes: "Takes an object with -을/를 (e.g. 음악을 좋아해요). Distinct from descriptive adjective 좋다 (which takes -이/가).",
+        examples: [
+          {
+            target: "저는 시원한 아이스 아메리카노를 좋아해요.",
+            translation: "I like cold iced Americanos.",
+            phonetic: "Jeo-neun si-won-han a-i-seu a-me-ri-ka-no-reul joh-a-hae-yo.",
+          },
+          {
+            target: "어떤 한국 드라마를 제일 좋아하세요?",
+            translation: "Which Korean drama do you like the most?",
+            phonetic: "Eo-tteon han-guk deu-ra-ma-reul je-il joh-a-ha-se-yo?",
+          },
+        ],
+        tags: ["core-vocab", "preferences"],
+      },
+      {
+        type: "grammar",
+        targetItem: "-고 싶다",
+        frequencyRank: startFrequencyRank + 4,
+        partOfSpeech: "Auxiliary Verb",
+        definition: "to want to (expresses desire to do an action)",
+        phonetic: "-go sip-da (Present: -고 싶어요 / -go sip-eo-yo)",
+        usageNotes: "Attach directly to verb stem: [Verb Stem] + 고 싶어요. Object can take -을/를 or -이/가.",
+        examples: [
+          {
+            target: "이번 주말에 서울 명동에 가고 싶어요.",
+            translation: "I want to go to Myeongdong in Seoul this weekend.",
+            phonetic: "I-beon ju-mal-e seo-ul myeong-dong-e ga-go sip-eo-yo.",
+          },
+          {
+            target: "따뜻한 차 한 잔을 마시고 싶어요.",
+            translation: "I want to drink a cup of warm tea.",
+            phonetic: "Tta-tteut-han cha han jan-eul ma-si-go sip-eo-yo.",
+          },
+        ],
+        tags: ["grammar", "desire", "topik-1"],
+      },
+      {
+        type: "vocabulary",
+        targetItem: "있다 / 없다",
+        frequencyRank: startFrequencyRank + 5,
+        partOfSpeech: "Existence / Possession Verb",
+        definition: "to exist, to have / to not exist, to not have",
+        phonetic: "iss-da (있어요) / eobs-da (없어요)",
+        usageNotes: "Pattern: [Location + 에] [Noun + 이/가] 있어요/없어요 (There is/isn't X at place, or I have/don't have X).",
+        examples: [
+          {
+            target: "지금 질문이 있어요.",
+            translation: "I have a question right now.",
+            phonetic: "Ji-geum jil-mun-i iss-eo-yo.",
+          },
+          {
+            target: "도서관에 조용한 자리가 없어요.",
+            translation: "There are no quiet seats in the library.",
+            phonetic: "Do-seo-gwan-e jo-yong-han ja-ri-ga eobs-eo-yo.",
+          },
+        ],
+        tags: ["core-vocab", "existence", "topik-1"],
+      },
+      {
+        type: "grammar",
+        targetItem: "-(으)ㄹ 수 있다/없다",
+        frequencyRank: startFrequencyRank + 6,
+        partOfSpeech: "Grammar Pattern",
+        definition: "can / cannot (expresses ability or possibility)",
+        phonetic: "-(eu)l su iss-da / eobs-da",
+        usageNotes: "Stem ends in vowel -> -ㄹ 수 있다; stem ends in consonant -> -을 수 있다.",
+        examples: [
+          {
+            target: "저는 한국어로 간단한 대화를 할 수 있어요.",
+            translation: "I can have a simple conversation in Korean.",
+            phonetic: "Jeo-neun han-guk-eo-ro gan-dan-han dae-hwa-reul hal su iss-eo-yo.",
+          },
+          {
+            target: "오늘은 바빠서 모임에 갈 수 없어요.",
+            translation: "I am busy today so I cannot go to the meeting.",
+            phonetic: "O-neul-eun ba-ppa-seo mo-im-e gal su eobs-eo-yo.",
+          },
+        ],
+        tags: ["grammar", "ability", "topik-1"],
+      },
+      {
+        type: "grammar",
+        targetItem: "-지만",
+        frequencyRank: startFrequencyRank + 7,
+        partOfSpeech: "Connective Suffix",
+        definition: "but / although (contrast clause connector)",
+        phonetic: "-ji-man",
+        usageNotes: "Attaches directly to any verb or adjective stem without changes: [Clause 1] + 지만, [Clause 2].",
+        examples: [
+          {
+            target: "한국어 문법이 조금 어렵지만 정말 재미있어요.",
+            translation: "Korean grammar is a bit difficult, but it is really interesting.",
+            phonetic: "Han-guk-eo mun-beob-i jo-geum eo-ryeop-ji-man jeong-mal jae-mi-iss-eo-yo.",
+          },
+          {
+            target: "가격은 비싸지만 품질이 아주 좋아요.",
+            translation: "The price is expensive, but the quality is very good.",
+            phonetic: "Ga-gyeog-eun bi-ssa-ji-man pum-jil-i a-ju joh-a-yo.",
+          },
+        ],
+        tags: ["grammar", "contrast", "topik-1"],
+      },
+    ];
+
+    return {
+      deckTitle: `Korean (한국어): ${topic || "Core Essential Tier"}`,
+      deckDescription: `High-frequency spaced repetition flashcards featuring authentic Korean Hangul, Revised Romanization, and strict SOV sentence structures with proper particles.`,
+      cards: koreanCards.slice(0, count),
+    };
+  }
+
   // Universal fallback for other target languages
   const sampleCards = [
     {
@@ -876,12 +1064,17 @@ export function getFallbackSentenceEvaluation(params: {
   const sentence = (userSentence || "").trim();
   const lowerSentence = sentence.toLowerCase();
   const lowerTarget = (targetItem || "").toLowerCase();
+  const isKorean = (targetLanguage || "").toLowerCase().includes("korean") || (targetLanguage || "").toLowerCase().includes("한국어") || targetLanguage === "ko";
   
   const isTargetUsed = lowerSentence.includes(lowerTarget) || sentence.includes(targetItem);
   const isReasonableLength = sentence.length >= 8;
   const score = isTargetUsed && isReasonableLength ? 90 : isTargetUsed ? 75 : 60;
   const grade = score >= 85 ? 4 : score >= 70 ? 3 : 2;
   const masteryLevel = score >= 85 ? "mastered" : score >= 70 ? "good" : "developing";
+
+  const grammarBreakdown = isKorean
+    ? `SOV Structure Review: Your Korean sentence places the verb at the end with appropriate polite endings. Target item: "${targetItem}". Keep practicing particle placement (은/는, 이/가, 을/를, 에/에서)!`
+    : `You formulated an active output sentence in ${targetLanguage}. Definition: ${definition || targetItem}. Keep practicing authentic context sentences!`;
 
   return {
     score,
@@ -893,7 +1086,7 @@ export function getFallbackSentenceEvaluation(params: {
       ? `Great active use of "${targetItem}" in your sentence!`
       : `Sentence received! Make sure to include the target item "${targetItem}".`,
     correctedSentence: sentence,
-    grammarBreakdown: `You formulated an active output sentence in ${targetLanguage}. Definition: ${definition || targetItem}. Keep practicing authentic context sentences!`,
+    grammarBreakdown,
     identifiedErrors: [],
     usageAlternatives: [
       {
@@ -901,7 +1094,7 @@ export function getFallbackSentenceEvaluation(params: {
         translation: `Contextual application of ${targetItem}`,
       },
     ],
-    detectedTenseOrAspect: "Present Indicative / Natural Expression",
+    detectedTenseOrAspect: isKorean ? "Present Polite (해요체) / SOV Construction" : "Present Indicative / Natural Expression",
   };
 }
 
@@ -916,21 +1109,25 @@ export function getFallbackExplainCard(params: {
   definition?: string;
 }) {
   const { targetItem, targetLanguage, knownLanguage, partOfSpeech, definition } = params;
+  const isKorean = (targetLanguage || "").toLowerCase().includes("korean") || (targetLanguage || "").toLowerCase().includes("한국어") || targetLanguage === "ko";
+
   return {
     targetItem,
     definition: definition || `Essential ${partOfSpeech || "expression"} in ${targetLanguage}`,
     phonetic: `/${targetItem}/`,
     partOfSpeech: partOfSpeech || "Vocabulary",
-    usageFormat: `${targetItem} + Context`,
-    grammaticalRules: `Use "${targetItem}" in natural discourse according to standard ${targetLanguage} word order.`,
+    usageFormat: isKorean ? `[Subject + 은/는] + [Object + 을/를] + ${targetItem}` : `${targetItem} + Context`,
+    grammaticalRules: isKorean
+      ? `In Korean, sentences follow strict SOV order: Subject + Object/Location + Verb/Adjective. Attach correct postpositional particles (은/는 for topic, 이/가 for subject, 을/를 for object, 에/에서 for location).`
+      : `Use "${targetItem}" in natural discourse according to standard ${targetLanguage} word order.`,
     contextExamples: [
       {
-        target: `${targetItem} is frequently used in everyday dialogue.`,
-        translation: `How to use ${targetItem} naturally.`,
-        nuanceExplanation: `Standard conversational register.`,
+        target: isKorean ? `저는 매일 한국어를 ${targetItem}.` : `${targetItem} is frequently used in everyday dialogue.`,
+        translation: isKorean ? `I do this action in Korean every day.` : `How to use ${targetItem} naturally.`,
+        nuanceExplanation: isKorean ? `Polite conversational style (해요체).` : `Standard conversational register.`,
       },
     ],
-    commonCollocations: [`natural ${targetItem}`],
+    commonCollocations: isKorean ? [`열심히 ${targetItem}`, `자주 ${targetItem}`] : [`natural ${targetItem}`],
     register: "neutral / conversational",
   };
 }
@@ -1427,6 +1624,18 @@ export function getFallbackScenario(params: {
     };
   }
 
+  const isKorean = (targetLanguage || "").toLowerCase().includes("korean") || (targetLanguage || "").toLowerCase().includes("한국어") || (targetLanguage || "").toLowerCase().includes("한국") || targetLanguage === "ko";
+  if (isKorean) {
+    return {
+      title: "홍대 카페에서 주문하기 (Ordering at a Café in Hongdae)",
+      category: "Daily Life & Dining",
+      scenarioPrompt: "You are a warm, welcoming barista at a bustling café in Hongdae, Seoul. Greet the customer in polite Korean (해요체), introduce popular menu drinks, and take their order.",
+      targetWordsToUse: ["주문하다 (to order)", "추천 (recommendation)", "아이스 (iced)", "포장 (takeout)"],
+      openingGreeting: "안녕하세요! 주문 도와드릴까요? 오늘 날씨가 좋아서 시원한 딸기 라떼나 아이스 아메리카노가 인기 많아요!",
+      openingGreetingTranslation: "Hello! May I help you with your order? The weather is nice today, so our chilled strawberry latte and iced Americano are very popular!",
+    };
+  }
+
   if (isSpanish) {
     return {
       title: "En el Restaurante Tradicional (At the Traditional Restaurant)",
@@ -1460,6 +1669,98 @@ export function getFallbackConjugationLookup(params: {
   const { verb, targetLanguage } = params;
   const isSpanish = (targetLanguage || "").toLowerCase().includes("spanish");
   const isChinese = (targetLanguage || "").toLowerCase().includes("chinese");
+  const isKorean = (targetLanguage || "").toLowerCase().includes("korean") || (targetLanguage || "").toLowerCase().includes("한국어") || (targetLanguage || "").toLowerCase().includes("한국") || targetLanguage === "ko";
+
+  if (isKorean) {
+    const rawStem = verb.replace(/다$/, "");
+    const isHada = verb.endsWith("하다");
+    const presentPolite = isHada ? `${rawStem.replace(/하$/, "")}해요` : verb === "가다" ? "가요" : verb === "먹다" ? "먹어요" : verb === "배우다" ? "배워요" : verb === "보다" ? "봐요" : `${rawStem}아요/어요`;
+    const formalPolite = isHada ? `${rawStem.replace(/하$/, "")}합니다` : verb === "가다" ? "갑니다" : verb === "먹다" ? "먹습니다" : verb === "배우다" ? "배웁니다" : `${rawStem}ㅂ니다/습니다`;
+    const pastPolite = isHada ? `${rawStem.replace(/하$/, "")}했어요` : verb === "가다" ? "갔어요" : verb === "먹다" ? "먹었어요" : verb === "배우다" ? "배웠어요" : `${rawStem}았/었어요`;
+    const futurePolite = isHada ? `${rawStem.replace(/하$/, "")}할 거예요` : verb === "가다" ? "갈 거예요" : verb === "먹다" ? "먹을 거예요" : verb === "배우다" ? "배울 거예요" : `${rawStem}(으)ㄹ 거예요`;
+
+    return {
+      verb,
+      infinitiveOrRoot: verb.endsWith("다") ? verb : `${verb}다`,
+      translation: `to ${verb}`,
+      targetLanguage: "Korean",
+      targetLangCode: "ko",
+      regularity: isHada ? "regular (-하다 verb)" : "regular Korean predicate",
+      stemNotes: `Korean verbs consist of a stem (${rawStem}-) and attach agglutinative grammatical endings. Korean sentences strictly follow SOV word order with the verb concluding the sentence.`,
+      forms: [
+        {
+          id: "present-informal-polite",
+          name: "Present Informal Polite (해요체)",
+          category: "Polite Spoken",
+          description: "Standard friendly and respectful speech used in everyday life with acquaintances and adults.",
+          formula: "Verb Stem + -아요/어요/해요",
+          entries: [
+            { personOrForm: "General Polite", conjugated: presentPolite, phonetic: presentPolite, english: `I / you / they do`, example: { target: `저는 매일 ${presentPolite}.`, translation: `I do this action every day.` } },
+          ],
+        },
+        {
+          id: "formal-polite",
+          name: "Formal Polite (하십시오체)",
+          category: "Formal / Professional",
+          description: "High formality style used in business, news broadcasts, public speaking, and formal introductions.",
+          formula: "Verb Stem + -(스)ㅂ니다",
+          entries: [
+            { personOrForm: "Formal Polite", conjugated: formalPolite, phonetic: formalPolite, english: `do (formal)`, example: { target: `열심히 ${formalPolite}.`, translation: `I do this diligently (formal).` } },
+          ],
+        },
+        {
+          id: "past-polite",
+          name: "Past Polite (과거형)",
+          category: "Tense",
+          description: "Expresses completed past actions in polite style.",
+          formula: "Verb Stem + -았/었어요",
+          entries: [
+            { personOrForm: "Past Polite", conjugated: pastPolite, phonetic: pastPolite, english: `did / have done`, example: { target: `어제 ${pastPolite}.`, translation: `I did this yesterday.` } },
+          ],
+        },
+        {
+          id: "future-intention",
+          name: "Future / Probable (-(으)ㄹ 거예요)",
+          category: "Tense / Modal",
+          description: "Expresses future plans, intention, or likelihood.",
+          formula: "Verb Stem + -(으)ㄹ 거예요",
+          entries: [
+            { personOrForm: "Future Intention", conjugated: futurePolite, phonetic: futurePolite, english: `will do`, example: { target: `내일 ${futurePolite}.`, translation: `I will do this tomorrow.` } },
+          ],
+        },
+        {
+          id: "desire",
+          name: "Desire / Wish (-고 싶다)",
+          category: "Modal",
+          description: "Expresses the speaker's desire to perform an action.",
+          formula: "Verb Stem + -고 싶어요",
+          entries: [
+            { personOrForm: "Desire", conjugated: `${rawStem}고 싶어요`, phonetic: `${rawStem}-go sip-eo-yo`, english: `want to do`, example: { target: `빨리 ${rawStem}고 싶어요.`, translation: `I want to do this soon.` } },
+          ],
+        },
+        {
+          id: "ability-potential",
+          name: "Ability / Possibility (-(으)ㄹ 수 있다)",
+          category: "Modal",
+          description: "Expresses ability or possibility (can do).",
+          formula: "Verb Stem + -(으)ㄹ 수 있어요",
+          entries: [
+            { personOrForm: "Ability", conjugated: `${rawStem}(으)ㄹ 수 있어요`, phonetic: `${rawStem}-(eu)l su iss-eo-yo`, english: `can do`, example: { target: `잘 ${rawStem}(으)ㄹ 수 있어요.`, translation: `I can do this well.` } },
+          ],
+        },
+        {
+          id: "connective-cause",
+          name: "Cause & Sequential Connective (-아서/어서)",
+          category: "Connective",
+          description: "Connects two clauses expressing cause/reason or chronological sequence in SOV structure.",
+          formula: "Verb Stem + -아서/어서",
+          entries: [
+            { personOrForm: "Connective", conjugated: isHada ? `${rawStem.replace(/하$/, "")}해서` : `${rawStem}아서/어서`, phonetic: "connective", english: `because ... / and then`, example: { target: `시간이 있어서 ${presentPolite}.`, translation: `Because I had time, I did this.` } },
+          ],
+        },
+      ],
+    };
+  }
 
   if (isChinese) {
     return {

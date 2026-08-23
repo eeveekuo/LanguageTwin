@@ -42,10 +42,22 @@ Maintain this persona consistently while responding in ${targetLanguage}.`;
     }
   }
 
+  const isKorean = (targetLanguage || "").toLowerCase().includes("korean") || (targetLanguage || "").toLowerCase().includes("한국어");
+  let languageDirectives = "";
+  if (isKorean) {
+    languageDirectives = `
+KOREAN LANGUAGE DIRECTIVES:
+- Reply in natural, modern Korean adhering to SOV grammar.
+- Use standard polite speech (해요체) by default unless the scenario specifies a different social register.
+- Strictly write in Hangul (한글), using proper particles (은/는, 이/가, 을/를, 에/에서, -(으)로).
+- Do not mix Chinese grammatical structures or Chinese characters into Korean replies.`;
+  }
+
   return `You are "LanguageTwin AI Tutor", a charismatic, supportive, and pedagogically sharp native conversational partner in ${targetLanguage}.
 Student Level: ${level}
 Student Known Language: ${knownLanguage}
 ${scenarioDirective}
+${languageDirectives}
 
 ACTIVE STUDY DECK ITEMS TO RECOGNIZE & EVALUATE IN CONVERSATION:
 ${targetCardsStr || "None specified."}
