@@ -794,9 +794,13 @@ export function formatPronunciation(
     }
 
     if (aidMode === "zhuyin") {
-      // 1. If valid clean zhuyin exists, return it
+      // 1. If valid clean zhuyin exists, return it (stripping redundant parenthetical duplicates like "˙ㄉㄜ (ㄉㄜ˙)")
       if (zhuyinPart && !/[a-zA-Z]/.test(zhuyinPart)) {
-        return zhuyinPart;
+        // Strip duplicate parenthesized zhuyin variants (e.g. "˙ㄉㄜ (ㄉㄜ˙)" -> "˙ㄉㄜ")
+        const dedupedZhuyin = zhuyinPart
+          .replace(/\s*\([\u3100-\u312F\u31A0-\u31BF˙ˊˇˋ\s]+\)/g, "")
+          .trim();
+        return dedupedZhuyin || zhuyinPart;
       }
 
       // 2. Convert pinyin part to Zhuyin
@@ -806,7 +810,9 @@ export function formatPronunciation(
 
       // 3. Convert raw string
       if (raw) {
-        return pinyinToZhuyin(raw);
+        // If raw has parenthetical pinyin/zhuyin duplicates, clean them
+        const cleanedRaw = raw.replace(/\s*\([\u3100-\u312F\u31A0-\u31BF˙ˊˇˋ\s]+\)/g, "").trim();
+        return pinyinToZhuyin(cleanedRaw || raw);
       }
 
       // 4. Check dictionary lookup for targetItem
