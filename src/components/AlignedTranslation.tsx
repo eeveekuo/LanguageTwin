@@ -49,17 +49,7 @@ export const AlignedTranslation: React.FC<AlignedTranslationProps> = ({
 }) => {
   const [hoveredTargetId, setHoveredTargetId] = useState<string | null>(null);
   const [hoveredTranslationId, setHoveredTranslationId] = useState<string | null>(null);
-
-  // Generate or retrieve cached alignment tokens
-  const { targetTokens, translationTokens } = useMemo(() => {
-    return getAlignedSentencePair(
-      targetText || "",
-      translationText || "",
-      targetLangCode,
-      idPrefix,
-      tokenBreakdown
-    );
-  }, [targetText, translationText, targetLangCode, idPrefix, tokenBreakdown]);
+  const [hoveredChunkIndex, setHoveredChunkIndex] = useState<number | null>(null);
 
   // Generate morphological arrow flow formula e.g. "저 (I) + 는 (topic) -> 도서관 (library) + 에서 (at) -> ..."
   const formulaString = useMemo(() => {
@@ -73,6 +63,18 @@ export const AlignedTranslation: React.FC<AlignedTranslationProps> = ({
     return parseMorphologicalFormula(formulaString);
   }, [formulaString]);
 
+  // Generate or retrieve cached alignment tokens using the structural formula as the SOT
+  const { targetTokens, translationTokens } = useMemo(() => {
+    return getAlignedSentencePair(
+      targetText || "",
+      translationText || "",
+      targetLangCode,
+      idPrefix,
+      tokenBreakdown,
+      formulaChunks
+    );
+  }, [targetText, translationText, targetLangCode, idPrefix, tokenBreakdown, formulaChunks]);
+
   // Determine which target tokens are currently active/highlighted
   const activeTargetTokenIds = useMemo(() => {
     const active = new Set<string>();
@@ -85,8 +87,23 @@ export const AlignedTranslation: React.FC<AlignedTranslationProps> = ({
         transToken.alignedIds.forEach((id) => active.add(id));
       }
     }
+    if (hoveredChunkIndex !== null && formulaChunks[hoveredChunkIndex]) {
+      const chunk = formulaChunks[hoveredChunkIndex];
+      const cStem = (chunk.stem || "").toLowerCase();
+      const cPart = (chunk.particle || "").toLowerCase();
+      targetTokens.forEach((t) => {
+        const clean = t.cleanText.toLowerCase();
+        if (
+          (cStem && (clean === cStem || clean.startsWith(cStem) || cStem.startsWith(clean))) ||
+          (cPart && (clean === cPart || clean.endsWith(cPart))) ||
+          (cStem && cPart && clean === `${cStem}${cPart}`)
+        ) {
+          active.add(t.id);
+        }
+      });
+    }
     return active;
-  }, [hoveredTargetId, hoveredTranslationId, translationTokens]);
+  }, [hoveredTargetId, hoveredTranslationId, hoveredChunkIndex, formulaChunks, targetTokens, translationTokens]);
 
   // Determine which translation tokens are currently active/highlighted
   const activeTranslationTokenIds = useMemo(() => {
@@ -100,10 +117,40 @@ export const AlignedTranslation: React.FC<AlignedTranslationProps> = ({
         targetToken.alignedIds.forEach((id) => active.add(id));
       }
     }
-    return active;
-  }, [hoveredTargetId, hoveredTranslationId, targetTokens]);
+    if (hoveredChunkIndex !== null && formulaChunks[hoveredChunkIndex]) {
+      // Add all translation tokens aligned to the active target tokens
+      activeTargetTokenIds.forEach((tId) => {
+        const targetToken = targetTokens.find((t) => t.id === tId);
+        if (targetToken && targetToken.alignedIds) {
+          targetToken.alignedIds.forEach((id) => active.add(id));
+        }
+      });
 
-  const hasActiveHighlight = activeTargetTokenIds.size > 0 || activeTranslationTokenIds.size > 0;
+      // Also match translation words directly from stemMeaning and particleRole
+      const chunk = formulaChunks[hoveredChunkIndex];
+      const meaningWords = (chunk.stemMeaning || "")
+        .toLowerCase()
+        .replace(/[.,!?;:()[\]{}'"]/g, "")
+        .split(/\s+/)
+        .filter(Boolean);
+      const roleWords = (chunk.particleRole || "")
+        .toLowerCase()
+        .replace(/[.,!?;:()[\]{}'"]/g, "")
+        .split(/[\s/]+/)
+        .filter(Boolean);
+      const allWords = new Set([...meaningWords, ...roleWords]);
+
+      translationTokens.forEach((tr) => {
+        const clean = tr.cleanText.toLowerCase();
+        if (allWords.has(clean) || meaningWords.some((mw) => clean.startsWith(mw) || mw.startsWith(clean))) {
+          active.add(tr.id);
+        }
+      });
+    }
+    return active;
+  }, [hoveredTargetId, hoveredTranslationId, hoveredChunkIndex, formulaChunks, activeTargetTokenIds, targetTokens, translationTokens]);
+
+  const hasActiveHighlight = activeTargetTokenIds.size > 0 || activeTranslationTokenIds.size > 0 || hoveredChunkIndex !== null;
 
   // Pronunciation formatting: strictly suppressed if aidMode is 'none'
   const displayPhonetic = useMemo(() => {
@@ -260,21 +307,35 @@ export const AlignedTranslation: React.FC<AlignedTranslationProps> = ({
           <div className="flex flex-wrap items-center gap-1 sm:gap-1.5 text-xs">
             {formulaChunks.map((chunk, idx) => {
               const isChunkHovered =
-                hoveredTargetId &&
-                targetTokens.some(
-                  (t) =>
-                    t.id === hoveredTargetId &&
-                    (t.cleanText.includes(chunk.stem) || chunk.stem.includes(t.cleanText))
-                );
+                hoveredChunkIndex === idx ||
+                (hoveredTargetId &&
+                  targetTokens.some(
+                    (t) =>
+                      t.id === hoveredTargetId &&
+                      (t.cleanText.includes(chunk.stem) ||
+                        chunk.stem.includes(t.cleanText) ||
+                        (chunk.particle && t.cleanText.includes(chunk.particle)))
+                  )) ||
+                (hoveredTranslationId &&
+                  activeTranslationTokenIds.has(hoveredTranslationId) &&
+                  activeTargetTokenIds.size > 0 &&
+                  targetTokens.some(
+                    (t) =>
+                      activeTargetTokenIds.has(t.id) &&
+                      (t.cleanText.includes(chunk.stem) || chunk.stem.includes(t.cleanText))
+                  ));
 
               return (
                 <React.Fragment key={idx}>
                   <div
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border font-medium transition-all duration-100 select-text ${
+                    onMouseEnter={() => setHoveredChunkIndex(idx)}
+                    onMouseLeave={() => setHoveredChunkIndex(null)}
+                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-lg border font-medium transition-all duration-100 select-text cursor-pointer ${
                       isChunkHovered
                         ? "bg-indigo-600 text-white border-indigo-600 shadow-2xs scale-[1.02] ring-2 ring-indigo-300"
                         : "bg-indigo-50/70 border-indigo-200/70 text-slate-800 hover:bg-indigo-100/80 hover:border-indigo-300"
                     }`}
+                    title="Hover to highlight aligned tokens across target and translation"
                   >
                     <span className={isChunkHovered ? "text-white font-bold" : "text-slate-900 font-semibold"}>
                       {chunk.stem}
