@@ -907,20 +907,26 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
             </div>
             <div className="flex flex-wrap gap-1.5">
               {article.targetWordsUsed.map((item, idx) => {
+                // Extract clean target text and any embedded phonetic
+                const bracketMatch = item.match(/\(([^)]+)\)/);
+                const embeddedPhonetic = bracketMatch ? bracketMatch[1].trim() : undefined;
+                const cleanItem = item.replace(/\s*\([^)]*\)/g, "").trim();
+                const displayItem = cleanItem || item;
+
                 const pron =
                   pronunciationAid && pronunciationAid !== "none"
-                    ? formatPronunciation(item, undefined, targetLang.code, pronunciationAid)
+                    ? formatPronunciation(displayItem, embeddedPhonetic, targetLang.code, pronunciationAid)
                     : null;
 
                 return (
                   <button
                     key={idx}
                     type="button"
-                    onClick={() => handleExplainSelection(item)}
+                    onClick={() => handleExplainSelection(displayItem)}
                     className="px-2.5 py-1 rounded-xl bg-white border border-indigo-200 text-indigo-950 font-bold text-xs hover:border-indigo-500 hover:bg-indigo-50 transition cursor-pointer shadow-2xs inline-flex flex-col items-center gap-0.5"
                     title="Click to explain this target item"
                   >
-                    <span>{item}</span>
+                    <span>{displayItem}</span>
                     {pron && (
                       <span className="text-[10px] text-indigo-600 font-serif font-normal leading-none">
                         {pron}
@@ -1399,22 +1405,6 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
                       Your Answer in {targetLang.name}:
                     </label>
                     <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedCopilotQuestionId(q.id);
-                          setIsCopilotSideTabOpen(true);
-                        }}
-                        className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-xs font-bold transition cursor-pointer ${
-                          isCurrentCopilotTarget
-                            ? "bg-indigo-600 text-white shadow-2xs"
-                            : "bg-white border border-slate-200 text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200"
-                        }`}
-                        title="Open AI linguistic assistant for this question"
-                      >
-                        <Sparkles className={`w-3.5 h-3.5 ${isCurrentCopilotTarget ? "text-amber-300" : "text-indigo-600"}`} />
-                        <span>AI Co-Pilot</span>
-                      </button>
                       <button
                         type="button"
                         onClick={() => toggleSpeechRecognition(q.id)}
