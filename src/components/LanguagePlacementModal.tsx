@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   SupportedLanguage,
   PlacementQuestion,
@@ -50,6 +50,19 @@ export const LanguagePlacementModal: React.FC<LanguagePlacementModalProps> = ({
   const [result, setResult] = useState<PlacementTestResult | null>(null);
   const [isRegeneratingDeck, setIsRegeneratingDeck] = useState<boolean>(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Always reset placement state cleanly when modal opens or target language changes
+  useEffect(() => {
+    if (isOpen) {
+      setStep("intro");
+      setQuestions([]);
+      setCurrentQuestionIndex(0);
+      setAnswers({});
+      setResult(null);
+      setIsRegeneratingDeck(false);
+      setErrorMessage(null);
+    }
+  }, [isOpen, targetLang.code, knownLang.code]);
 
   if (!isOpen) return null;
 

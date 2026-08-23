@@ -47,7 +47,7 @@ interface LanguagePairModalProps {
   onSelectLanguagePair: (targetCode: string, knownCode: string) => void;
   onSelectDeck: (deck: Deck) => void;
   onDeckGenerated?: (newDeck: Deck) => void;
-  onOpenPlacementModal?: () => void;
+  onOpenPlacementModal?: (targetCode?: string, knownCode?: string) => void;
   initialMode?: "browse" | "generate";
   isOnline?: boolean;
   currentUser?: User | null;
@@ -667,8 +667,13 @@ export const LanguagePairModal: React.FC<LanguagePairModalProps> = ({
                     id="modal-placement-btn"
                     type="button"
                     onClick={() => {
+                      savePronunciationAid(selectedTarget, selectedAid);
+                      if (onChangePronunciationAid) {
+                        onChangePronunciationAid(selectedAid, selectedTarget);
+                      }
+                      onSelectLanguagePair(selectedTarget, selectedKnown);
                       onClose();
-                      onOpenPlacementModal();
+                      onOpenPlacementModal(selectedTarget, selectedKnown);
                     }}
                     className="py-2.5 px-3 rounded-2xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center justify-center gap-2 border border-emerald-200 transition cursor-pointer"
                   >

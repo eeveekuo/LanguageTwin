@@ -250,6 +250,175 @@ export function getFallbackPlacementQuestions(
     };
   }
 
+  // Korean Specific Diagnostic (TOPIK / CEFR)
+  if (langLower.includes("korean") || langLower.includes("한국어") || langLower.includes("한국") || langLower === "ko") {
+    const koreanQuestions = [
+      {
+        id: "q-ko-1",
+        cefrLevel: "A1",
+        questionType: "production",
+        prompt: `Introduce yourself in ${targetLanguage}: state your name, nationality/occupation, and a brief greeting using standard polite style (-이에요/예요 or -입니다).`,
+        targetItem: "Self-introduction, identification copula (-이에요/예요), and subject markers (은/는, 이/가)",
+        contextOrAudioText: "안녕하세요! 이름이 무엇이고 어디에서 오셨어요?",
+        correctAnswerSample: "안녕하세요, 저는 민수예요. 미국 사람이고 학생이에요.",
+        explanation: "Assesses basic self-identification, topic markers, and present polite copula (A1 / TOPIK I Level 1).",
+      },
+      {
+        id: "q-ko-2",
+        cefrLevel: "A2",
+        questionType: "transformation",
+        prompt: `Complete the sentence by putting the bracketed ideas into the past tense with the sequential connector (-아서/어서): "어제 친구를 [meet] 같이 영화를 [saw]."`,
+        targetItem: "Sequential time connector (-아서/어서) and past polite inflection (-았/었어요)",
+        contextOrAudioText: "어제 친구를 만나서 같이 영화를 봤어요.",
+        correctAnswerSample: "어제 친구를 만나서 같이 영화를 봤어요.",
+        explanation: "Assesses sequential action connection and regular/irregular past tense conjugation (A2 / TOPIK I Level 2).",
+      },
+      {
+        id: "q-ko-3",
+        cefrLevel: "B1",
+        questionType: "production",
+        prompt: `State your opinion about studying abroad in ${targetLanguage}, using a background/contrast connector (-는데/-은데) or reason connector (-기 때문에).`,
+        targetItem: "Background clauses (-는데), opinion phrasing (-는 것 같아요), and causality",
+        contextOrAudioText: "제 생각에는 유학이 힘들지만 많은 것을 배울 수 있어서 좋은 것 같아요.",
+        correctAnswerSample: "유학 생활은 조금 외롭지만 시야를 넓힐 수 있기 때문에 가치 있다고 생각해요.",
+        explanation: "Assesses complex clause linkage and indirect opinion formulation (B1 / TOPIK II Level 3).",
+      },
+      {
+        id: "q-ko-4",
+        cefrLevel: "B1",
+        questionType: "error_spotting",
+        prompt: `Spot the particle mistake in this sentence and rewrite it correctly: "저는 내일 비행기을 타고 제주도에 갈 거예요."`,
+        targetItem: "Object particle selection with vowel/consonant finals (을/를)",
+        contextOrAudioText: "저는 내일 비행기를 타고 제주도에 갈 거예요.",
+        correctAnswerSample: "저는 내일 비행기를 타고 제주도에 갈 거예요.",
+        explanation: "Assesses awareness of Korean morphophonological particle selection (을 vs 를) (B1 Error Spotting).",
+      },
+      {
+        id: "q-ko-5",
+        cefrLevel: "B2",
+        questionType: "production",
+        prompt: `Write a hypothetical or conditional sentence in ${targetLanguage}: 'If I had had enough preparation time, I would have passed the exam.' (using -(으)ㄹ 텐데 or -(으)ㄹ 수 있었을 텐데).`,
+        targetItem: "Past counterfactual hypothetical structures and modal regret expressions",
+        contextOrAudioText: "시간이 더 충분했더라면 시험에 합격할 수 있었을 텐데요.",
+        correctAnswerSample: "준비할 시간이 더 있었더라면 시험에 합격할 수 있었을 텐데요.",
+        explanation: "Assesses counterfactual hypothetical reasoning and advanced compound verb endings (B2 / TOPIK II Level 4).",
+      },
+      {
+        id: "q-ko-6",
+        cefrLevel: "B2",
+        questionType: "listening",
+        prompt: `Listen to the audio sentence. What was the speaker's advice regarding the schedule change? Respond in ${targetLanguage}.`,
+        targetItem: "Formal corporate/academic register and indirect quotation/concession",
+        contextOrAudioText: "일정에 다소 차질이 생기더라도 사전에 팀원들과 긴밀히 협의하여 단계적으로 진행하는 편이 바람직합니다.",
+        correctAnswerSample: "일정에 차질이 있어도 팀원들과 사전에 협의하며 단계적으로 진행하라고 조언했습니다.",
+        explanation: "Assesses listening comprehension of formal administrative discourse (B2 / TOPIK II Level 5).",
+      },
+      {
+        id: "q-ko-7",
+        cefrLevel: "C1",
+        questionType: "collocation",
+        prompt: `Translate this concept using natural, idiomatic ${targetLanguage} (such as a Korean four-character idiom / 사자성어 or figurative expression): 'Making decisions after careful deliberation and foresight / Look before you leap.'`,
+        targetItem: "Four-character proverbs (사자성어) or advanced figurative idioms (e.g. 심사숙고, 돌다리도 두들겨 보고 건너라)",
+        contextOrAudioText: "중요한 결정일수록 심사숙고하여 신중하게 처리해야 합니다.",
+        correctAnswerSample: "심사숙고하다 / 돌다리도 두들겨 보고 건너다",
+        explanation: "Assesses high-register proverbs, figurative mastery, and stylistic eloquence (C1 / TOPIK II Level 6).",
+      },
+    ];
+
+    return {
+      testTitle: `${targetLanguage} TOPIK & CEFR Diagnostic Placement`,
+      targetLanguage,
+      knownLanguage,
+      estimatedDurationMinutes: testType === "quick" ? 3 : 6,
+      questions: testType === "quick" ? koreanQuestions.slice(0, 5) : koreanQuestions,
+    };
+  }
+
+  // Chinese (Mandarin / Traditional Chinese / Simplified Chinese / TOCFL / HSK)
+  if (langLower.includes("chinese") || langLower.includes("中文") || langLower.includes("華語") || langLower.includes("漢語") || langLower.includes("zh")) {
+    const isTraditional = langLower.includes("traditional") || langLower.includes("繁體") || langLower.includes("tw") || langLower.includes("taiwan");
+    const chineseQuestions = [
+      {
+        id: "q-zh-1",
+        cefrLevel: "A1",
+        questionType: "production",
+        prompt: `Introduce yourself in ${targetLanguage}: write 1-2 sentences stating your name, where you live or study, and a greeting.`,
+        targetItem: isTraditional ? "自我介紹、是字句與國籍/職業表達" : "自我介绍、是字句与国籍/职业表达",
+        contextOrAudioText: isTraditional ? "你好！你叫什麼名字？你住在哪裡？" : "你好！你叫什么名字？你住在哪里？",
+        correctAnswerSample: isTraditional ? "你好，我叫王明，我是學生，我住在台北。" : "你好，我叫王明，我是学生，我住在北京。",
+        explanation: "Assesses self-introduction, basic copula (是/叫/在), and personal information (A1 / TOCFL Level 1 / HSK 1-2).",
+      },
+      {
+        id: "q-zh-2",
+        cefrLevel: "A2",
+        questionType: "transformation",
+        prompt: `Complete the sentence expressing a completed action and duration: "昨天我 [learned] 中文 [for two hours]。"`,
+        targetItem: isTraditional ? "動態助詞『了』與時量補語句型" : "动态助词『了』与时量补语句型",
+        contextOrAudioText: isTraditional ? "昨天我學了兩個小時的中文。" : "昨天我学了两个小时的中文。",
+        correctAnswerSample: isTraditional ? "昨天我學了兩個小時的中文。" : "昨天我学了两个小时的中文。",
+        explanation: "Assesses aspect marker (了) and duration complement structure (A2 / TOCFL Level 2 / HSK 3).",
+      },
+      {
+        id: "q-zh-3",
+        cefrLevel: "B1",
+        questionType: "production",
+        prompt: `Express your opinion about public transit or cycling in ${targetLanguage}, using a connector meaning 'although... but...' (雖然...但是...) or 'because... therefore...' (因為...所以...).`,
+        targetItem: isTraditional ? "複句關聯詞 (雖然...但是...) 與主觀觀點表達" : "复句关联词 (虽然...但是...) 与主观观点表达",
+        contextOrAudioText: isTraditional ? "雖然搭捷運很方便，但我更喜歡騎腳踏車。" : "虽然坐地铁很方便，但我更喜欢骑自行车。",
+        correctAnswerSample: isTraditional ? "雖然搭捷運很方便，但我認為騎腳踏車更健康。" : "虽然坐地铁很方便，但我认为骑自行车更健康。",
+        explanation: "Assesses complex clause coordination and opinion formulation (B1 / TOCFL Level 3 / HSK 4).",
+      },
+      {
+        id: "q-zh-4",
+        cefrLevel: "B1",
+        questionType: "error_spotting",
+        prompt: `Spot the word order mistake with the disposal/ba-construction in this sentence and rewrite it correctly: "${isTraditional ? "我把在桌子上的書看了。" : "我把在桌子上的书看了。"}"`,
+        targetItem: isTraditional ? "把字句受詞與動詞結果補語語序" : "把字句宾语与动词结果补语语序",
+        contextOrAudioText: isTraditional ? "我把桌子上的書看完了。" : "我把桌子上的书看完了。",
+        correctAnswerSample: isTraditional ? "我把桌子上的書看完了。" : "我把桌子上的书看完了。",
+        explanation: "Assesses word order constraints with the disposal construction (把字句) and resultative complements (B1 Error Spotting).",
+      },
+      {
+        id: "q-zh-5",
+        cefrLevel: "B2",
+        questionType: "production",
+        prompt: `Compose a conditional or hypothetical sentence in ${targetLanguage}: 'If we had known the project timeline in advance, we wouldn't have rushed.' (using 要不是 / 如果...的話).`,
+        targetItem: isTraditional ? "假設複句與反事實推論結構" : "假设复句与反事实推论结构",
+        contextOrAudioText: isTraditional ? "如果我們早點知道進度的話，就不會這麼匆忙了。" : "如果我们早点知道进度的话，就不会这么匆忙了。",
+        correctAnswerSample: isTraditional ? "如果事先掌握進度的話，我們就不至於手忙腳亂了。" : "如果事先掌握进度的话，我们就不至于手忙脚乱了。",
+        explanation: "Assesses hypothetical conditionals, counterfactual logic, and advanced discourse connectors (B2 / TOCFL Level 4 / HSK 5).",
+      },
+      {
+        id: "q-zh-6",
+        cefrLevel: "B2",
+        questionType: "listening",
+        prompt: `Listen to the audio sentence. What was the speaker's main recommendation regarding international collaboration? Respond in ${targetLanguage}.`,
+        targetItem: isTraditional ? "正式商務與學術語域篇章理解" : "正式商务与学术语域篇章理解",
+        contextOrAudioText: isTraditional ? "在跨文化合作的過程中，唯有保持開放包容的心態並建立透明的溝通機制，才能化解潛在的分歧。" : "在跨文化合作的过程中，唯有保持开放包容的心态并建立透明的沟通机制，才能化解潜在的分歧。",
+        correctAnswerSample: isTraditional ? "說話者建議保持開放心態並建立透明溝通機制來化解分歧。" : "说话者建议保持开放心态并建立透明沟通机制来化解分歧。",
+        explanation: "Assesses listening comprehension of high-register argumentative discourse (B2 / TOCFL Level 5 / HSK 6).",
+      },
+      {
+        id: "q-zh-7",
+        cefrLevel: "C1",
+        questionType: "collocation",
+        prompt: `Translate this concept using an authentic, high-register four-character idiom (成語): 'To make steady, gradual progress step-by-step through persistent effort / Step by step.'`,
+        targetItem: isTraditional ? "典雅四字成語與修辭深度 (循序漸進 / 穩紮穩打 / 水到渠成)" : "典雅四字成语与修辞深度 (循序渐进 / 稳扎稳打 / 水到渠成)",
+        contextOrAudioText: isTraditional ? "學習語言必須循序漸進，切忌急於求成。" : "学习语言必须循序渐进，切忌急于求成。",
+        correctAnswerSample: isTraditional ? "循序漸進 / 穩紮穩打" : "循序渐进 / 稳扎稳打",
+        explanation: "Assesses mastery of authentic idiomatic collocations and stylistic refinement (C1 / TOCFL Level 6).",
+      },
+    ];
+
+    return {
+      testTitle: `${targetLanguage} TOCFL / HSK & CEFR Diagnostic Placement`,
+      targetLanguage,
+      knownLanguage,
+      estimatedDurationMinutes: testType === "quick" ? 3 : 6,
+      questions: testType === "quick" ? chineseQuestions.slice(0, 5) : chineseQuestions,
+    };
+  }
+
   // Universal Multilingual CEFR Adaptive Matrix
   const universalQuestions = [
     {

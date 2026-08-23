@@ -720,7 +720,7 @@ export default function App() {
     targetCode: string,
     knownCode: string
   ) => {
-    // 1. Look for matching deck in active decks
+    // 1. Look for exact matching deck in active decks
     const matchingDeck = decks.find(
       (d) => d.targetLangCode === targetCode && d.knownLangCode === knownCode
     );
@@ -744,15 +744,37 @@ export default function App() {
       (d) => d.targetLangCode === targetCode
     );
     if (defaultMatch) {
+      const clonedDefault: Deck = {
+        ...defaultMatch,
+        knownLangCode: knownCode,
+        knownLang: getLanguageByCode(knownCode).name,
+      };
       setDecks((prev) => [
-        defaultMatch,
-        ...prev.filter((d) => d.id !== defaultMatch.id),
+        clonedDefault,
+        ...prev.filter((d) => d.id !== clonedDefault.id),
       ]);
-      setActiveDeckId(defaultMatch.id);
+      setActiveDeckId(clonedDefault.id);
       setStudyFilter({ mode: "auto" });
       return;
     }
 
+    // 4. Create a clean starter deck for this language pair if none exists
+    const targetObj = getLanguageByCode(targetCode);
+    const knownObj = getLanguageByCode(knownCode);
+    const newStarterDeck: Deck = {
+      id: `deck-${targetCode}-${knownCode}-starter-${Date.now()}`,
+      title: `${targetObj.name}: Essential Core Vocabulary & Connectors`,
+      description: `Starter high-frequency curriculum for learning ${targetObj.name} from ${knownObj.name}.`,
+      targetLang: targetObj.name,
+      targetLangCode: targetCode,
+      knownLang: knownObj.name,
+      knownLangCode: knownCode,
+      level: "A1 - Beginner",
+      cards: [],
+      createdAt: new Date().toISOString(),
+    };
+    setDecks((prev) => [newStarterDeck, ...prev]);
+    setActiveDeckId(newStarterDeck.id);
     setStudyFilter({ mode: "auto" });
   };
 
@@ -976,7 +998,12 @@ export default function App() {
         onSelectLanguagePair={handleSelectLanguagePair}
         onSelectDeck={handleSelectDeck}
         onDeckGenerated={handleDeckGenerated}
-        onOpenPlacementModal={() => setIsPlacementModalOpen(true)}
+        onOpenPlacementModal={(targetCode, knownCode) => {
+          if (targetCode && knownCode) {
+            handleSelectLanguagePair(targetCode, knownCode);
+          }
+          setIsPlacementModalOpen(true);
+        }}
         initialMode={languageModalInitialMode}
         isOnline={isOnline}
         currentUser={currentUser}

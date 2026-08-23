@@ -16,6 +16,7 @@ interface PronunciationAidSelectorProps {
   currentAid: string;
   onChangeAid: (aidId: string) => void;
   variant?: "header" | "inline" | "compact";
+  align?: "left" | "right";
   className?: string;
 }
 
@@ -25,6 +26,7 @@ export const PronunciationAidSelector: React.FC<PronunciationAidSelectorProps> =
   currentAid,
   onChangeAid,
   variant = "header",
+  align = "right",
   className = "",
 }) => {
   const [isOpen, setIsOpen] = useState(false);
@@ -82,7 +84,11 @@ export const PronunciationAidSelector: React.FC<PronunciationAidSelectorProps> =
         </button>
 
         {isOpen && (
-          <div className="absolute left-0 mt-1 w-60 rounded-2xl bg-white border border-slate-200 shadow-xl p-2 z-50 space-y-1 text-xs">
+          <div
+            className={`absolute ${
+              align === "left" ? "left-0" : "right-0"
+            } mt-1 w-64 max-w-[calc(100vw-2rem)] rounded-2xl bg-white border border-slate-200 shadow-xl p-2 z-50 space-y-1 text-xs`}
+          >
             <div className="px-2 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
               {langName} Pronunciation Aid
             </div>
@@ -160,7 +166,11 @@ export const PronunciationAidSelector: React.FC<PronunciationAidSelectorProps> =
 
       {/* Popover Menu */}
       {isOpen && (
-        <div className="absolute right-0 sm:right-auto sm:left-0 mt-2 w-72 rounded-2xl bg-white border border-slate-200 shadow-2xl p-2.5 z-50 space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
+        <div
+          className={`absolute ${
+            align === "left" ? "left-0" : "right-0"
+          } mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl bg-white border border-slate-200 shadow-2xl p-2.5 z-50 space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-150`}
+        >
           <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-slate-100">
             <div className="flex items-center gap-1.5 text-[11px] font-black text-slate-800 uppercase tracking-wider">
               <Languages className="w-3.5 h-3.5 text-indigo-600" />
