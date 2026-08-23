@@ -13,6 +13,7 @@ import {
 } from "../data/conjugations";
 import { createInitialSRS } from "../data/defaultDecks";
 import { playTextAloud } from "../utils/speech";
+import { formatPronunciation } from "../utils/pronunciation";
 import {
   Volume2,
   Sparkles,
@@ -37,6 +38,7 @@ interface ConjugationLookupProps {
   onAddConjugationToDeck?: (card: Flashcard) => void;
   compact?: boolean;
   className?: string;
+  pronunciationAid?: string;
 }
 
 export function ConjugationLookup({
@@ -48,6 +50,7 @@ export function ConjugationLookup({
   onAddConjugationToDeck,
   compact = false,
   className = "",
+  pronunciationAid = "none",
 }: ConjugationLookupProps) {
   const [searchTerm, setSearchTerm] = useState(initialVerb);
   const [loading, setLoading] = useState(false);
@@ -474,9 +477,9 @@ export function ConjugationLookup({
                         <span className="text-base font-bold text-slate-900 font-sans tracking-tight">
                           {entry.conjugated}
                         </span>
-                        {entry.phonetic && (
-                          <span className="text-[11px] text-slate-400 font-mono ml-1.5">
-                            [{entry.phonetic}]
+                        {entry.phonetic && formatPronunciation(entry.conjugated, entry.phonetic, targetLang.code, pronunciationAid) && (
+                          <span className="text-[11px] text-indigo-600 font-mono ml-1.5">
+                            [{formatPronunciation(entry.conjugated, entry.phonetic, targetLang.code, pronunciationAid)}]
                           </span>
                         )}
                         {entry.english && (

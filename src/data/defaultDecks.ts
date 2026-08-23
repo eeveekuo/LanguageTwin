@@ -697,7 +697,7 @@ export const DEFAULT_DECKS: Deck[] = [
         partOfSpeech: "Core Irregular Verb",
         definition: "to do, to make, to perform (combines with nouns e.g. 공부하다)",
         phonetic: "[hada]",
-        usageNotes: "Present polite: 해요 (haeyo). Formal: 합니다 (hamnida). Past: 했어요 (haesseoyo).",
+        usageNotes: "Present polite: 해요. Formal: 합니다. Past: 했어요.",
         examples: [
           {
             target: "매일 아침에 한국어 공부를 해요.",
@@ -737,7 +737,7 @@ export const DEFAULT_DECKS: Deck[] = [
         partOfSpeech: "Action Verb",
         definition: "to go",
         phonetic: "[kada]",
-        usageNotes: "Polite present: 가요 (gayo). Destination takes 에 (e). Past: 갔어요 (gasseoyo).",
+        usageNotes: "Polite present: 가요. Destination takes 에. Past: 갔어요.",
         examples: [
           {
             target: "오늘 오후에 도서관에 가요.",
@@ -776,7 +776,7 @@ export const DEFAULT_DECKS: Deck[] = [
         partOfSpeech: "Grammar Pattern (Desire)",
         definition: "want to (do something) - 1st/2nd person desire",
         phonetic: "[-go sip̚t͈a]",
-        usageNotes: "Verb stem + -고 싶어요 (-go sipeoyo). For 3rd person subjects, use -고 싶어하다 (-go sipeohada).",
+        usageNotes: "Verb stem + -고 싶어요. For 3rd person subjects, use -고 싶어하다.",
         examples: [
           {
             target: "따뜻한 커피를 마시고 싶어요.",
@@ -813,7 +813,7 @@ export const DEFAULT_DECKS: Deck[] = [
         partOfSpeech: "Action Verb",
         definition: "to eat",
         phonetic: "[mʌk̚t͈a]",
-        usageNotes: "Present polite: 먹어요 (meogeoyo). Object takes 을/를. Honorific equivalent is 드시다 (deusida).",
+        usageNotes: "Present polite: 먹어요. Object takes 을/를. Honorific equivalent is 드시다.",
         examples: [
           {
             target: "점심으로 맛있는 비빔밥을 먹었어요.",

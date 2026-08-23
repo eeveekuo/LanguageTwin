@@ -1174,15 +1174,6 @@ export const StudySession: React.FC<StudySessionProps> = ({
                       >
                         <Volume2 className="w-4 h-4" />
                       </button>
-                      <button
-                        type="button"
-                        onClick={handleFillWord}
-                        className="p-2 rounded-xl bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 transition cursor-pointer text-xs font-bold flex items-center gap-1"
-                        title="Auto-fill word"
-                      >
-                        <Copy className="w-3.5 h-3.5 text-slate-500" />
-                        <span className="hidden sm:inline">Copy</span>
-                      </button>
                     </div>
                   </div>
 
@@ -1269,19 +1260,10 @@ export const StudySession: React.FC<StudySessionProps> = ({
 
                   {/* Selected Example display */}
                   <div className="p-3.5 rounded-xl bg-indigo-50/50 border border-indigo-100 space-y-2">
-                    <div className="flex items-center justify-between gap-2 border-b border-indigo-100/60 pb-2">
+                    <div className="border-b border-indigo-100/60 pb-1.5">
                       <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-600">
                         Interactive Aligned Model Sentence:
                       </span>
-                      <button
-                        type="button"
-                        onClick={handleFillExample}
-                        className="p-1 px-2 rounded-lg bg-white hover:bg-slate-100 text-slate-600 border border-slate-200 transition cursor-pointer text-xs font-bold flex items-center gap-1 shadow-2xs"
-                        title="Auto-fill example"
-                      >
-                        <Copy className="w-3.5 h-3.5 text-slate-500" />
-                        <span>Copy Model</span>
-                      </button>
                     </div>
 
                     <AlignedTranslation
@@ -1803,6 +1785,7 @@ export const StudySession: React.FC<StudySessionProps> = ({
                     initialVerb={activeCard.targetItem.split(/[\s(—\/:;,]/)[0].trim()}
                     isOnline={isOnline}
                     onAddConjugationToDeck={(newCard) => onCardUpdated(newCard)}
+                    pronunciationAid={pronunciationAid}
                   />
                 </div>
               )}

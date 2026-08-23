@@ -743,6 +743,7 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
             initialVerb={activeLookupVerb || ""}
             isOnline={isOnline}
             onAddConjugationToDeck={(newCard) => onAddCard(newCard)}
+            pronunciationAid={pronunciationAid}
           />
         </div>
       )}
@@ -1037,6 +1038,7 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
                           initialVerb={card.targetItem.split(/[\s(—\/:;,]/)[0].trim()}
                           isOnline={isOnline}
                           onAddConjugationToDeck={(newCard) => onAddCard(newCard)}
+                          pronunciationAid={pronunciationAid}
                         />
                       </div>
                     )}

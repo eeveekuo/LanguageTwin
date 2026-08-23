@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from "react";
-import { getAlignedSentencePair, Token } from "../utils/alignment";
+import { getAlignedSentencePair, isNonSpacedCJK, Token } from "../utils/alignment";
 import { formatPronunciation } from "../utils/pronunciation";
 import { Volume2, Link as LinkIcon, Sparkles } from "lucide-react";
 
@@ -111,14 +111,23 @@ export const AlignedTranslation: React.FC<AlignedTranslationProps> = ({
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1">
           <div
-            className={`text-slate-900 tracking-tight leading-relaxed select-text flex flex-wrap items-baseline gap-x-0.5 ${targetTextSize} ${targetClassName}`}
+            className={`text-slate-900 tracking-tight leading-relaxed select-text flex flex-wrap items-baseline ${
+              isNonSpacedCJK(targetText, targetLangCode) ? "gap-x-0.5" : "gap-x-1.5 sm:gap-x-2"
+            } ${targetTextSize} ${targetClassName}`}
           >
             {targetTokens.map((token) => {
               const isHighlighted = activeTargetTokenIds.has(token.id);
 
               if (token.isPunctuation) {
+                const isOpeningPunct = /^[(«“‘¿¡\[{<]/.test(token.text);
+                const isUnspaced = isNonSpacedCJK(targetText, targetLangCode);
                 return (
-                  <span key={token.id} className="text-slate-400 select-none">
+                  <span
+                    key={token.id}
+                    className={`text-slate-400 select-none ${
+                      isUnspaced ? "" : isOpeningPunct ? "mr-0" : "-ml-1 sm:-ml-1.5"
+                    }`}
+                  >
                     {token.text}
                   </span>
                 );
@@ -129,9 +138,9 @@ export const AlignedTranslation: React.FC<AlignedTranslationProps> = ({
                   key={token.id}
                   onMouseEnter={() => setHoveredTargetId(token.id)}
                   onMouseLeave={() => setHoveredTargetId(null)}
-                  className={`inline-block transition-all duration-100 rounded-md px-1 py-0.5 -mx-0.5 cursor-pointer ${
+                  className={`inline-block transition-all duration-100 rounded-md px-1 py-0.5 cursor-pointer ${
                     isHighlighted
-                      ? "bg-indigo-600 text-white font-black shadow-xs ring-2 ring-indigo-400 scale-[1.03]"
+                      ? "bg-indigo-600 text-white font-black shadow-xs ring-2 ring-indigo-400 scale-[1.02]"
                       : "hover:bg-indigo-100/80 hover:text-indigo-950"
                   }`}
                   title="Hover to view aligned translation"
@@ -166,14 +175,20 @@ export const AlignedTranslation: React.FC<AlignedTranslationProps> = ({
       {/* Translation Sentence with Aligned Tokens */}
       <div className="flex items-start gap-2 pt-0.5">
         <div
-          className={`text-slate-600 font-medium leading-relaxed select-text flex flex-wrap items-baseline gap-x-1 ${translationTextSize} ${translationClassName}`}
+          className={`text-slate-600 font-medium leading-relaxed select-text flex flex-wrap items-baseline gap-x-1.5 ${translationTextSize} ${translationClassName}`}
         >
           {translationTokens.map((token) => {
             const isHighlighted = activeTranslationTokenIds.has(token.id);
 
             if (token.isPunctuation) {
+              const isOpeningPunct = /^[(«“‘¿¡\[{<]/.test(token.text);
               return (
-                <span key={token.id} className="text-slate-400 -ml-1">
+                <span
+                  key={token.id}
+                  className={`text-slate-400 select-none ${
+                    isOpeningPunct ? "mr-0" : "-ml-1"
+                  }`}
+                >
                   {token.text}
                 </span>
               );
@@ -184,9 +199,9 @@ export const AlignedTranslation: React.FC<AlignedTranslationProps> = ({
                 key={token.id}
                 onMouseEnter={() => setHoveredTranslationId(token.id)}
                 onMouseLeave={() => setHoveredTranslationId(null)}
-                className={`inline-block transition-all duration-100 rounded-md px-1 py-0.5 -mx-0.5 cursor-pointer ${
+                className={`inline-block transition-all duration-100 rounded-md px-1 py-0.5 cursor-pointer ${
                   isHighlighted
-                    ? "bg-indigo-100 text-indigo-950 font-bold ring-2 ring-indigo-400/80 shadow-2xs scale-[1.03]"
+                    ? "bg-indigo-100 text-indigo-950 font-bold ring-2 ring-indigo-400/80 shadow-2xs scale-[1.02]"
                     : "hover:bg-slate-200/80 hover:text-slate-900"
                 }`}
                 title="Hover to view aligned target words"

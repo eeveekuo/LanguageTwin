@@ -549,7 +549,7 @@ export const COMMON_VERB_CONJUGATIONS: Record<string, Record<string, VerbConjuga
 
   ko: {
     하다: {
-      verb: "하다 (hada)",
+      verb: "하다",
       infinitiveOrRoot: "하다",
       translation: "to do, to perform (fundamental verb & suffix builder)",
       targetLanguage: "Korean",
@@ -562,11 +562,11 @@ export const COMMON_VERB_CONJUGATIONS: Record<string, Record<string, VerbConjuga
           name: "Present Informal Polite (해요체)",
           category: "polite",
           description: "Everyday conversational present ending for doing.",
-          formula: "하- + 여요 -> 해요 (haeyo)",
+          formula: "하- + 여요 -> 해요",
           entries: [
-            { personOrForm: "Affirmative (Polite)", conjugated: "해요 (haeyo)", phonetic: "hae-yo", english: "do / does / will do", example: { target: "한국어를 열심히 공부해요.", translation: "I study Korean hard." } },
-            { personOrForm: "Negative (Polite)", conjugated: "안 해요 (an haeyo) / 하지 않아요", phonetic: "an hae-yo", english: "do not do", example: { target: "오늘은 운동을 안 해요.", translation: "I don't exercise today." } },
-            { personOrForm: "Question (Polite)", conjugated: "해요? (haeyo?)", phonetic: "hae-yo?", english: "do you do?", example: { target: "지금 뭐 해요?", translation: "What are you doing now?" } },
+            { personOrForm: "Affirmative (Polite)", conjugated: "해요", phonetic: "hae-yo", english: "do / does / will do", example: { target: "한국어를 열심히 공부해요.", translation: "I study Korean hard." } },
+            { personOrForm: "Negative (Polite)", conjugated: "안 해요 / 하지 않아요", phonetic: "an hae-yo", english: "do not do", example: { target: "오늘은 운동을 안 해요.", translation: "I don't exercise today." } },
+            { personOrForm: "Question (Polite)", conjugated: "해요?", phonetic: "hae-yo?", english: "do you do?", example: { target: "지금 뭐 해요?", translation: "What are you doing now?" } },
           ],
         },
         {
@@ -574,11 +574,11 @@ export const COMMON_VERB_CONJUGATIONS: Record<string, Record<string, VerbConjuga
           name: "Formal Polite (하십시오체)",
           category: "honorific",
           description: "Formal presentations, news broadcasts, business announcements.",
-          formula: "하- + ㅂ니다 -> 합니다 (hamnida)",
+          formula: "하- + ㅂ니다 -> 합니다",
           entries: [
-            { personOrForm: "Formal Statement", conjugated: "합니다 (hamnida)", phonetic: "ham-ni-da", english: "do / will do (formal)", example: { target: "지금부터 회의를 시작합니다.", translation: "We will start the meeting now." } },
-            { personOrForm: "Formal Question", conjugated: "합니까? (hamnikka?)", phonetic: "ham-ni-kka", english: "do you do? (formal)", example: { target: "무슨 일을 하십니까?", translation: "What kind of work do you do?" } },
-            { personOrForm: "Formal Negative", conjugated: "하지 않습니다 (haji anseumnida)", phonetic: "ha-ji an-seum-ni-da", english: "do not do (formal)", example: { target: "거짓말을 하지 않습니다.", translation: "I do not tell lies." } },
+            { personOrForm: "Formal Statement", conjugated: "합니다", phonetic: "ham-ni-da", english: "do / will do (formal)", example: { target: "지금부터 회의를 시작합니다.", translation: "We will start the meeting now." } },
+            { personOrForm: "Formal Question", conjugated: "합니까?", phonetic: "ham-ni-kka", english: "do you do? (formal)", example: { target: "무슨 일을 하십니까?", translation: "What kind of work do you do?" } },
+            { personOrForm: "Formal Negative", conjugated: "하지 않습니다", phonetic: "ha-ji an-seum-ni-da", english: "do not do (formal)", example: { target: "거짓말을 하지 않습니다.", translation: "I do not tell lies." } },
           ],
         },
         {
@@ -586,11 +586,11 @@ export const COMMON_VERB_CONJUGATIONS: Record<string, Record<string, VerbConjuga
           name: "Past Polite (과거형)",
           category: "polite",
           description: "Completed past actions in polite speech.",
-          formula: "하- + 였어요 -> 했어요 (haesseoyo)",
+          formula: "하- + 였어요 -> 했어요",
           entries: [
-            { personOrForm: "Past Affirmative", conjugated: "했어요 (haesseoyo)", phonetic: "haes-seo-yo", english: "did", example: { target: "숙제를 다 했어요.", translation: "I did all my homework." } },
-            { personOrForm: "Past Formal", conjugated: "했습니다 (haesseumnida)", phonetic: "haes-seum-ni-da", english: "did (formal)", example: { target: "준비를 완료했습니다.", translation: "I completed the preparations." } },
-            { personOrForm: "Past Negative", conjugated: "안 했어요 (an haesseoyo)", phonetic: "an haes-seo-yo", english: "did not do", example: { target: "아침 식사를 안 했어요.", translation: "I didn't have breakfast." } },
+            { personOrForm: "Past Affirmative", conjugated: "했어요", phonetic: "haes-seo-yo", english: "did", example: { target: "숙제를 다 했어요.", translation: "I did all my homework." } },
+            { personOrForm: "Past Formal", conjugated: "했습니다", phonetic: "haes-seum-ni-da", english: "did (formal)", example: { target: "준비를 완료했습니다.", translation: "I completed the preparations." } },
+            { personOrForm: "Past Negative", conjugated: "안 했어요", phonetic: "an haes-seo-yo", english: "did not do", example: { target: "아침 식사를 안 했어요.", translation: "I didn't have breakfast." } },
           ],
         },
         {
@@ -598,9 +598,9 @@ export const COMMON_VERB_CONJUGATIONS: Record<string, Record<string, VerbConjuga
           name: "Future / Intention (-(으)ㄹ 거예요)",
           category: "modal",
           description: "Future plans, intentions, and predictions.",
-          formula: "하- + ㄹ 거예요 -> 할 거예요 (hal geoyeyo)",
+          formula: "하- + ㄹ 거예요 -> 할 거예요",
           entries: [
-            { personOrForm: "Future Plan", conjugated: "할 거예요 (hal geoyeyo)", phonetic: "hal geo-ye-yo", english: "will do / plan to do", example: { target: "내일 친구와 여행을 할 거예요.", translation: "I will go on a trip with a friend tomorrow." } },
+            { personOrForm: "Future Plan", conjugated: "할 거예요", phonetic: "hal geo-ye-yo", english: "will do / plan to do", example: { target: "내일 친구와 여행을 할 거예요.", translation: "I will go on a trip with a friend tomorrow." } },
             { personOrForm: "Formal Future", conjugated: "하겠습니까 / 하겠습니다", phonetic: "ha-ges-seum-ni-da", english: "will do (determined/formal)", example: { target: "최선을 다하겠습니다.", translation: "I will do my best." } },
           ],
         },
@@ -609,10 +609,10 @@ export const COMMON_VERB_CONJUGATIONS: Record<string, Record<string, VerbConjuga
           name: "Continuous Action (진행형 -고 있다)",
           category: "indicative",
           description: "Ongoing present action ('is doing').",
-          formula: "하- + -고 있어요 -> 하고 있어요 (hago isseoyo)",
+          formula: "하- + -고 있어요 -> 하고 있어요",
           entries: [
-            { personOrForm: "Present Progressive", conjugated: "하고 있어요 (hago isseoyo)", phonetic: "ha-go is-seo-yo", english: "is/are doing right now", example: { target: "지금 전화 통화하고 있어요.", translation: "I am on the phone right now." } },
-            { personOrForm: "Past Progressive", conjugated: "하고 있었어요 (hago isseosseoyo)", phonetic: "ha-go is-seos-seo-yo", english: "was doing", example: { target: "그때 청소를 하고 있었어요.", translation: "I was cleaning at that time." } },
+            { personOrForm: "Present Progressive", conjugated: "하고 있어요", phonetic: "ha-go is-seo-yo", english: "is/are doing right now", example: { target: "지금 전화 통화하고 있어요.", translation: "I am on the phone right now." } },
+            { personOrForm: "Past Progressive", conjugated: "하고 있었어요", phonetic: "ha-go is-seos-seo-yo", english: "was doing", example: { target: "그때 청소를 하고 있었어요.", translation: "I was cleaning at that time." } },
           ],
         },
         {
@@ -620,10 +620,10 @@ export const COMMON_VERB_CONJUGATIONS: Record<string, Record<string, VerbConjuga
           name: "Desire / Wish (-고 싶다)",
           category: "modal",
           description: "Expressing desire to do ('want to do').",
-          formula: "하- + -고 싶어요 -> 하고 싶어요 (hago sipeoyo)",
+          formula: "하- + -고 싶어요 -> 하고 싶어요",
           entries: [
-            { personOrForm: "Polite Desire", conjugated: "하고 싶어요 (hago sipeoyo)", phonetic: "ha-go si-peo-yo", english: "want to do", example: { target: "한국 여행을 하고 싶어요.", translation: "I want to travel in Korea." } },
-            { personOrForm: "Negative Desire", conjugated: "하고 싶지 않아요 (hago sipji anayo)", phonetic: "ha-go sip-ji an-a-yo", english: "do not want to do", example: { target: "야근을 하고 싶지 않아요.", translation: "I don't want to work overtime." } },
+            { personOrForm: "Polite Desire", conjugated: "하고 싶어요", phonetic: "ha-go si-peo-yo", english: "want to do", example: { target: "한국 여행을 하고 싶어요.", translation: "I want to travel in Korea." } },
+            { personOrForm: "Negative Desire", conjugated: "하고 싶지 않아요", phonetic: "ha-go sip-ji an-a-yo", english: "do not want to do", example: { target: "야근을 하고 싶지 않아요.", translation: "I don't want to work overtime." } },
           ],
         },
         {
@@ -631,10 +631,10 @@ export const COMMON_VERB_CONJUGATIONS: Record<string, Record<string, VerbConjuga
           name: "Connective Sequence & Reason (-고 / -아/어서)",
           category: "connective",
           description: "Linking actions sequentially (-고) or giving a cause/reason (-어서).",
-          formula: "Sequence: 하고 | Reason: 해서 (haeseo)",
+          formula: "Sequence: 하고 | Reason: 해서",
           entries: [
-            { personOrForm: "Sequential (-고)", conjugated: "하고 (hago)", phonetic: "ha-go", english: "do and then...", example: { target: "운동을 하고 샤워를 해요.", translation: "I exercise and then take a shower." } },
-            { personOrForm: "Reason / Cause (-어서)", conjugated: "해서 (haeseo)", phonetic: "hae-seo", english: "do, so / because of doing", example: { target: "열심히 공부해서 시험에 합격했어요.", translation: "I studied hard, so I passed the exam." } },
+            { personOrForm: "Sequential (-고)", conjugated: "하고", phonetic: "ha-go", english: "do and then...", example: { target: "운동을 하고 샤워를 해요.", translation: "I exercise and then take a shower." } },
+            { personOrForm: "Reason / Cause (-어서)", conjugated: "해서", phonetic: "hae-seo", english: "do, so / because of doing", example: { target: "열심히 공부해서 시험에 합격했어요.", translation: "I studied hard, so I passed the exam." } },
           ],
         },
         {
@@ -642,9 +642,9 @@ export const COMMON_VERB_CONJUGATIONS: Record<string, Record<string, VerbConjuga
           name: "Conditional 'If' (-(으)면)",
           category: "plain",
           description: "Expressing 'if you do' or 'when you do'.",
-          formula: "하- + 면 -> 하면 (hamyeon)",
+          formula: "하- + 면 -> 하면",
           entries: [
-            { personOrForm: "Conditional (If)", conjugated: "하면 (hamyeon)", phonetic: "ha-myeon", english: "if (one) does / when doing", example: { target: "매일 연습하면 실력이 늘어요.", translation: "If you practice every day, your skills improve." } },
+            { personOrForm: "Conditional (If)", conjugated: "하면", phonetic: "ha-myeon", english: "if (one) does / when doing", example: { target: "매일 연습하면 실력이 늘어요.", translation: "If you practice every day, your skills improve." } },
           ],
         },
         {
@@ -652,17 +652,17 @@ export const COMMON_VERB_CONJUGATIONS: Record<string, Record<string, VerbConjuga
           name: "Honorific Polite (-(으)세요)",
           category: "honorific",
           description: "Polite request, instruction, or speaking about elders/superiors.",
-          formula: "하- + 세요 -> 하세요 (haseyo)",
+          formula: "하- + 세요 -> 하세요",
           entries: [
-            { personOrForm: "Honorific / Polite Command", conjugated: "하세요 (haseyo)", phonetic: "ha-se-yo", english: "please do / (honorific subject) does", example: { target: "편하게 말씀하세요.", translation: "Please speak comfortably." } },
-            { personOrForm: "Formal Honorific", conjugated: "하십니다 (hasimnida)", phonetic: "ha-sim-ni-da", english: "does (high honorific)", example: { target: "선생님께서 강의를 하십니다.", translation: "The professor gives a lecture." } },
+            { personOrForm: "Honorific / Polite Command", conjugated: "하세요", phonetic: "ha-se-yo", english: "please do / (honorific subject) does", example: { target: "편하게 말씀하세요.", translation: "Please speak comfortably." } },
+            { personOrForm: "Formal Honorific", conjugated: "하십니다", phonetic: "ha-sim-ni-da", english: "does (high honorific)", example: { target: "선생님께서 강의를 하십니다.", translation: "The professor gives a lecture." } },
           ],
         },
       ],
     },
 
     가다: {
-      verb: "가다 (gada)",
+      verb: "가다",
       infinitiveOrRoot: "가다",
       translation: "to go",
       targetLanguage: "Korean",
@@ -675,10 +675,10 @@ export const COMMON_VERB_CONJUGATIONS: Record<string, Record<string, VerbConjuga
           name: "Present Informal Polite (해요체)",
           category: "polite",
           description: "Everyday conversation ending for going.",
-          formula: "가- + 아요 -> 가요 (gayo)",
+          formula: "가- + 아요 -> 가요",
           entries: [
-            { personOrForm: "Affirmative (Polite)", conjugated: "가요 (gayo)", phonetic: "ga-yo", english: "go / am going", example: { target: "지금 학교에 가요.", translation: "I am going to school now." } },
-            { personOrForm: "Negative (Polite)", conjugated: "안 가요 (an gayo)", phonetic: "an ga-yo", english: "do not go", example: { target: "오늘은 파티에 안 가요.", translation: "I'm not going to the party today." } },
+            { personOrForm: "Affirmative (Polite)", conjugated: "가요", phonetic: "ga-yo", english: "go / am going", example: { target: "지금 학교에 가요.", translation: "I am going to school now." } },
+            { personOrForm: "Negative (Polite)", conjugated: "안 가요", phonetic: "an ga-yo", english: "do not go", example: { target: "오늘은 파티에 안 가요.", translation: "I'm not going to the party today." } },
           ],
         },
         {
@@ -686,9 +686,9 @@ export const COMMON_VERB_CONJUGATIONS: Record<string, Record<string, VerbConjuga
           name: "Formal Polite (하십시오체)",
           category: "honorific",
           description: "High respect or broadcast formal ending.",
-          formula: "가- + ㅂ니다 -> 갑니다 (gamnida)",
+          formula: "가- + ㅂ니다 -> 갑니다",
           entries: [
-            { personOrForm: "Formal Statement", conjugated: "갑니다 (gamnida)", phonetic: "gam-ni-da", english: "go / will go (formal)", example: { target: "서울로 출장을 갑니다.", translation: "I am going on a business trip to Seoul." } },
+            { personOrForm: "Formal Statement", conjugated: "갑니다", phonetic: "gam-ni-da", english: "go / will go (formal)", example: { target: "서울로 출장을 갑니다.", translation: "I am going on a business trip to Seoul." } },
           ],
         },
         {
@@ -696,9 +696,9 @@ export const COMMON_VERB_CONJUGATIONS: Record<string, Record<string, VerbConjuga
           name: "Past Polite (과거형)",
           category: "polite",
           description: "Completed travel / departure in the past.",
-          formula: "가- + 았어요 -> 갔어요 (gasseoyo)",
+          formula: "가- + 았어요 -> 갔어요",
           entries: [
-            { personOrForm: "Past Affirmative", conjugated: "갔어요 (gasseoyo)", phonetic: "gas-seo-yo", english: "went", example: { target: "어제 서울에 갔어요.", translation: "I went to Seoul yesterday." } },
+            { personOrForm: "Past Affirmative", conjugated: "갔어요", phonetic: "gas-seo-yo", english: "went", example: { target: "어제 서울에 갔어요.", translation: "I went to Seoul yesterday." } },
           ],
         },
         {
@@ -706,9 +706,9 @@ export const COMMON_VERB_CONJUGATIONS: Record<string, Record<string, VerbConjuga
           name: "Desire / Wish (-고 싶다)",
           category: "modal",
           description: "Expressing desire to go ('want to go').",
-          formula: "가- + -고 싶어요 -> 가고 싶어요 (gago sipeoyo)",
+          formula: "가- + -고 싶어요 -> 가고 싶어요",
           entries: [
-            { personOrForm: "Polite Desire", conjugated: "가고 싶어요 (gago sipeoyo)", phonetic: "ga-go-sip-eo-yo", english: "want to go", example: { target: "제주도에 정말 가고 싶어요.", translation: "I really want to go to Jeju Island." } },
+            { personOrForm: "Polite Desire", conjugated: "가고 싶어요", phonetic: "ga-go-sip-eo-yo", english: "want to go", example: { target: "제주도에 정말 가고 싶어요.", translation: "I really want to go to Jeju Island." } },
           ],
         },
         {
@@ -716,16 +716,16 @@ export const COMMON_VERB_CONJUGATIONS: Record<string, Record<string, VerbConjuga
           name: "Future / Intention (-(으)ㄹ 거예요)",
           category: "modal",
           description: "Future travel plans.",
-          formula: "가- + ㄹ 거예요 -> 갈 거예요 (gal geoyeyo)",
+          formula: "가- + ㄹ 거예요 -> 갈 거예요",
           entries: [
-            { personOrForm: "Future Plan", conjugated: "갈 거예요 (gal geoyeyo)", phonetic: "gal geo-ye-yo", english: "will go / plan to go", example: { target: "다음 달에 한국에 갈 거예요.", translation: "I will go to Korea next month." } },
+            { personOrForm: "Future Plan", conjugated: "갈 거예요", phonetic: "gal geo-ye-yo", english: "will go / plan to go", example: { target: "다음 달에 한국에 갈 거예요.", translation: "I will go to Korea next month." } },
           ],
         },
       ],
     },
 
     먹다: {
-      verb: "먹다 (meokda)",
+      verb: "먹다",
       infinitiveOrRoot: "먹다",
       translation: "to eat",
       targetLanguage: "Korean",
@@ -738,10 +738,10 @@ export const COMMON_VERB_CONJUGATIONS: Record<string, Record<string, VerbConjuga
           name: "Present Informal Polite (해요체)",
           category: "polite",
           description: "Everyday conversation ending for eating.",
-          formula: "먹- + 어요 -> 먹어요 (meogeoyo)",
+          formula: "먹- + 어요 -> 먹어요",
           entries: [
-            { personOrForm: "Affirmative (Polite)", conjugated: "먹어요 (meogeoyo)", phonetic: "meo-geo-yo", english: "eat / am eating", example: { target: "아침마다 사과를 먹어요.", translation: "I eat an apple every morning." } },
-            { personOrForm: "Negative (Polite)", conjugated: "안 먹어요 (an meogeoyo)", phonetic: "an meo-geo-yo", english: "do not eat", example: { target: "매운 음식은 잘 안 먹어요.", translation: "I don't really eat spicy food." } },
+            { personOrForm: "Affirmative (Polite)", conjugated: "먹어요", phonetic: "meo-geo-yo", english: "eat / am eating", example: { target: "아침마다 사과를 먹어요.", translation: "I eat an apple every morning." } },
+            { personOrForm: "Negative (Polite)", conjugated: "안 먹어요", phonetic: "an meo-geo-yo", english: "do not eat", example: { target: "매운 음식은 잘 안 먹어요.", translation: "I don't really eat spicy food." } },
           ],
         },
         {
@@ -749,9 +749,9 @@ export const COMMON_VERB_CONJUGATIONS: Record<string, Record<string, VerbConjuga
           name: "Formal Polite (하십시오체)",
           category: "honorific",
           description: "Formal ending for eating.",
-          formula: "먹- + 습니다 -> 먹습니다 (meokseumnida)",
+          formula: "먹- + 습니다 -> 먹습니다",
           entries: [
-            { personOrForm: "Formal Statement", conjugated: "먹습니다 (meokseumnida)", phonetic: "meok-seum-ni-da", english: "eat (formal)", example: { target: "한국 음식을 맛있게 먹습니다.", translation: "I enjoy eating Korean food." } },
+            { personOrForm: "Formal Statement", conjugated: "먹습니다", phonetic: "meok-seum-ni-da", english: "eat (formal)", example: { target: "한국 음식을 맛있게 먹습니다.", translation: "I enjoy eating Korean food." } },
           ],
         },
         {
@@ -759,9 +759,9 @@ export const COMMON_VERB_CONJUGATIONS: Record<string, Record<string, VerbConjuga
           name: "Past Polite (과거형)",
           category: "polite",
           description: "Completed meal in the past.",
-          formula: "먹- + 었어요 -> 먹었어요 (meogeosseoyo)",
+          formula: "먹- + 었어요 -> 먹었어요",
           entries: [
-            { personOrForm: "Past Affirmative", conjugated: "먹었어요 (meogeosseoyo)", phonetic: "meo-geos-seo-yo", english: "ate", example: { target: "점심에 비빔밥을 먹었어요.", translation: "I ate bibimbap for lunch." } },
+            { personOrForm: "Past Affirmative", conjugated: "먹었어요", phonetic: "meo-geos-seo-yo", english: "ate", example: { target: "점심에 비빔밥을 먹었어요.", translation: "I ate bibimbap for lunch." } },
           ],
         },
         {
@@ -769,9 +769,9 @@ export const COMMON_VERB_CONJUGATIONS: Record<string, Record<string, VerbConjuga
           name: "Desire / Wish (-고 싶다)",
           category: "modal",
           description: "Expressing desire to eat.",
-          formula: "먹- + -고 싶어요 -> 먹고 싶어요 (meokgo sipeoyo)",
+          formula: "먹- + -고 싶어요 -> 먹고 싶어요",
           entries: [
-            { personOrForm: "Polite Desire", conjugated: "먹고 싶어요 (meokgo sipeoyo)", phonetic: "meok-go si-peo-yo", english: "want to eat", example: { target: "떡볶이가 정말 먹고 싶어요.", translation: "I really want to eat tteokbokki." } },
+            { personOrForm: "Polite Desire", conjugated: "먹고 싶어요", phonetic: "meok-go si-peo-yo", english: "want to eat", example: { target: "떡볶이가 정말 먹고 싶어요.", translation: "I really want to eat tteokbokki." } },
           ],
         },
       ],
