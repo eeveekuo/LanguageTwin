@@ -8,6 +8,11 @@ import {
 } from "../types";
 import { playTextAloud } from "../utils/speech";
 import {
+  getDiagnosticPlacementQuestions,
+  getDiagnosticPlacementEvaluation,
+  getDiagnosticCalibratedDeck,
+} from "../utils/placementFallback";
+import {
   GraduationCap,
   Sparkles,
   CheckCircle2,
@@ -69,46 +74,63 @@ export const LanguagePlacementModal: React.FC<LanguagePlacementModalProps> = ({
   const currentQuestion = questions[currentQuestionIndex];
   const currentAnswer = currentQuestion ? answers[currentQuestionIndex] || "" : "";
 
-  // 1. Fetch Diagnostic Test from AI
+  // 1. Fetch Diagnostic Test from AI or Local Standardized Diagnostic Engine
   const handleStartTest = async (type: "quick" | "comprehensive") => {
-    if (!isOnline) {
-      setErrorMessage("Placement Test requires an active internet connection to generate adaptive questions with the AI model.");
-      return;
-    }
-
     setTestType(type);
     setStep("loading_questions");
     setErrorMessage(null);
 
     try {
-      const response = await fetch("/api/generate-placement-test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          targetLanguage: targetLang.name,
-          knownLanguage: knownLang.name,
-          testType: type,
-        }),
-      });
+      let loadedQuestions: PlacementQuestion[] = [];
 
-      if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.error || errJson.message || `Server responded with status ${response.status}`);
+      try {
+        const response = await fetch("/api/generate-placement-test", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            targetLanguage: targetLang.name,
+            knownLanguage: knownLang.name,
+            testType: type,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.questions && data.questions.length > 0) {
+            loadedQuestions = data.questions;
+          }
+        }
+      } catch (networkErr) {
+        console.warn("Remote placement generation unreachable, engaging local standardized diagnostic:", networkErr);
       }
 
-      const data = await response.json();
-      if (!data.questions || data.questions.length === 0) {
-        throw new Error("No test questions generated.");
+      // If remote generation didn't return questions, use built-in comprehensive diagnostic test
+      if (!loadedQuestions || loadedQuestions.length === 0) {
+        const fallbackDiagnostic = getDiagnosticPlacementQuestions(targetLang.name, knownLang.name, type);
+        loadedQuestions = fallbackDiagnostic.questions;
       }
 
-      setQuestions(data.questions);
+      if (!loadedQuestions || loadedQuestions.length === 0) {
+        throw new Error("Unable to load diagnostic questions. Please try again.");
+      }
+
+      setQuestions(loadedQuestions);
       setCurrentQuestionIndex(0);
       setAnswers({});
       setStep("testing");
     } catch (err: any) {
       console.error("Test start failed:", err);
-      setErrorMessage(err.message || "Failed to load placement test. Please try again.");
-      setStep("intro");
+      // Even in worst case, load fallback diagnostic so user is never blocked
+      const fallbackDiagnostic = getDiagnosticPlacementQuestions(targetLang.name, knownLang.name, type);
+      if (fallbackDiagnostic.questions.length > 0) {
+        setQuestions(fallbackDiagnostic.questions);
+        setCurrentQuestionIndex(0);
+        setAnswers({});
+        setStep("testing");
+      } else {
+        setErrorMessage(err.message || "Failed to load placement test. Please try again.");
+        setStep("intro");
+      }
     }
   };
 
@@ -117,37 +139,47 @@ export const LanguagePlacementModal: React.FC<LanguagePlacementModalProps> = ({
     setStep("evaluating");
     setErrorMessage(null);
 
+    const submissions = questions.map((q, idx) => ({
+      questionId: q.id,
+      userAnswer: answers[idx] || "",
+      cefrLevel: q.cefrLevel,
+      questionType: q.questionType,
+    }));
+
     try {
-      const submissions = questions.map((q, idx) => ({
-        questionId: q.id,
-        userAnswer: answers[idx] || "",
-        cefrLevel: q.cefrLevel,
-        questionType: q.questionType,
-      }));
+      let evalData: PlacementTestResult | null = null;
 
-      const response = await fetch("/api/evaluate-placement-test", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          targetLanguage: targetLang.name,
-          knownLanguage: knownLang.name,
-          submissions,
-          testQuestions: questions,
-        }),
-      });
+      try {
+        const response = await fetch("/api/evaluate-placement-test", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            targetLanguage: targetLang.name,
+            knownLanguage: knownLang.name,
+            submissions,
+            testQuestions: questions,
+          }),
+        });
 
-      if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.error || errJson.message || `Evaluation failed with status ${response.status}`);
+        if (response.ok) {
+          evalData = await response.json();
+        }
+      } catch (networkErr) {
+        console.warn("Remote evaluation unreachable, computing local diagnostic evaluation:", networkErr);
       }
 
-      const evalData: PlacementTestResult = await response.json();
+      // If remote evaluation didn't return or failed, compute standardized diagnostic locally
+      if (!evalData || !evalData.overallCEFR) {
+        evalData = getDiagnosticPlacementEvaluation(targetLang.name, knownLang.name, submissions, questions);
+      }
+
       setResult(evalData);
       setStep("results");
     } catch (err: any) {
-      console.error("Evaluation failed:", err);
-      setErrorMessage(err.message || "Evaluation failed. Please try submitting again.");
-      setStep("testing");
+      console.error("Evaluation failed, using local scoring:", err);
+      const evalData = getDiagnosticPlacementEvaluation(targetLang.name, knownLang.name, submissions, questions);
+      setResult(evalData);
+      setStep("results");
     }
   };
 
@@ -158,63 +190,87 @@ export const LanguagePlacementModal: React.FC<LanguagePlacementModalProps> = ({
     setErrorMessage(null);
 
     try {
-      const response = await fetch("/api/regenerate-level-deck", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          targetLanguage: targetLang.name,
-          knownLanguage: knownLang.name,
-          cefrLevel: result.overallCEFR,
-          recommendedStartingRank: result.recommendedStartingRank || 1,
-          identifiedErrors: result.identifiedErrors || [],
-          cardCount: 15,
-        }),
-      });
+      let newDeck: Deck | null = null;
 
-      if (!response.ok) {
-        const errJson = await response.json().catch(() => ({}));
-        throw new Error(errJson.error || errJson.message || `Failed to generate calibrated deck: status ${response.status}`);
+      try {
+        const response = await fetch("/api/regenerate-level-deck", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            targetLanguage: targetLang.name,
+            knownLanguage: knownLang.name,
+            cefrLevel: result.overallCEFR,
+            recommendedStartingRank: result.recommendedStartingRank || 1,
+            identifiedErrors: result.identifiedErrors || [],
+            cardCount: 15,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const newDeckId = `deck-${targetLang.code}-calibrated-${result.overallCEFR.toLowerCase()}-${Date.now()}`;
+
+          const formattedCards: Flashcard[] = (data.cards || []).map((c: any, idx: number) => ({
+            ...c,
+            id: `card-${newDeckId}-${idx + 1}`,
+            deckId: newDeckId,
+            frequencyRank: c.frequencyRank || (c.isCommonError ? 0 : result.recommendedStartingRank + idx),
+            srs: {
+              repetition: 0,
+              interval: 0,
+              easeFactor: 2.5,
+              dueDate: new Date().toISOString(),
+              history: [],
+              masteryScore: 0,
+              status: "new",
+              consecutiveSuccesses: 0,
+            },
+          }));
+
+          newDeck = {
+            id: newDeckId,
+            title: data.deckTitle || `${targetLang.name} — CEFR ${result.overallCEFR} Calibrated Track`,
+            description: data.deckDescription || `Calibrated placement deck starting at rank #${result.recommendedStartingRank} with error remediation.`,
+            targetLang: targetLang.name,
+            targetLangCode: targetLang.code,
+            knownLang: knownLang.name,
+            knownLangCode: knownLang.code,
+            level: `CEFR ${result.overallCEFR} (Standardized)`,
+            createdAt: new Date().toISOString(),
+            cards: formattedCards,
+          };
+        }
+      } catch (netErr) {
+        console.warn("Remote deck calibration unreachable, using local calibrated deck generator:", netErr);
       }
 
-      const data = await response.json();
-      const newDeckId = `deck-${targetLang.code}-calibrated-${result.overallCEFR.toLowerCase()}-${Date.now()}`;
-
-      const formattedCards: Flashcard[] = (data.cards || []).map((c: any, idx: number) => ({
-        ...c,
-        id: `card-${newDeckId}-${idx + 1}`,
-        deckId: newDeckId,
-        frequencyRank: c.frequencyRank || (c.isCommonError ? 0 : result.recommendedStartingRank + idx),
-        srs: {
-          repetition: 0,
-          interval: 0,
-          easeFactor: 2.5,
-          dueDate: new Date().toISOString(),
-          history: [],
-          masteryScore: 0,
-          status: "new",
-          consecutiveSuccesses: 0,
-        },
-      }));
-
-      const newDeck: Deck = {
-        id: newDeckId,
-        title: data.deckTitle || `${targetLang.name} — CEFR ${result.overallCEFR} Calibrated Track`,
-        description: data.deckDescription || `Calibrated placement deck starting at rank #${result.recommendedStartingRank} with error remediation.`,
-        targetLang: targetLang.name,
-        targetLangCode: targetLang.code,
-        knownLang: knownLang.name,
-        knownLangCode: knownLang.code,
-        level: `CEFR ${result.overallCEFR} (Standardized)`,
-        createdAt: new Date().toISOString(),
-        cards: formattedCards,
-      };
+      if (!newDeck) {
+        newDeck = getDiagnosticCalibratedDeck(
+          targetLang.name,
+          knownLang.name,
+          targetLang.code,
+          knownLang.code,
+          result.overallCEFR,
+          result.recommendedStartingRank || 1,
+          result.identifiedErrors || []
+        );
+      }
 
       onDeckCalibrated(newDeck);
       onClose();
     } catch (err: any) {
-      console.error("Failed to calibrate deck:", err);
-      setErrorMessage(err.message || "Failed to generate calibrated deck.");
-      setIsRegeneratingDeck(false);
+      console.error("Failed to calibrate deck, building local fallback:", err);
+      const fallbackDeck = getDiagnosticCalibratedDeck(
+        targetLang.name,
+        knownLang.name,
+        targetLang.code,
+        knownLang.code,
+        result.overallCEFR,
+        result.recommendedStartingRank || 1,
+        result.identifiedErrors || []
+      );
+      onDeckCalibrated(fallbackDeck);
+      onClose();
     }
   };
 

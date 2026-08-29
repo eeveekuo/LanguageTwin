@@ -419,6 +419,90 @@ export function getFallbackPlacementQuestions(
     };
   }
 
+  // Japanese Specific Diagnostic (JLPT / CEFR)
+  if (langLower.includes("japanese") || langLower.includes("日本語") || langLower === "ja") {
+    const japaneseQuestions = [
+      {
+        id: "q-ja-1",
+        cefrLevel: "A1",
+        questionType: "production",
+        prompt: `Introduce yourself in ${targetLanguage}: state your name, where you are from or your occupation, using polite desu/masu form (です/ます).`,
+        targetItem: "Self-introduction copula (です), topic particle (は), and origin (から来ました)",
+        contextOrAudioText: "初めまして！お名前とご出身はどちらですか？",
+        correctAnswerSample: "初めまして、田中です。東京から来ました。よろしくお願いします。",
+        explanation: "Assesses basic self-introduction, polite copula, and essential survival greeting (A1 / JLPT N5).",
+      },
+      {
+        id: "q-ja-2",
+        cefrLevel: "A2",
+        questionType: "transformation",
+        prompt: `Connect the actions in the past using the te-form (て形): "昨日、友達に [meet] 一緒に昼ご飯を [ate]。"`,
+        targetItem: "Te-form sequential action chaining and past polite inflection (-ました)",
+        contextOrAudioText: "昨日、友達に会って、一緒に昼ご飯を食べました。",
+        correctAnswerSample: "昨日、友達に会って、一緒に昼ご飯を食べました。",
+        explanation: "Assesses te-form sequential linkage and standard polite past conjugation (A2 / JLPT N4).",
+      },
+      {
+        id: "q-ja-3",
+        cefrLevel: "B1",
+        questionType: "production",
+        prompt: `State your opinion about remote work in ${targetLanguage}, using a reason connector (〜ので / 〜から) and an opinion ending (〜と思います).`,
+        targetItem: "Objective causality (ので), potential form (できる), and indirect opinion (と思います)",
+        contextOrAudioText: "私の考えでは、時間を有効に使えるので、在宅勤務はとても便利だと思います。",
+        correctAnswerSample: "通勤時間を節約できるので、リモートワークはとても効率的だと思います。",
+        explanation: "Assesses sentence nesting with opinion clauses and potential forms (B1 / JLPT N3).",
+      },
+      {
+        id: "q-ja-4",
+        cefrLevel: "B1",
+        questionType: "error_spotting",
+        prompt: `Spot the particle mistake in this potential construction and rewrite it correctly: "私は漢字をあまり読むことができません。" or "私は漢字を読めます。"`,
+        targetItem: "Potential verb object particle preference (が vs を)",
+        contextOrAudioText: "私は漢字があまり読めません。",
+        correctAnswerSample: "私は漢字が読めます / 私は漢字を読むことができません。",
+        explanation: "Assesses particle case assignment with potential verbs (B1 / JLPT N3 Error Spotting).",
+      },
+      {
+        id: "q-ja-5",
+        cefrLevel: "B2",
+        questionType: "production",
+        prompt: `Write a conditional or hypothetical sentence in ${targetLanguage}: 'If I had known that earlier, I wouldn't have made that mistake.' (using 〜ばよかった or 〜たら).`,
+        targetItem: "Counterfactual conditionals and modal regret expressions (〜ばよかった / 〜ていたら)",
+        contextOrAudioText: "事前に知っていれば、そのようなミスを防げたはずです。",
+        correctAnswerSample: "もっと早く知っていれば、そんな失敗はしなかったのに。",
+        explanation: "Assesses counterfactual hypothetical clauses and conditional inflections (B2 / JLPT N2).",
+      },
+      {
+        id: "q-ja-6",
+        cefrLevel: "B2",
+        questionType: "listening",
+        prompt: `Listen to the audio sentence. What was the speaker's main decision regarding the proposal? Respond in ${targetLanguage}.`,
+        targetItem: "Keigo / Honorific expressions and formal business discourse",
+        contextOrAudioText: "恐れ入りますが、ご提案いただいた件につきましては、社内で再度検討させていただきたく存じます。",
+        correctAnswerSample: "社内で再度検討することにしました。",
+        explanation: "Assesses listening comprehension of formal business Japanese and humble keigo (B2 / JLPT N2).",
+      },
+      {
+        id: "q-ja-7",
+        cefrLevel: "C1",
+        questionType: "collocation",
+        prompt: `Translate this concept using an authentic Japanese four-character idiom (四字熟語) or natural idiomatic phrasing: 'Putting all one's energy and sincere devotion into a task / Wholehearted devotion.'`,
+        targetItem: "Four-character idioms (四字熟語 e.g. 一所懸命 / 全身全霊) and nuanced literary collocations",
+        contextOrAudioText: "このプロジェクトには全身全霊を捧げて取り組む所存です。",
+        correctAnswerSample: "全身全霊を傾ける / 一意専心",
+        explanation: "Assesses C1 register flexibility, four-character idioms, and high-level corporate/academic prose (JLPT N1).",
+      },
+    ];
+
+    return {
+      testTitle: `${targetLanguage} JLPT & CEFR Diagnostic Placement`,
+      targetLanguage,
+      knownLanguage,
+      estimatedDurationMinutes: testType === "quick" ? 3 : 6,
+      questions: testType === "quick" ? japaneseQuestions.slice(0, 5) : japaneseQuestions,
+    };
+  }
+
   // Universal Multilingual CEFR Adaptive Matrix
   const universalQuestions = [
     {
