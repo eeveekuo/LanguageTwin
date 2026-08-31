@@ -426,7 +426,7 @@ export const LanguagePlacementModal: React.FC<LanguagePlacementModalProps> = ({
             {/* Prompt Box */}
             <div className="p-5 rounded-3xl bg-slate-50 border border-slate-200 space-y-3">
               <div className="flex items-start justify-between gap-3">
-                <div className="space-y-1">
+                <div className="space-y-1 flex-1">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
                     Challenge Prompt:
                   </span>
@@ -445,6 +445,43 @@ export const LanguagePlacementModal: React.FC<LanguagePlacementModalProps> = ({
                   </button>
                 )}
               </div>
+
+              {/* Specific stimulus / Sentence / Target verb box */}
+              {(currentQuestion.challengeText || (currentQuestion.questionType !== "listening" && currentQuestion.contextOrAudioText)) && (
+                <div className="p-3.5 rounded-2xl bg-indigo-50/70 border border-indigo-100 space-y-1">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-700 block">
+                    {currentQuestion.questionType === "error_spotting"
+                      ? "Sentence with Error to Fix:"
+                      : currentQuestion.questionType === "transformation"
+                      ? "Target Word / Sentence Frame:"
+                      : "Stimulus Material / Target:"}
+                  </span>
+                  <p className="text-sm sm:text-base font-bold text-slate-900 font-mono select-all">
+                    {currentQuestion.challengeText || currentQuestion.contextOrAudioText}
+                  </p>
+                </div>
+              )}
+
+              {/* Listening question audio player card */}
+              {currentQuestion.questionType === "listening" && currentQuestion.contextOrAudioText && (
+                <div className="p-3.5 rounded-2xl bg-indigo-100/50 border border-indigo-200 flex items-center justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-800 block">
+                      Spoken Audio Passage
+                    </span>
+                    <p className="text-xs text-slate-600 font-medium">
+                      Listen to the audio recording to answer the question.
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handlePlayPromptAudio(currentQuestion.contextOrAudioText!)}
+                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-xs transition shadow-xs cursor-pointer"
+                  >
+                    <Volume2 className="w-4 h-4" />
+                    <span>Play Audio</span>
+                  </button>
+                </div>
+              )}
 
               {currentQuestion.targetItem && (
                 <div className="text-xs text-slate-600 font-medium">
@@ -550,17 +587,17 @@ export const LanguagePlacementModal: React.FC<LanguagePlacementModalProps> = ({
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
                     <span className="px-3 py-1 rounded-full bg-indigo-600 text-white text-xs font-black uppercase tracking-wider">
-                      CEFR Level {result.overallCEFR}
+                      CEFR Level {result.overallCEFR || "A2"}
                     </span>
                     <span className="text-xs font-bold text-slate-700">
-                      Score: {result.percentageScore}%
+                      Score: {result.percentageScore ?? 0}%
                     </span>
                   </div>
                   <h3 className="text-xl font-extrabold text-slate-900">
-                    {result.standardizedEquivalency.estimatedScoreOrGrade}
+                    {result.standardizedEquivalency?.estimatedScoreOrGrade || `CEFR Level ${result.overallCEFR || "A2"}`}
                   </h3>
                   <p className="text-xs text-slate-600 leading-relaxed">
-                    {result.cefrDescription}
+                    {result.cefrDescription || "Placement diagnostic completed."}
                   </p>
                 </div>
 
@@ -569,29 +606,33 @@ export const LanguagePlacementModal: React.FC<LanguagePlacementModalProps> = ({
                     Recommended Start
                   </span>
                   <span className="text-2xl font-black text-indigo-600">
-                    Rank #{result.recommendedStartingRank}
+                    Rank #{result.recommendedStartingRank ?? 1}
                   </span>
                   <span className="text-[11px] text-slate-400 font-medium block">
-                    ~{result.estimatedActiveVocabularySize} words active capacity
+                    ~{result.estimatedActiveVocabularySize ?? 1000} words active capacity
                   </span>
                 </div>
               </div>
 
               {/* Standardized Framework Details */}
-              <div className="p-4 rounded-2xl bg-white border border-indigo-100 text-xs space-y-2">
-                <div className="flex items-center justify-between font-bold text-slate-800">
-                  <span className="flex items-center gap-1.5">
-                    <Award className="w-4 h-4 text-amber-500" />
-                    <span>{result.standardizedEquivalency.frameworkName}</span>
-                  </span>
-                  <span className="text-indigo-600">
-                    ACTFL: {result.standardizedEquivalency.actflEquivalent}
-                  </span>
+              {result.standardizedEquivalency && (
+                <div className="p-4 rounded-2xl bg-white border border-indigo-100 text-xs space-y-2">
+                  <div className="flex items-center justify-between font-bold text-slate-800">
+                    <span className="flex items-center gap-1.5">
+                      <Award className="w-4 h-4 text-amber-500" />
+                      <span>{result.standardizedEquivalency.frameworkName || "Standardized Diagnostic Profile"}</span>
+                    </span>
+                    <span className="text-indigo-600">
+                      ACTFL: {result.standardizedEquivalency.actflEquivalent || "Intermediate"}
+                    </span>
+                  </div>
+                  {result.standardizedEquivalency.description && (
+                    <p className="text-[11px] text-slate-600">
+                      {result.standardizedEquivalency.description}
+                    </p>
+                  )}
                 </div>
-                <p className="text-[11px] text-slate-600">
-                  {result.standardizedEquivalency.description}
-                </p>
-              </div>
+              )}
             </div>
 
             {/* Strengths & Weaknesses Grid */}
@@ -602,7 +643,7 @@ export const LanguagePlacementModal: React.FC<LanguagePlacementModalProps> = ({
                   <span>Demonstrated Strengths</span>
                 </span>
                 <ul className="space-y-1 text-slate-700 list-disc list-inside text-[11px]">
-                  {result.strengths.map((s, i) => (
+                  {(result.strengths || []).map((s, i) => (
                     <li key={i}>{s}</li>
                   ))}
                 </ul>
@@ -614,7 +655,7 @@ export const LanguagePlacementModal: React.FC<LanguagePlacementModalProps> = ({
                   <span>Identified Gaps & Focus Areas</span>
                 </span>
                 <ul className="space-y-1 text-slate-700 list-disc list-inside text-[11px]">
-                  {result.weaknesses.map((w, i) => (
+                  {(result.weaknesses || []).map((w, i) => (
                     <li key={i}>{w}</li>
                   ))}
                 </ul>
@@ -643,55 +684,57 @@ export const LanguagePlacementModal: React.FC<LanguagePlacementModalProps> = ({
             )}
 
             {/* Per-Question Detailed Review Accordion */}
-            <div className="space-y-3">
-              <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
-                <BookOpen className="w-4 h-4 text-indigo-600" />
-                <span>Question-by-Question Diagnostic Review</span>
-              </span>
-              <div className="space-y-2">
-                {result.perQuestionReview.map((rev, i) => (
-                  <div
-                    key={i}
-                    className={`p-4 rounded-2xl border text-xs space-y-2 ${
-                      rev.isCorrect ? "bg-emerald-50/20 border-emerald-100" : "bg-rose-50/20 border-rose-100"
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-2">
-                      <div className="space-y-0.5">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                          Q{i + 1} (CEFR {rev.cefrLevel})
+            {result.perQuestionReview && result.perQuestionReview.length > 0 && (
+              <div className="space-y-3">
+                <span className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+                  <BookOpen className="w-4 h-4 text-indigo-600" />
+                  <span>Question-by-Question Diagnostic Review</span>
+                </span>
+                <div className="space-y-2">
+                  {result.perQuestionReview.map((rev, i) => (
+                    <div
+                      key={i}
+                      className={`p-4 rounded-2xl border text-xs space-y-2 ${
+                        rev.isCorrect ? "bg-emerald-50/20 border-emerald-100" : "bg-rose-50/20 border-rose-100"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="space-y-0.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                            Q{i + 1} (CEFR {rev.cefrLevel || "A2"})
+                          </span>
+                          <p className="font-bold text-slate-900">{rev.prompt}</p>
+                        </div>
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold shrink-0 ${
+                            rev.isCorrect
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-rose-100 text-rose-800"
+                          }`}
+                        >
+                          {rev.isCorrect ? "✓ Mastered" : "✗ Needs Review"}
                         </span>
-                        <p className="font-bold text-slate-900">{rev.prompt}</p>
                       </div>
-                      <span
-                        className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold shrink-0 ${
-                          rev.isCorrect
-                            ? "bg-emerald-100 text-emerald-800"
-                            : "bg-rose-100 text-rose-800"
-                        }`}
-                      >
-                        {rev.isCorrect ? "✓ Mastered" : "✗ Needs Review"}
-                      </span>
-                    </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] pt-1">
-                      <div className="p-2 rounded-xl bg-white border border-slate-200">
-                        <span className="text-[10px] text-slate-400 font-bold block">Your Answer:</span>
-                        <span className="font-medium text-slate-800 italic">"{rev.userAnswer || "(No answer)"}"</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] pt-1">
+                        <div className="p-2 rounded-xl bg-white border border-slate-200">
+                          <span className="text-[10px] text-slate-400 font-bold block">Your Answer:</span>
+                          <span className="font-medium text-slate-800 italic">"{rev.userAnswer || "(No answer)"}"</span>
+                        </div>
+                        <div className="p-2 rounded-xl bg-white border border-emerald-200">
+                          <span className="text-[10px] text-emerald-700 font-bold block">Ideal Native Form:</span>
+                          <span className="font-bold text-emerald-900">"{rev.idealAnswer}"</span>
+                        </div>
                       </div>
-                      <div className="p-2 rounded-xl bg-white border border-emerald-200">
-                        <span className="text-[10px] text-emerald-700 font-bold block">Ideal Native Form:</span>
-                        <span className="font-bold text-emerald-900">"{rev.idealAnswer}"</span>
-                      </div>
-                    </div>
 
-                    <p className="text-[11px] text-slate-600 bg-white/70 p-2 rounded-xl border border-slate-100">
-                      <strong>Feedback: </strong> {rev.feedback}
-                    </p>
-                  </div>
-                ))}
+                      <p className="text-[11px] text-slate-600 bg-white/70 p-2 rounded-xl border border-slate-100">
+                        <strong>Feedback: </strong> {rev.feedback}
+                      </p>
+                    </div>
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* ACTION: 1-CLICK DECK REGENERATION & CALIBRATION */}
             <div className="p-6 rounded-3xl bg-indigo-600 text-white space-y-4 shadow-lg shadow-indigo-200">

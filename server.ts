@@ -852,7 +852,7 @@ app.post("/api/evaluate-placement-test", async (req, res) => {
       testQuestions,
     });
 
-    let parsed: any;
+    let rawParsed: any;
     try {
       const response = await generateWithFallback(ai, {
         primaryModel: "gemini-3.7-flash",
@@ -867,26 +867,37 @@ app.post("/api/evaluate-placement-test", async (req, res) => {
               overallCEFR: { type: Type.STRING, description: "'A1', 'A2', 'B1', 'B2', 'C1', or 'C2'" },
               cefrDescription: { type: Type.STRING, description: "Detailed summary of diagnosed level" },
               percentageScore: { type: Type.NUMBER, description: "0 to 100" },
-              standardizedEquivalency: { type: Type.STRING, description: "e.g. 'DELE B1 / ACTFL Intermediate High'" },
-              estimatedVocabularyHorizon: { type: Type.STRING, description: "e.g. '~2,200 active words'" },
+              standardizedEquivalency: {
+                type: Type.OBJECT,
+                properties: {
+                  frameworkName: { type: Type.STRING },
+                  estimatedScoreOrGrade: { type: Type.STRING },
+                  actflEquivalent: { type: Type.STRING },
+                  description: { type: Type.STRING },
+                },
+                required: ["frameworkName", "estimatedScoreOrGrade", "actflEquivalent", "description"],
+              },
+              estimatedActiveVocabularySize: { type: Type.INTEGER, description: "Number of active vocabulary words (e.g. 400, 1000, 2200, 4000, 7500)" },
               recommendedStartingRank: { type: Type.INTEGER, description: "Optimal starting rank for frequency SRS" },
               strengths: {
                 type: Type.ARRAY,
                 items: { type: Type.STRING },
                 description: "List of linguistic strengths demonstrated",
               },
-              growthAreas: {
+              weaknesses: {
                 type: Type.ARRAY,
                 items: { type: Type.STRING },
                 description: "Key grammatical or structural areas to strengthen",
               },
-              questionAssessments: {
+              perQuestionReview: {
                 type: Type.ARRAY,
                 items: {
                   type: Type.OBJECT,
                   properties: {
                     questionId: { type: Type.STRING },
                     cefrLevel: { type: Type.STRING },
+                    prompt: { type: Type.STRING },
+                    userAnswer: { type: Type.STRING },
                     isCorrect: { type: Type.BOOLEAN },
                     feedback: { type: Type.STRING },
                     idealAnswer: { type: Type.STRING },
@@ -908,30 +919,115 @@ app.post("/api/evaluate-placement-test", async (req, res) => {
                 },
                 description: "Specific slip patterns to convert into immediate Error Remedy flashcards",
               },
+              detailedFeedback: { type: Type.STRING, description: "Holistic personalized summary for learner" },
             },
             required: [
               "overallCEFR",
               "cefrDescription",
               "percentageScore",
               "standardizedEquivalency",
-              "estimatedVocabularyHorizon",
+              "estimatedActiveVocabularySize",
               "recommendedStartingRank",
               "strengths",
-              "growthAreas",
-              "questionAssessments",
+              "weaknesses",
+              "perQuestionReview",
               "identifiedErrors",
             ],
           },
         },
       });
 
-      parsed = safeParseJson(response.text);
+      rawParsed = safeParseJson(response.text);
     } catch (aiErr) {
       console.warn("AI evaluation failed, using resilience fallback:", aiErr);
-      parsed = getFallbackPlacementEvaluation(targetLanguage, knownLanguage, submissions, testQuestions);
+      rawParsed = getFallbackPlacementEvaluation(targetLanguage, knownLanguage, submissions, testQuestions);
     }
 
-    res.json(parsed);
+    // Comprehensive normalizer to guarantee rock-solid UI rendering
+    const validCefr = rawParsed.overallCEFR && ["A1", "A2", "B1", "B2", "C1", "C2"].includes(rawParsed.overallCEFR.toUpperCase())
+      ? rawParsed.overallCEFR.toUpperCase()
+      : "A2";
+
+    const scorePct = typeof rawParsed.percentageScore === "number" ? Math.min(100, Math.max(0, Math.round(rawParsed.percentageScore))) : 70;
+
+    let stdEquiv = rawParsed.standardizedEquivalency;
+    if (typeof stdEquiv === "string" || !stdEquiv) {
+      stdEquiv = {
+        frameworkName: `Standardized ${targetLanguage} Diagnostic Profile`,
+        estimatedScoreOrGrade: typeof stdEquiv === "string" ? stdEquiv : `CEFR Level ${validCefr} (${scorePct}% Mastery)`,
+        actflEquivalent: validCefr === "C1" ? "Superior / Advanced High" : validCefr === "B2" ? "Advanced Low" : validCefr === "B1" ? "Intermediate Mid" : validCefr === "A2" ? "Novice High" : "Novice Mid",
+        description: `Diagnosed active proficiency aligns with CEFR ${validCefr} benchmarks.`,
+      };
+    } else {
+      stdEquiv = {
+        frameworkName: stdEquiv.frameworkName || `Standardized ${targetLanguage} Assessment Profile`,
+        estimatedScoreOrGrade: stdEquiv.estimatedScoreOrGrade || `CEFR Level ${validCefr}`,
+        actflEquivalent: stdEquiv.actflEquivalent || (validCefr === "C1" ? "Superior" : validCefr === "B2" ? "Advanced Low" : validCefr === "B1" ? "Intermediate Mid" : "Novice High"),
+        description: stdEquiv.description || `Active performance matches CEFR ${validCefr} standardized milestones.`,
+      };
+    }
+
+    const strengths = Array.isArray(rawParsed.strengths) && rawParsed.strengths.length > 0
+      ? rawParsed.strengths
+      : [`Active sentence formulation in ${targetLanguage}`, `Core vocabulary and syntactic recognition`];
+
+    const weaknesses = Array.isArray(rawParsed.weaknesses) && rawParsed.weaknesses.length > 0
+      ? rawParsed.weaknesses
+      : Array.isArray(rawParsed.growthAreas) && rawParsed.growthAreas.length > 0
+      ? rawParsed.growthAreas
+      : [`Complex subordinate sentence connectors`, `Register nuance and idiomatic collocations`];
+
+    // Reconcile question reviews
+    const rawReviews = Array.isArray(rawParsed.perQuestionReview)
+      ? rawParsed.perQuestionReview
+      : Array.isArray(rawParsed.questionAssessments)
+      ? rawParsed.questionAssessments
+      : [];
+
+    const perQuestionReview = submissions.map((sub: any, idx: number) => {
+      const q = (testQuestions || []).find((item: any) => item.id === sub.questionId) || testQuestions?.[idx] || {};
+      const foundRev = rawReviews.find((r: any) => r.questionId === sub.questionId) || rawReviews[idx] || {};
+
+      return {
+        questionId: sub.questionId || `q-${idx + 1}`,
+        cefrLevel: sub.cefrLevel || q.cefrLevel || foundRev.cefrLevel || "A2",
+        prompt: q.prompt || foundRev.prompt || `Question ${idx + 1}`,
+        userAnswer: sub.userAnswer || foundRev.userAnswer || "(No response provided)",
+        isCorrect: typeof foundRev.isCorrect === "boolean" ? foundRev.isCorrect : (sub.userAnswer || "").trim().length >= 8,
+        feedback: foundRev.feedback || "Evaluated response for grammatical accuracy and vocabulary precision.",
+        idealAnswer: foundRev.idealAnswer || q.correctAnswerSample || `Standard ${targetLanguage} form`,
+      };
+    });
+
+    const identifiedErrors = Array.isArray(rawParsed.identifiedErrors)
+      ? rawParsed.identifiedErrors.map((e: any) => ({
+          originalMistake: e.originalMistake || e.mistake || "Formulation slip",
+          correctedForm: e.correctedForm || e.correction || "Accurate native form",
+          errorType: e.errorType || "grammar",
+          explanation: e.explanation || "Review this construction for accurate sentence formation.",
+        }))
+      : [];
+
+    const normalizedResult = {
+      overallCEFR: validCefr,
+      cefrDescription: rawParsed.cefrDescription || `Demonstrates ${validCefr} language proficiency in ${targetLanguage}.`,
+      percentageScore: scorePct,
+      estimatedActiveVocabularySize: typeof rawParsed.estimatedActiveVocabularySize === "number"
+        ? rawParsed.estimatedActiveVocabularySize
+        : validCefr === "C1" ? 7500 : validCefr === "B2" ? 4000 : validCefr === "B1" ? 2200 : validCefr === "A2" ? 1000 : 400,
+      recommendedStartingRank: typeof rawParsed.recommendedStartingRank === "number"
+        ? rawParsed.recommendedStartingRank
+        : validCefr === "C1" ? 3000 : validCefr === "B2" ? 1500 : validCefr === "B1" ? 650 : validCefr === "A2" ? 250 : 1,
+      strengths,
+      weaknesses,
+      identifiedErrors,
+      standardizedEquivalency: stdEquiv,
+      detailedFeedback: rawParsed.detailedFeedback || `Great job completing the placement test! Your diagnostic shows active foundation in ${targetLanguage}. We recommend starting your frequency track around Rank #${rawParsed.recommendedStartingRank || 1}.`,
+      perQuestionReview,
+      completedAt: new Date().toISOString(),
+    };
+
+    res.json(normalizedResult);
   } catch (error: any) {
     console.error("Placement test evaluation error:", error);
     const fallback = getFallbackPlacementEvaluation(req.body.targetLanguage || "Spanish", req.body.knownLanguage || "English", req.body.submissions || [], req.body.testQuestions || []);

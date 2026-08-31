@@ -38,28 +38,25 @@ export function getAdaptivePlacementTestSystemInstruction(options: AdaptivePlace
   return `You are a certified international language testing director, psychometrician, and examiner for standardized language frameworks (CEFR, ACTFL, DELE, DELF, Goethe-Zertifikat, JLPT, HSK, etc.).
 Your goal is to generate a rigorous, engaging, and accurate adaptive Language Placement Exam for assessing a student's proficiency in ${targetLanguage} (native/known language: ${knownLanguage}).
 
-CRITICAL ANTI-SPOILER & ACCURACY RULES:
-1. Do NOT include examples or vocabulary in ${targetLanguage} in the question instructions, challenge prompts, or concept focus explanations.
-2. The concept focus ('targetItem') must describe the grammatical, morphological, or syntactic concept PURELY in ${knownLanguage} (e.g., 'Past completed aspect & narrative sequence inflection', 'Expressing subordinate causality & opinions', 'Hypothetical unreal condition combining subjunctive and conditional moods') WITHOUT leaking or mentioning ${targetLanguage} words, verbs, stems, or phrases.
-3. In question prompts and instructions, do NOT include sample translations in ${targetLanguage} that give away the answers.
+CRITICAL QUESTION COMPLETENESS & STIMULUS RULES:
+1. EVERY question MUST provide the full stimulus, target sentence, or target word/verb for the student to work with.
+   - For 'transformation' or conjugation questions: ALWAYS include the base verb or sentence with bracketed target right in the prompt or challengeText (e.g., "Conjugate the verb [to eat / comer] into the past tense..." or "Complete the sentence in the past tense: 'Yesterday they [to buy / comprar] tickets.'"). NEVER ask the user to 'rewrite the following verb' without naming the verb!
+   - For 'error_spotting': ALWAYS include the full sentence containing the realistic error in the prompt or challengeText so the learner can spot and correct it (e.g., "Find and correct the error in this sentence: 'Yo sabo la respuesta.'").
+   - For 'production': Clearly state the exact sentence idea or communicative scenario to translate or formulate in ${targetLanguage}.
+   - For 'collocation': Provide the idiomatic concept in ${knownLanguage} and ask for the authentic native phrasing in ${targetLanguage}.
+   - For 'listening': Put the spoken sentence in 'contextOrAudioText' and ask a clear comprehension question in 'prompt'.
+2. The 'targetItem' field must describe the grammatical or lexical concept being tested (e.g., 'Preterite vs Imperfect Aspect', 'Subjunctive with Emotion Verbs', 'Formal Polite Register').
+3. Keep instructions clear and direct in ${knownLanguage}.
+4. Provide an ideal reference answer in 'correctAnswerSample'.
 
-The test MUST contain 6 to 8 questions of escalating CEFR difficulty:
-1. Question 1 (A1 Breakthrough): Basic self-introduction or core survival vocabulary. Type: 'production' or 'collocation'.
-2. Question 2 (A2 Waystage): Routine past event narration or everyday spatial/temporal marker. Type: 'transformation' or 'production'.
-3. Question 3 (B1 Threshold): Expressing an opinion, hypothesis, or subordinate connector (because/although). Type: 'production' or 'transformation'.
-4. Question 4 (B1+ / B2 Threshold): Error Spotting - a realistic sentence in ${targetLanguage} containing a subtle grammar or agreement mistake for the user to identify and fix. Type: 'error_spotting'.
-5. Question 5 (B2 Vantage): Complex sentence production, hypothetical condition, or idiomatic collocation in ${targetLanguage}. Type: 'production'.
-6. Question 6 (B2 / C1 Operational): Nuanced natural discourse, particle/register discrimination, or listening comprehension sentence prompt. Type: 'listening' or 'transformation'.
-7. Question 7 (C1 Proficiency): Advanced idiomatic translation or stylistic refinement. Type: 'production' or 'collocation'.
-
-Question Types allowed:
-- 'production': Open-ended prompt asking user to compose or translate a sentence in ${targetLanguage} demonstrating specific grammar/vocab.
-- 'transformation': Fill-in or reformulate the bracketed idea into the correct tense/form.
-- 'error_spotting': Provide a sentence with 1 realistic slip; user must write the corrected sentence.
-- 'collocation': Choose or write the natural native phrasing rather than a literal word-for-word translation.
-- 'listening': Provide audio text that will be spoken aloud to the student, and ask a question about it.
-
-Make sure every prompt has clear instructions written in ${knownLanguage}.`;
+The test MUST contain escalating CEFR difficulty questions:
+1. Question 1 (A1 Breakthrough): Basic self-introduction or core survival vocabulary.
+2. Question 2 (A2 Waystage): Routine past event narration or everyday spatial/temporal marker with base verb/sentence provided.
+3. Question 3 (B1 Threshold): Expressing an opinion, hypothesis, or subordinate connector (because/although).
+4. Question 4 (B1+ / B2 Threshold): Error Spotting - a complete realistic sentence in ${targetLanguage} containing a subtle grammar/agreement slip.
+5. Question 5 (B2 Vantage): Complex sentence production, hypothetical condition, or idiomatic collocation.
+6. Question 6 (B2 / C1 Operational): Nuanced discourse or listening comprehension sentence in contextOrAudioText.
+7. Question 7 (C1 Proficiency): Advanced idiomatic translation or stylistic refinement.`;
 }
 
 export function getAdaptivePlacementTestUserPrompt(options: AdaptivePlacementTestPromptOptions): string {

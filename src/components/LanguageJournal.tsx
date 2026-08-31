@@ -5,6 +5,7 @@ import {
   JournalCorrectionResult,
   Deck,
   Flashcard,
+  PracticeMechanismType,
 } from "../types";
 import {
   Search,
@@ -66,6 +67,13 @@ interface LanguageJournalProps {
   currentUser?: any;
   isSyncing?: boolean;
   onSyncWithCloud?: (entries: JournalEntry[]) => void;
+  onLogPracticeActivity?: (activity: {
+    mechanism: PracticeMechanismType;
+    title: string;
+    details: string;
+    score?: number;
+    targetItem?: string;
+  }) => void;
 }
 
 const EMOJI_PALETTE = [
@@ -137,6 +145,7 @@ export const LanguageJournal: React.FC<LanguageJournalProps> = ({
   currentUser,
   isSyncing,
   onSyncWithCloud,
+  onLogPracticeActivity,
 }) => {
   // ----------------------------------------------------
   // State
@@ -147,8 +156,21 @@ export const LanguageJournal: React.FC<LanguageJournalProps> = ({
 
   const [activeEntryId, setActiveEntryId] = useState<string | null>(() => {
     const loaded = loadJournalEntriesFromLocal(targetLang, knownLang);
-    return loaded[0]?.id || null;
+    const matching = loaded.find((e) => e.targetLangCode === targetLang.code);
+    return matching?.id || loaded[0]?.id || null;
   });
+
+  // When targetLang or knownLang changes, load matching entries and select target language entry
+  useEffect(() => {
+    const fresh = loadJournalEntriesFromLocal(targetLang, knownLang);
+    setEntries(fresh);
+    const matching = fresh.find((e) => e.targetLangCode === targetLang.code);
+    if (matching) {
+      setActiveEntryId(matching.id);
+    } else if (fresh.length > 0) {
+      setActiveEntryId(fresh[0].id);
+    }
+  }, [targetLang.code, knownLang.code]);
 
   // Editor Form State
   const [title, setTitle] = useState<string>("");
@@ -561,6 +583,14 @@ export const LanguageJournal: React.FC<LanguageJournalProps> = ({
       }
 
       triggerToast("AI Error Check & Suggestions ready!");
+
+      onLogPracticeActivity?.({
+        mechanism: "journal",
+        title: title.trim() || `Journal Entry in ${targetLang.name}`,
+        details: `Evaluated ${data.overallScore || 95}% score, ${data.errors?.length || 0} corrections suggested.`,
+        score: data.overallScore,
+        targetItem: title.trim() || `${targetLang.name} Journal`,
+      });
     } catch (err: any) {
       console.error("Failed to check journal prose:", err);
       setAnalysisError("Error analyzing prose. Using fallback evaluation.");

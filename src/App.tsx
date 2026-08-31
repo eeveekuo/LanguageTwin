@@ -933,6 +933,7 @@ export default function App() {
             isOnline={isOnline}
             currentUser={currentUser}
             isSyncing={isSyncing}
+            onLogPracticeActivity={handleLogPracticeActivity}
             onSyncWithCloud={(entries) => {
               if (currentUser) {
                 saveUserProgressToCloud(currentUser.uid, {

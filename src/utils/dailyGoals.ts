@@ -12,11 +12,8 @@ export function getTodayDateString(): string {
 
 const DEFAULT_BREAKDOWN: PracticeBreakdownCounts = {
   study: 0,
-  deck: 0,
-  grammar: 0,
   reading: 0,
   tutor: 0,
-  translate: 0,
   journal: 0,
 };
 
@@ -73,6 +70,14 @@ export function loadDailyProgress(): DailyProgress {
       return refreshed;
     }
 
+    const rawBreakdown: Record<string, number> =
+      (data.breakdown as unknown as Record<string, number>) || {};
+    const normalizedStudy =
+      (rawBreakdown.study || 0) +
+      (rawBreakdown.grammar || 0) +
+      (rawBreakdown.translate || 0) +
+      (rawBreakdown.deck || 0);
+
     return {
       target: data.target || 10,
       reviewedToday: data.reviewedToday || 0,
@@ -80,8 +85,10 @@ export function loadDailyProgress(): DailyProgress {
       streak: data.streak || 1,
       lastCompletedDate: data.lastCompletedDate ?? null,
       breakdown: {
-        ...DEFAULT_BREAKDOWN,
-        ...(data.breakdown || {}),
+        study: normalizedStudy,
+        reading: rawBreakdown.reading || 0,
+        tutor: rawBreakdown.tutor || 0,
+        journal: rawBreakdown.journal || 0,
       },
       activityLog: data.activityLog || [],
     };
@@ -122,17 +129,35 @@ export function logPracticeActivity(
     streak = streak + 1;
   }
 
+  const canonicalMech: PracticeMechanismType =
+    activity.mechanism === "reading"
+      ? "reading"
+      : activity.mechanism === "tutor"
+      ? "tutor"
+      : activity.mechanism === "journal"
+      ? "journal"
+      : "study";
+
   const currentBreakdown: PracticeBreakdownCounts = isToday
-    ? { ...DEFAULT_BREAKDOWN, ...(current.breakdown || {}) }
+    ? {
+        study:
+          ((current.breakdown?.study || 0) +
+            (current.breakdown?.grammar || 0) +
+            (current.breakdown?.translate || 0) +
+            (current.breakdown?.deck || 0)),
+        reading: current.breakdown?.reading || 0,
+        tutor: current.breakdown?.tutor || 0,
+        journal: current.breakdown?.journal || 0,
+      }
     : { ...DEFAULT_BREAKDOWN };
 
-  currentBreakdown[activity.mechanism] = (currentBreakdown[activity.mechanism] || 0) + 1;
+  currentBreakdown[canonicalMech] = (currentBreakdown[canonicalMech] || 0) + 1;
 
   const newActivity: PracticeActivityRecord = {
     id: `act-${Date.now()}-${Math.random().toString(36).substring(2, 6)}`,
     timestamp: Date.now(),
     date: today,
-    mechanism: activity.mechanism,
+    mechanism: canonicalMech,
     title: activity.title,
     details: activity.details,
     score: activity.score,

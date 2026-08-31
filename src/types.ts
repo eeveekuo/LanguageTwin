@@ -119,12 +119,12 @@ export interface EvaluatedItemInChat {
 
 export type PracticeMechanismType =
   | "study"
-  | "deck"
-  | "grammar"
   | "reading"
   | "tutor"
-  | "translate"
-  | "journal";
+  | "journal"
+  | "deck"
+  | "grammar"
+  | "translate";
 
 export interface PracticeActivityRecord {
   id: string;
@@ -139,12 +139,12 @@ export interface PracticeActivityRecord {
 
 export interface PracticeBreakdownCounts {
   study: number;
-  deck: number;
-  grammar: number;
   reading: number;
   tutor: number;
-  translate: number;
   journal: number;
+  deck?: number;
+  grammar?: number;
+  translate?: number;
 }
 
 export interface DailyProgress {

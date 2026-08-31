@@ -522,7 +522,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                   Daily Practice Mechanisms & Activity Details
                 </h3>
                 <p className="text-xs sm:text-sm text-indigo-100 leading-relaxed">
-                  Every active output, sentence structure analysis, reading comprehension challenge, AI conversation, and translation session is tracked in your permanent practice log.
+                  Every active output session, reading and audio challenge, AI conversation, and journal entry is tracked in your permanent practice log.
                 </p>
               </div>
 
@@ -539,83 +539,50 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               </div>
             </div>
 
-            {/* Practice Mechanism Breakdown Counters */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 pt-2 border-t border-white/10">
-              <div className="p-3 rounded-2xl bg-white/10 backdrop-blur border border-white/15 space-y-1">
+            {/* Practice Mechanism Breakdown Counters - 4 Core Mechanisms */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-white/10">
+              <div className="p-4 rounded-2xl bg-white/10 backdrop-blur border border-white/15 space-y-1">
                 <div className="flex items-center gap-1.5 text-xs text-indigo-200 font-bold">
-                  <GraduationCap className="w-3.5 h-3.5 text-indigo-300" />
+                  <GraduationCap className="w-4 h-4 text-indigo-300" />
                   <span>Active Study</span>
                 </div>
-                <div className="text-xl font-black text-white">
+                <div className="text-2xl font-black text-white">
                   {dailyProgress.breakdown?.study || 0}
                 </div>
-                <p className="text-[10px] text-indigo-200/80">SRS recall reviews</p>
+                <p className="text-[11px] text-indigo-200/80">SRS flashcards & production</p>
               </div>
 
-              <div className="p-3 rounded-2xl bg-white/10 backdrop-blur border border-white/15 space-y-1">
+              <div className="p-4 rounded-2xl bg-white/10 backdrop-blur border border-white/15 space-y-1">
                 <div className="flex items-center gap-1.5 text-xs text-indigo-200 font-bold">
-                  <Layers className="w-3.5 h-3.5 text-indigo-300" />
-                  <span>Deck Hub</span>
+                  <Headphones className="w-4 h-4 text-indigo-300" />
+                  <span>Reading and Audio</span>
                 </div>
-                <div className="text-xl font-black text-white">
-                  {dailyProgress.breakdown?.deck || 0}
-                </div>
-                <p className="text-[10px] text-indigo-200/80">Cards curated</p>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-white/10 backdrop-blur border border-white/15 space-y-1">
-                <div className="flex items-center gap-1.5 text-xs text-indigo-200 font-bold">
-                  <Compass className="w-3.5 h-3.5 text-indigo-300" />
-                  <span>Structure</span>
-                </div>
-                <div className="text-xl font-black text-white">
-                  {dailyProgress.breakdown?.grammar || 0}
-                </div>
-                <p className="text-[10px] text-indigo-200/80">Formulas analyzed</p>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-white/10 backdrop-blur border border-white/15 space-y-1">
-                <div className="flex items-center gap-1.5 text-xs text-indigo-200 font-bold">
-                  <Headphones className="w-3.5 h-3.5 text-indigo-300" />
-                  <span>Reading & Audio</span>
-                </div>
-                <div className="text-xl font-black text-white">
+                <div className="text-2xl font-black text-white">
                   {dailyProgress.breakdown?.reading || 0}
                 </div>
-                <p className="text-[10px] text-indigo-200/80">Articles parsed</p>
+                <p className="text-[11px] text-indigo-200/80">Articles & audio passages</p>
               </div>
 
-              <div className="p-3 rounded-2xl bg-white/10 backdrop-blur border border-white/15 space-y-1">
+              <div className="p-4 rounded-2xl bg-white/10 backdrop-blur border border-white/15 space-y-1">
                 <div className="flex items-center gap-1.5 text-xs text-indigo-200 font-bold">
-                  <Bot className="w-3.5 h-3.5 text-indigo-300" />
-                  <span>AI Tutor</span>
+                  <Bot className="w-4 h-4 text-indigo-300" />
+                  <span>Conversation</span>
                 </div>
-                <div className="text-xl font-black text-white">
+                <div className="text-2xl font-black text-white">
                   {dailyProgress.breakdown?.tutor || 0}
                 </div>
-                <p className="text-[10px] text-indigo-200/80">Conversations</p>
+                <p className="text-[11px] text-indigo-200/80">AI tutor dialogues</p>
               </div>
 
-              <div className="p-3 rounded-2xl bg-white/10 backdrop-blur border border-white/15 space-y-1">
+              <div className="p-4 rounded-2xl bg-white/10 backdrop-blur border border-white/15 space-y-1">
                 <div className="flex items-center gap-1.5 text-xs text-indigo-200 font-bold">
-                  <Languages className="w-3.5 h-3.5 text-indigo-300" />
-                  <span>Translate</span>
-                </div>
-                <div className="text-xl font-black text-white">
-                  {dailyProgress.breakdown?.translate || 0}
-                </div>
-                <p className="text-[10px] text-indigo-200/80">Phrases explained</p>
-              </div>
-
-              <div className="p-3 rounded-2xl bg-white/10 backdrop-blur border border-white/15 space-y-1">
-                <div className="flex items-center gap-1.5 text-xs text-indigo-200 font-bold">
-                  <PenTool className="w-3.5 h-3.5 text-indigo-300" />
+                  <PenTool className="w-4 h-4 text-indigo-300" />
                   <span>Journal</span>
                 </div>
-                <div className="text-xl font-black text-white">
+                <div className="text-2xl font-black text-white">
                   {dailyProgress.breakdown?.journal || 0}
                 </div>
-                <p className="text-[10px] text-indigo-200/80">Entries logged</p>
+                <p className="text-[11px] text-indigo-200/80">Entries & prose checks</p>
               </div>
             </div>
           </div>
@@ -633,20 +600,26 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                 </p>
               </div>
 
-              {/* Mechanism Filter */}
+              {/* Mechanism Filter - 4 Core Practice Types */}
               <div className="flex items-center gap-1.5 flex-wrap text-xs font-bold">
-                {["all", "study", "deck", "grammar", "reading", "tutor", "translate", "journal"].map((mech) => (
+                {[
+                  { key: "all", label: "All Practice Types" },
+                  { key: "study", label: "Active Study" },
+                  { key: "reading", label: "Reading and Audio" },
+                  { key: "tutor", label: "Conversation" },
+                  { key: "journal", label: "Journal" },
+                ].map(({ key, label }) => (
                   <button
-                    key={mech}
+                    key={key}
                     type="button"
-                    onClick={() => setActivityFilter(mech)}
-                    className={`px-3 py-1.5 rounded-xl border transition cursor-pointer capitalize ${
-                      activityFilter === mech
-                        ? "bg-indigo-600 text-white border-indigo-600"
+                    onClick={() => setActivityFilter(key)}
+                    className={`px-3 py-1.5 rounded-xl border transition cursor-pointer ${
+                      activityFilter === key
+                        ? "bg-indigo-600 text-white border-indigo-600 shadow-xs"
                         : "bg-slate-50 hover:bg-slate-100 text-slate-600 border-slate-200"
                     }`}
                   >
-                    {mech === "all" ? "All Practice Types" : mech}
+                    {label}
                   </button>
                 ))}
               </div>
@@ -654,9 +627,13 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
             {/* List of Activity Records */}
             {(() => {
-              const logs = (dailyProgress.activityLog || []).filter((item) =>
-                activityFilter === "all" ? true : item.mechanism === activityFilter
-              );
+              const logs = (dailyProgress.activityLog || []).filter((item) => {
+                if (activityFilter === "all") return true;
+                if (activityFilter === "study") {
+                  return item.mechanism === "study" || item.mechanism === "grammar" || item.mechanism === "translate" || item.mechanism === "deck";
+                }
+                return item.mechanism === activityFilter;
+              });
 
               if (logs.length === 0) {
                 return (
@@ -664,7 +641,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                     <Activity className="w-8 h-8 text-slate-400 mx-auto" />
                     <p className="font-bold text-sm text-slate-700">No practice sessions logged yet today</p>
                     <p className="text-xs text-slate-400 max-w-md mx-auto">
-                      Choose any practice mechanism above—Active Study, Sentence Structure Primer, Reading & Listening, AI Conversation, Translate & Explain, or Language Journal—to log your daily effort!
+                      Choose any practice mechanism above—Active Study, Reading and Audio, Conversation, or Journal—to log your daily effort!
                     </p>
                   </div>
                 );
@@ -679,19 +656,13 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                     });
 
                     const mechBadge =
-                      item.mechanism === "study"
-                        ? { label: "Active Study", icon: GraduationCap, color: "bg-indigo-50 text-indigo-700 border-indigo-200" }
-                        : item.mechanism === "grammar"
-                        ? { label: "Sentence Structure", icon: Compass, color: "bg-purple-50 text-purple-700 border-purple-200" }
-                        : item.mechanism === "reading"
-                        ? { label: "Reading & Listening", icon: Headphones, color: "bg-sky-50 text-sky-700 border-sky-200" }
+                      item.mechanism === "reading"
+                        ? { label: "Reading and Audio", icon: Headphones, color: "bg-sky-50 text-sky-700 border-sky-200" }
                         : item.mechanism === "tutor"
-                        ? { label: "AI Tutor", icon: Bot, color: "bg-amber-50 text-amber-800 border-amber-200" }
-                        : item.mechanism === "translate"
-                        ? { label: "Translate & Explain", icon: Languages, color: "bg-teal-50 text-teal-700 border-teal-200" }
+                        ? { label: "Conversation", icon: Bot, color: "bg-amber-50 text-amber-800 border-amber-200" }
                         : item.mechanism === "journal"
-                        ? { label: "Language Journal", icon: PenTool, color: "bg-rose-50 text-rose-700 border-rose-200" }
-                        : { label: "Deck Hub", icon: Layers, color: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+                        ? { label: "Journal", icon: PenTool, color: "bg-rose-50 text-rose-700 border-rose-200" }
+                        : { label: "Active Study", icon: GraduationCap, color: "bg-indigo-50 text-indigo-700 border-indigo-200" };
 
                     const IconComp = mechBadge.icon;
 
