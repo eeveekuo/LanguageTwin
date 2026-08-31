@@ -169,6 +169,16 @@ export default function App() {
   >("browse");
   const [isPlacementModalOpen, setIsPlacementModalOpen] = useState(false);
 
+  const activeDeck =
+    decks.find((d) => d.id === activeDeckId) || decks[0] || DEFAULT_DECKS[0];
+
+  const targetLang: SupportedLanguage = getLanguageByCode(
+    activeDeck.targetLangCode || "es"
+  );
+  const knownLang: SupportedLanguage = getLanguageByCode(
+    activeDeck.knownLangCode || "en"
+  );
+
   // ----------------------------------------------------
   // 1. Initial Local Storage & IndexedDB Hydration
   // ----------------------------------------------------
@@ -355,16 +365,6 @@ export default function App() {
       console.warn("Failed to persist active deck id to IndexedDB:", e)
     );
   }, [activeDeckId]);
-
-  const activeDeck =
-    decks.find((d) => d.id === activeDeckId) || decks[0] || DEFAULT_DECKS[0];
-
-  const targetLang: SupportedLanguage = getLanguageByCode(
-    activeDeck.targetLangCode || "es"
-  );
-  const knownLang: SupportedLanguage = getLanguageByCode(
-    activeDeck.knownLangCode || "en"
-  );
 
   // Active pronunciation aid for current target language
   const currentPronunciationAid =

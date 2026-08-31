@@ -3,18 +3,21 @@ import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 
-// Register Service Worker for offline reliability and cached assets
+// Unregister any legacy Service Worker and clear caches to ensure pristine runtime module loading
 if (typeof window !== "undefined" && "serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("/sw.js")
-      .then((reg) => {
-        console.info("[ServiceWorker] Registered with scope:", reg.scope);
-      })
-      .catch((err) => {
-        console.warn("[ServiceWorker] Registration failed:", err);
-      });
-  });
+  navigator.serviceWorker.getRegistrations().then((registrations) => {
+    for (const registration of registrations) {
+      registration.unregister();
+    }
+  }).catch((err) => console.warn("SW unregister notice:", err));
+  
+  if ("caches" in window) {
+    caches.keys().then((names) => {
+      for (const name of names) {
+        caches.delete(name);
+      }
+    }).catch((err) => console.warn("Cache purge notice:", err));
+  }
 }
 
 createRoot(document.getElementById('root')!).render(
