@@ -38,6 +38,7 @@ interface HeaderProps {
   onOpenLanguageModal: () => void;
   onOpenGenerateModal: () => void;
   onOpenPlacementModal?: () => void;
+  onOpenBenchmarkModal?: () => void;
   dueCount: number;
   dailyProgress: DailyProgress;
   activeErrorsCount?: number;
@@ -66,6 +67,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenLanguageModal,
   onOpenGenerateModal,
   onOpenPlacementModal,
+  onOpenBenchmarkModal,
   dueCount,
   dailyProgress,
   activeErrorsCount = 0,
@@ -187,6 +189,20 @@ export const Header: React.FC<HeaderProps> = ({
                 variant="compact"
               />
             </div>
+
+            {/* AI Latency Benchmark Button */}
+            {onOpenBenchmarkModal && (
+              <button
+                id="header-ai-benchmark-btn"
+                type="button"
+                onClick={onOpenBenchmarkModal}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer shadow-2xs border bg-indigo-50/80 hover:bg-indigo-100 text-indigo-700 border-indigo-200"
+                title="AI Feature Latency Benchmark: Test speed across Sentence Evaluation, AI Tutor, Translations & Articles"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                <span>⚡ AI Benchmark</span>
+              </button>
+            )}
 
             {/* Top-Level Mastery & Progress Button */}
             <button

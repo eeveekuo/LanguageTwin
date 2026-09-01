@@ -80,7 +80,57 @@ To ensure complete transparency, every AI-powered feature in the application dis
 
 ---
 
-## 4. Verification & Testing
+## 4. Brainstorming: Strategies to Make Sentence Evaluation Faster
+
+To achieve sub-second sentence evaluation and minimize user wait times during high-velocity spaced-repetition drills, we have evaluated and designed the following architectural optimizations:
+
+### 1. Dedicated Ultra-Low Latency Model (`gemini-3.1-flash-lite`)
+- **Current Baseline**: `gemini-3.7-flash` provides deep pedagogical feedback but averages ~700–1200ms roundtrip latency.
+- **Optimization**: Route lightweight single-sentence evaluations to `gemini-3.1-flash-lite` or `gemini-2.5-flash-lite`.
+- **Expected Speedup**: ~50–65% reduction in Time to First Token (TTFT) and lower server processing times (typically 250–450ms).
+
+### 2. Strict JSON Schema Trimming (Token Generation Minimization)
+- **Insight**: Generation latency is directly proportional to the number of output tokens.
+- **Optimization**: Trim redundant commentary fields. For routine correct sentences, compress response schema:
+  - Return `{ "score": 95, "grade": 4, "isSuccess": true }` immediately.
+  - Defer deep grammar error breakdown tokens and remedy cards to an on-demand expandable UI ("Explain in depth" button).
+- **Expected Speedup**: Reduces output tokens from ~180 tokens down to ~35 tokens, cutting transfer and generation time by ~40%.
+
+### 3. Temperature 0.0 & Greedy Decoding
+- **Optimization**: Set `temperature: 0.0` and disable top_p sampling for grammar evaluation.
+- **Benefit**: Eliminates sampling overhead and maximizes cache hits on prefix prompt tokens.
+
+### 4. Speculative Client-Side Pre-Validation (0ms Feedback)
+- **Optimization**: Run an instant client-side heuristic check immediately upon pressing Enter:
+  - Verify target word presence and morphosyntactic root match in <5ms.
+  - Show an instant tentative status indicator (e.g. "Target word found, checking grammar...") while the LLM request is in flight.
+
+### 5. Direct Self-Reporting SRS Mode (0ms Latency)
+- **User Agency**: Learners who prefer fast-paced flashcard drilling without waiting for AI evaluation can toggle to **Quick Self-Assessment** mode with one-touch keyboard shortcuts (1: Again, 2: Hard, 3: Good, 4: Easy, Space: Flip).
+- **Result**: Instantaneous 0ms spaced-repetition scheduling with no network dependency.
+
+---
+
+## 5. Live AI Feature Latency Benchmarking Suite
+
+The application includes a built-in **AI Latency Benchmark Suite** accessible via the `⚡ AI Benchmark` button in the top navigation bar:
+
+- **Real-Time Measurement**: Executes live API roundtrips across all 6 core AI capabilities:
+  1. *Sentence Production Evaluation* (`/api/evaluate-sentence`)
+  2. *AI Socratic Tutor Chat* (`/api/tutor-chat`)
+  3. *Sentence & Context Translation* (`/api/translate-explain`)
+  4. *Verb Conjugation Explorer* (`/api/conjugation-lookup`)
+  5. *Graded Reading Article Generation* (`/api/generate-reading`)
+  6. *Language Journal Prose Correction* (`/api/journal-correct`)
+- **Metadata Returned**:
+  - `latencyMs`: Accurate millisecond roundtrip time.
+  - `modelUsed`: Specific Gemini model or Deterministic Rule Engine used.
+  - `isFallback`: Indicator showing whether the cloud LLM or the local fallback was invoked.
+- **Visual Analytics**: Interactive bar charts comparing relative feature speeds and status indicators.
+
+---
+
+## 6. Verification & Testing
 
 - Run `npm run build` to verify full compilation.
 - Run `npm run lint` (`tsc --noEmit`) to verify zero TypeScript errors.

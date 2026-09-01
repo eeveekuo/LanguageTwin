@@ -88,6 +88,10 @@ export const StudySession: React.FC<StudySessionProps> = ({
   const [promptMode, setPromptMode] = useState<"target_word" | "recall_from_meaning">("target_word");
   const [showRecallHint, setShowRecallHint] = useState<boolean>(false);
 
+  // Study Mode: "production" (AI sentence evaluation) vs "self_report" (Direct SM-2 mastery self-rating)
+  const [studyMode, setStudyMode] = useState<"production" | "self_report">("production");
+  const [showDirectSelfRate, setShowDirectSelfRate] = useState<boolean>(false);
+
   // Reveal-on-demand state: initially false (definition, usage format & examples are hidden until requested or evaluated)
   const [isRevealed, setIsRevealed] = useState<boolean>(false);
 
@@ -135,6 +139,7 @@ export const StudySession: React.FC<StudySessionProps> = ({
     setEvaluation(null);
     setIsRevealed(false);
     setShowRecallHint(false);
+    setShowDirectSelfRate(false);
     setExplanationData(null);
     setErrorMsg(null);
     setNextDueNotice("");
@@ -166,6 +171,42 @@ export const StudySession: React.FC<StudySessionProps> = ({
       setPromptMode(Math.random() < 0.5 ? "recall_from_meaning" : "target_word");
     }
   }, [currentIndex, activeCard?.id]);
+
+  // Global Keyboard Shortcuts for Self-Reported Study Mode (1, 2, 3, 4, Space)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger if user is actively typing in a form control
+      const activeTag = document.activeElement?.tagName?.toLowerCase();
+      if (activeTag === "input" || activeTag === "textarea") {
+        return;
+      }
+
+      if (e.key === " " || e.code === "Space") {
+        e.preventDefault();
+        setIsRevealed((prev) => !prev);
+        return;
+      }
+
+      if (!evaluation && !isDontKnowMode) {
+        if (e.key === "1") {
+          e.preventDefault();
+          handleSelfReportRating(1, 20, "Again / Needs Review");
+        } else if (e.key === "2") {
+          e.preventDefault();
+          handleSelfReportRating(2, 60, "Hard / Hesitant");
+        } else if (e.key === "3") {
+          e.preventDefault();
+          handleSelfReportRating(4, 85, "Good / Accurate");
+        } else if (e.key === "4") {
+          e.preventDefault();
+          handleSelfReportRating(5, 100, "Easy / Fluent");
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [activeCard, evaluation, isDontKnowMode, isRecording, learnerErrors]);
 
   const handlePlayAudio = (text: string, id: string) => {
     if (playingAudioId === id) {
@@ -837,8 +878,38 @@ export const StudySession: React.FC<StudySessionProps> = ({
           )}
         </div>
 
-        {/* Randomized Challenge Mode Indicator */}
-        <div className="flex items-center gap-2.5">
+        {/* Study Mode & Randomized Challenge Indicator */}
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* Mode Switcher */}
+          <div className="flex items-center bg-slate-100 p-0.5 rounded-xl border border-slate-200">
+            <button
+              type="button"
+              id="mode-production-btn"
+              onClick={() => setStudyMode("production")}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                studyMode === "production"
+                  ? "bg-white text-indigo-700 shadow-xs"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <Sparkles className="w-3 h-3 text-indigo-500" />
+              <span>✍️ Sentence Production (AI)</span>
+            </button>
+            <button
+              type="button"
+              id="mode-self-report-btn"
+              onClick={() => setStudyMode("self_report")}
+              className={`px-3 py-1 rounded-lg text-xs font-bold transition flex items-center gap-1.5 cursor-pointer ${
+                studyMode === "self_report"
+                  ? "bg-white text-indigo-700 shadow-xs"
+                  : "text-slate-500 hover:text-slate-800"
+              }`}
+            >
+              <Zap className="w-3 h-3 text-amber-500" />
+              <span>⚡ Quick Self-Assessment (SM-2)</span>
+            </button>
+          </div>
+
           <div
             id="random-mode-badge"
             className="flex items-center gap-1.5 px-3 py-1 rounded-xl bg-slate-100 text-slate-700 text-[11px] font-bold border border-slate-200 shadow-2xs"
@@ -846,7 +917,7 @@ export const StudySession: React.FC<StudySessionProps> = ({
           >
             <Shuffle className="w-3 h-3 text-indigo-600" />
             <span>
-              {promptMode === "target_word" ? "Mode: Word Display" : "Mode: Meaning Recall"}
+              {promptMode === "target_word" ? "Word Display" : "Meaning Recall"}
             </span>
           </div>
         </div>
@@ -1346,140 +1417,255 @@ export const StudySession: React.FC<StudySessionProps> = ({
               </div>
             )}
 
-            {/* Standard Sentence Input: Shown when NOT evaluated and NOT in dontKnowMode */}
+            {/* Study Input / Self-Report Mastery Controls: Shown when NOT evaluated and NOT in dontKnowMode */}
             {!evaluation && !isDontKnowMode && (
-              <div className="w-full max-w-xl text-left space-y-3 mt-2">
-                {!isOnline && (
-                  <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between text-xs text-amber-900">
-                    <div className="flex items-center gap-2">
-                      <span className="w-2 h-2 rounded-full bg-amber-500" />
-                      <span className="font-bold">Offline Study: Self-Reported Mastery Active</span>
-                    </div>
-                    <span className="text-[10px] text-amber-700 font-semibold">AI evaluation offline</span>
-                  </div>
-                )}
-
-                <div className="flex items-center justify-between">
-                  <label className="block text-left text-xs font-bold text-slate-500 uppercase ml-1 tracking-wider">
-                    Your Sentence in {targetLang.name}
-                  </label>
-                </div>
-
-                <div className="relative">
-                  <textarea
-                    id="sentence-input"
-                    rows={3}
-                    value={userSentence}
-                    onChange={(e) => setUserSentence(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        if (isOnline) {
-                          handleEvaluateSentence();
-                        } else {
-                          setIsRevealed(true);
-                        }
-                      }
-                    }}
-                    placeholder={
-                      isCommonErrorCard
-                        ? `Formulate a sentence using the correct form "${activeCard.correctedForm || activeCard.targetItem}"...`
-                        : promptMode === "target_word"
-                        ? `Type an original sentence incorporating "${activeCard.targetItem}"...`
-                        : `Recall and write a sentence in ${targetLang.name}...`
-                    }
-                    className="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 pr-12 text-base sm:text-lg text-slate-900 focus:outline-none focus:border-indigo-500 focus:bg-white transition-colors resize-none"
-                    disabled={isEvaluating}
-                    autoFocus
-                  />
-
-                  {/* Mic STT Button inside textarea */}
-                  <button
-                    id="mic-record-btn"
-                    type="button"
-                    onClick={toggleRecording}
-                    className={`absolute right-3 bottom-3 p-2 rounded-xl transition cursor-pointer ${
-                      isRecording
-                        ? "bg-red-500 text-white animate-pulse shadow-md shadow-red-200"
-                        : "bg-white hover:bg-slate-100 text-slate-500 border border-slate-200 shadow-xs"
-                    }`}
-                    title={isRecording ? "Stop speaking" : "Speak your sentence"}
-                  >
-                    <Mic className="w-5 h-5" />
-                  </button>
-                </div>
-
-                {isRecording && (
-                  <div className="flex items-center gap-2 text-xs text-red-500 font-semibold animate-pulse">
-                    <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
-                    <span>Listening in {targetLang.name}... Speak clearly.</span>
-                  </div>
-                )}
-
-                {errorMsg && (
-                  <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-medium">
-                    <AlertCircle className="w-4 h-4 shrink-0" />
-                    <span>{errorMsg}</span>
-                  </div>
-                )}
-
-                {/* Self-Reported Mastery Bar: ONLY shown when detected to be offline with tooltip/banner */}
-                {!isOnline && (
-                  <div className="p-3.5 bg-amber-50/90 rounded-2xl border border-amber-200 space-y-2.5">
-                    <div className="flex items-center justify-between text-[11px]">
-                      <div className="flex items-center gap-1.5 font-bold text-amber-900">
-                        <WifiOff className="w-3.5 h-3.5 text-amber-700" />
-                        <span className="uppercase tracking-wider">Offline Mode: Self-Reported Recall</span>
+              <div className="w-full max-w-xl text-left space-y-4 mt-2">
+                {/* QUICK SELF-ASSESSMENT MODE */}
+                {studyMode === "self_report" || showDirectSelfRate ? (
+                  <div className="p-5 bg-gradient-to-br from-slate-50 to-indigo-50/40 rounded-3xl border border-indigo-100/80 shadow-xs space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                          <Zap className="w-4 h-4" />
+                        </div>
+                        <div>
+                          <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">
+                            Self-Reported Mastery (SM-2 SRS)
+                          </h4>
+                          <p className="text-[11px] text-slate-500">
+                            Rate your recall accuracy to update card spacing immediately without waiting for AI.
+                          </p>
+                        </div>
                       </div>
-                      <span className="text-amber-800 text-[10px] bg-amber-100 px-2 py-0.5 rounded-full font-semibold border border-amber-200">
-                        SM-2 Spaced Repetition
-                      </span>
+
+                      {studyMode === "production" && showDirectSelfRate && (
+                        <button
+                          type="button"
+                          onClick={() => setShowDirectSelfRate(false)}
+                          className="text-[11px] text-indigo-600 font-bold hover:underline cursor-pointer"
+                        >
+                          Back to Sentence Input
+                        </button>
+                      )}
                     </div>
-                    <p className="text-[11px] text-amber-800 leading-relaxed">
-                      Due to being offline, self-reported mastery is enabled so you can continue advancing your spaced repetition schedule without an active server connection.
-                    </p>
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+
+                    {/* Reveal Definition / Examples Button if not yet revealed */}
+                    {!isRevealed && (
+                      <div className="flex justify-center pt-1">
+                        <button
+                          type="button"
+                          id="reveal-card-btn"
+                          onClick={() => setIsRevealed(true)}
+                          className="px-6 py-2.5 rounded-2xl bg-white hover:bg-slate-100 text-indigo-700 border border-indigo-200 text-xs font-bold transition shadow-xs flex items-center gap-2 cursor-pointer active:scale-95"
+                        >
+                          <Eye className="w-4 h-4 text-indigo-600" />
+                          <span>Reveal Definition & Examples (Spacebar)</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {/* 4 SM-2 Self-Rating Buttons */}
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                        <button
+                          type="button"
+                          id="rate-again-btn"
+                          onClick={() => handleSelfReportRating(1, 20, "Again / Needs Review")}
+                          className="p-3 rounded-2xl border border-rose-200 bg-rose-50 hover:bg-rose-100 text-rose-900 text-xs font-extrabold transition flex flex-col items-center cursor-pointer shadow-xs active:scale-95 group"
+                          title="Schedule for reset tomorrow (Key: 1)"
+                        >
+                          <div className="flex items-center gap-1">
+                            <span className="w-4 h-4 rounded-full bg-rose-200 text-rose-800 text-[10px] flex items-center justify-center font-mono">1</span>
+                            <span>Again</span>
+                          </div>
+                          <span className="text-[10px] text-rose-600 font-semibold mt-0.5">1 Day Reset</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          id="rate-hard-btn"
+                          onClick={() => handleSelfReportRating(2, 60, "Hard / Hesitant")}
+                          className="p-3 rounded-2xl border border-amber-200 bg-amber-50 hover:bg-amber-100 text-amber-900 text-xs font-extrabold transition flex flex-col items-center cursor-pointer shadow-xs active:scale-95 group"
+                          title="Short interval step (Key: 2)"
+                        >
+                          <div className="flex items-center gap-1">
+                            <span className="w-4 h-4 rounded-full bg-amber-200 text-amber-800 text-[10px] flex items-center justify-center font-mono">2</span>
+                            <span>Hard</span>
+                          </div>
+                          <span className="text-[10px] text-amber-700 font-semibold mt-0.5">Short Step</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          id="rate-good-btn"
+                          onClick={() => handleSelfReportRating(4, 85, "Good / Accurate")}
+                          className="p-3 rounded-2xl border border-emerald-200 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 text-xs font-extrabold transition flex flex-col items-center cursor-pointer shadow-xs active:scale-95 group"
+                          title="Standard SRS interval increase (Key: 3)"
+                        >
+                          <div className="flex items-center gap-1">
+                            <span className="w-4 h-4 rounded-full bg-emerald-200 text-emerald-800 text-[10px] flex items-center justify-center font-mono">3</span>
+                            <span>Good</span>
+                          </div>
+                          <span className="text-[10px] text-emerald-700 font-semibold mt-0.5">Standard SRS</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          id="rate-easy-btn"
+                          onClick={() => handleSelfReportRating(5, 100, "Easy / Fluent")}
+                          className="p-3 rounded-2xl border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-900 text-xs font-extrabold transition flex flex-col items-center cursor-pointer shadow-xs active:scale-95 group"
+                          title="Bonus long jump interval (Key: 4)"
+                        >
+                          <div className="flex items-center gap-1">
+                            <span className="w-4 h-4 rounded-full bg-indigo-200 text-indigo-800 text-[10px] flex items-center justify-center font-mono">4</span>
+                            <span>Easy</span>
+                          </div>
+                          <span className="text-[10px] text-indigo-700 font-semibold mt-0.5">Long Jump</span>
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-center gap-4 text-[10px] text-slate-400 font-mono pt-1">
+                        <span>Shortcuts: [1] Again</span>
+                        <span>[2] Hard</span>
+                        <span>[3] Good</span>
+                        <span>[4] Easy</span>
+                        <span>[Space] Flip</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  /* STANDARD SENTENCE PRODUCTION MODE */
+                  <div className="space-y-3">
+                    {!isOnline && (
+                      <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between text-xs text-amber-900">
+                        <div className="flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-amber-500" />
+                          <span className="font-bold">Offline Study: Self-Reported Mastery Active</span>
+                        </div>
+                        <span className="text-[10px] text-amber-700 font-semibold">AI evaluation offline</span>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between">
+                      <label className="block text-left text-xs font-bold text-slate-500 uppercase ml-1 tracking-wider">
+                        Your Sentence in {targetLang.name}
+                      </label>
                       <button
                         type="button"
-                        id="rate-again-btn"
-                        onClick={() => handleSelfReportRating(1, 20, "Again / Needs Review")}
-                        className="p-2.5 rounded-xl border border-rose-200 bg-rose-50/90 hover:bg-rose-100 text-rose-800 text-xs font-bold transition flex flex-col items-center cursor-pointer shadow-2xs"
-                        title="Offline recall: Schedule for reset tomorrow"
+                        onClick={() => setShowDirectSelfRate(true)}
+                        className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 transition flex items-center gap-1 cursor-pointer"
                       >
-                        <span>Again (1)</span>
-                        <span className="text-[10px] text-rose-600 font-medium">1 Day Reset</span>
-                      </button>
-                      <button
-                        type="button"
-                        id="rate-hard-btn"
-                        onClick={() => handleSelfReportRating(2, 60, "Hard / Hesitant")}
-                        className="p-2.5 rounded-xl border border-amber-200 bg-amber-50/90 hover:bg-amber-100 text-amber-900 text-xs font-bold transition flex flex-col items-center cursor-pointer shadow-2xs"
-                        title="Offline recall: Short interval step"
-                      >
-                        <span>Hard (2)</span>
-                        <span className="text-[10px] text-amber-700 font-medium">Short Interval</span>
-                      </button>
-                      <button
-                        type="button"
-                        id="rate-good-btn"
-                        onClick={() => handleSelfReportRating(4, 85, "Good / Accurate")}
-                        className="p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/90 hover:bg-emerald-100 text-emerald-900 text-xs font-bold transition flex flex-col items-center cursor-pointer shadow-2xs"
-                        title="Offline recall: Standard SRS interval"
-                      >
-                        <span>Good (4)</span>
-                        <span className="text-[10px] text-emerald-700 font-medium">+Interval</span>
-                      </button>
-                      <button
-                        type="button"
-                        id="rate-easy-btn"
-                        onClick={() => handleSelfReportRating(5, 100, "Easy / Fluent")}
-                        className="p-2.5 rounded-xl border border-indigo-200 bg-indigo-50/90 hover:bg-indigo-100 text-indigo-900 text-xs font-bold transition flex flex-col items-center cursor-pointer shadow-2xs"
-                        title="Offline recall: Bonus long jump interval"
-                      >
-                        <span>Easy (5)</span>
-                        <span className="text-[10px] text-indigo-700 font-medium">Long Jump</span>
+                        <Zap className="w-3 h-3 text-amber-500" />
+                        <span>Self-Rate Mastery (Skip AI)</span>
                       </button>
                     </div>
+
+                    <div className="relative">
+                      <textarea
+                        id="sentence-input"
+                        rows={3}
+                        value={userSentence}
+                        onChange={(e) => setUserSentence(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && !e.shiftKey) {
+                            e.preventDefault();
+                            if (isOnline) {
+                              handleEvaluateSentence();
+                            } else {
+                              setIsRevealed(true);
+                            }
+                          }
+                        }}
+                        placeholder={
+                          isCommonErrorCard
+                            ? `Formulate a sentence using the correct form "${activeCard.correctedForm || activeCard.targetItem}"...`
+                            : promptMode === "target_word"
+                            ? `Type an original sentence incorporating "${activeCard.targetItem}"...`
+                            : `Recall and write a sentence in ${targetLang.name}...`
+                        }
+                        className="w-full bg-slate-50 border-2 border-slate-200 rounded-2xl p-4 pr-12 text-base sm:text-lg text-slate-900 focus:outline-none focus:border-indigo-500 focus:bg-white transition-colors resize-none"
+                        disabled={isEvaluating}
+                        autoFocus
+                      />
+
+                      {/* Mic STT Button inside textarea */}
+                      <button
+                        id="mic-record-btn"
+                        type="button"
+                        onClick={toggleRecording}
+                        className={`absolute right-3 bottom-3 p-2 rounded-xl transition cursor-pointer ${
+                          isRecording
+                            ? "bg-red-500 text-white animate-pulse shadow-md shadow-red-200"
+                            : "bg-white hover:bg-slate-100 text-slate-500 border border-slate-200 shadow-xs"
+                        }`}
+                        title={isRecording ? "Stop speaking" : "Speak your sentence"}
+                      >
+                        <Mic className="w-5 h-5" />
+                      </button>
+                    </div>
+
+                    {isRecording && (
+                      <div className="flex items-center gap-2 text-xs text-red-500 font-semibold animate-pulse">
+                        <span className="w-2 h-2 rounded-full bg-red-500 animate-ping" />
+                        <span>Listening in {targetLang.name}... Speak clearly.</span>
+                      </div>
+                    )}
+
+                    {errorMsg && (
+                      <div className="flex items-center gap-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-medium">
+                        <AlertCircle className="w-4 h-4 shrink-0" />
+                        <span>{errorMsg}</span>
+                      </div>
+                    )}
+
+                    {/* Self-Reported Mastery Bar: ALSO shown when detected to be offline */}
+                    {!isOnline && (
+                      <div className="p-3.5 bg-amber-50/90 rounded-2xl border border-amber-200 space-y-2.5">
+                        <div className="flex items-center justify-between text-[11px]">
+                          <div className="flex items-center gap-1.5 font-bold text-amber-900">
+                            <WifiOff className="w-3.5 h-3.5 text-amber-700" />
+                            <span className="uppercase tracking-wider">Offline Mode: Self-Reported Recall</span>
+                          </div>
+                          <span className="text-amber-800 text-[10px] bg-amber-100 px-2 py-0.5 rounded-full font-semibold border border-amber-200">
+                            SM-2 Spaced Repetition
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                          <button
+                            type="button"
+                            onClick={() => handleSelfReportRating(1, 20, "Again / Needs Review")}
+                            className="p-2.5 rounded-xl border border-rose-200 bg-rose-50/90 hover:bg-rose-100 text-rose-800 text-xs font-bold transition flex flex-col items-center cursor-pointer"
+                          >
+                            <span>Again (1)</span>
+                            <span className="text-[10px] text-rose-600 font-medium">1 Day Reset</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSelfReportRating(2, 60, "Hard / Hesitant")}
+                            className="p-2.5 rounded-xl border border-amber-200 bg-amber-50/90 hover:bg-amber-100 text-amber-900 text-xs font-bold transition flex flex-col items-center cursor-pointer"
+                          >
+                            <span>Hard (2)</span>
+                            <span className="text-[10px] text-amber-700 font-medium">Short Interval</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSelfReportRating(4, 85, "Good / Accurate")}
+                            className="p-2.5 rounded-xl border border-emerald-200 bg-emerald-50/90 hover:bg-emerald-100 text-emerald-900 text-xs font-bold transition flex flex-col items-center cursor-pointer"
+                          >
+                            <span>Good (3)</span>
+                            <span className="text-[10px] text-emerald-700 font-medium">+Interval</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleSelfReportRating(5, 100, "Easy / Fluent")}
+                            className="p-2.5 rounded-xl border border-indigo-200 bg-indigo-50/90 hover:bg-indigo-100 text-indigo-900 text-xs font-bold transition flex flex-col items-center cursor-pointer"
+                          >
+                            <span>Easy (4)</span>
+                            <span className="text-[10px] text-indigo-700 font-medium">Long Jump</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

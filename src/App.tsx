@@ -71,6 +71,7 @@ import { LanguagePairModal } from "./components/LanguagePairModal";
 import { LanguagePlacementModal } from "./components/LanguagePlacementModal";
 import { SentenceStructurePrimer } from "./components/SentenceStructurePrimer";
 import { TranslateAndExplain } from "./components/TranslateAndExplain";
+import { AiBenchmarkModal } from "./components/AiBenchmarkModal";
 
 const STORAGE_KEY_DECKS = "frequency_srs_decks_v1";
 const STORAGE_KEY_ACTIVE_DECK = "frequency_srs_active_deck_id_v1";
@@ -197,6 +198,7 @@ export default function App() {
     "browse" | "generate"
   >("browse");
   const [isPlacementModalOpen, setIsPlacementModalOpen] = useState(false);
+  const [isBenchmarkModalOpen, setIsBenchmarkModalOpen] = useState(false);
 
   const activeDeck =
     decks.find((d) => d.id === activeDeckId) || decks[0] || DEFAULT_DECKS[0];
@@ -864,6 +866,7 @@ export default function App() {
           setIsLanguageModalOpen(true);
         }}
         onOpenPlacementModal={() => setIsPlacementModalOpen(true)}
+        onOpenBenchmarkModal={() => setIsBenchmarkModalOpen(true)}
         dueCount={dueCards.length}
         dailyProgress={dailyProgress}
         activeErrorsCount={activeErrorsCount}
@@ -1075,6 +1078,13 @@ export default function App() {
         knownLang={knownLang}
         onDeckCalibrated={handleDeckCalibrated}
         isOnline={isOnline}
+      />
+
+      <AiBenchmarkModal
+        isOpen={isBenchmarkModalOpen}
+        onClose={() => setIsBenchmarkModalOpen(false)}
+        targetLang={targetLang}
+        knownLang={knownLang}
       />
     </div>
   );
