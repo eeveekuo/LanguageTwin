@@ -106,6 +106,55 @@ Learners can select their preferred reference language for definitions, grammati
 
 ---
 
+## 🧠 LLM Architecture & Multi-Tier Resilience Engine
+
+LanguageTwin implements a resilient, server-side multi-tier LLM architecture utilizing the `@google/genai` SDK:
+
+```
+                                  ┌─────────────────────────────┐
+                                  │   Learner Action / Query    │
+                                  └──────────────┬──────────────┘
+                                                 │
+                                                 ▼
+                                ┌─────────────────────────────────┐
+                                │ Express Server-Side Proxy       │
+                                │ (server/geminiResilience.ts)    │
+                                └────────────────┬────────────────┘
+                                                 │
+                                                 ▼
+                        ┌─────────────────────────────────────────────────┐
+                        │ Primary Model: gemini-3.7-flash                 │
+                        │ (High-precision reasoning, evaluation & grammar)│
+                        └────────┬────────────────────────────────────────┘
+                                 │
+                 (Rate limit / 503 Spike / Error)
+                                 │
+                                 ▼
+                        ┌─────────────────────────────────────────────────┐
+                        │ Secondary Tier: gemini-3.1-flash-lite / latest  │
+                        │ (Fast automatic fallback & load shedding)       │
+                        └────────┬────────────────────────────────────────┘
+                                 │
+                    (All Remote API Calls Exhausted)
+                                 │
+                                 ▼
+                        ┌─────────────────────────────────────────────────┐
+                        │ Deterministic Linguistic Fallback Engine        │
+                        │ • getFallbackReadingArticle                     │
+                        │ • getFallbackSentenceEvaluation                 │
+                        │ • getFallbackPlacementEvaluation                │
+                        │ • getFallbackTranslateAndExplain                │
+                        │ • getFallbackConjugationLookup & JournalCheck   │
+                        └─────────────────────────────────────────────────┘
+```
+
+### Key LLM Design Principles:
+1. **Zero Secret Leakage**: All Gemini API keys are strictly confined to server-side Node execution (`server.ts`, `server/geminiResilience.ts`), proxying evaluated payloads to the browser.
+2. **Dynamic Model Cascading (`generateWithFallback`)**: On high demand or rate limits (429/503), the proxy cascades automatically between `gemini-3.7-flash`, `gemini-3.1-flash-lite`, and `gemini-flash-latest` with exponential backoff and jitter.
+3. **Graceful Degradation via Heuristic Fallbacks**: If remote network connectivity or API quotas are completely severed, the system executes deterministic offline fallbacks for reading articles, sentence evaluation, placement testing, grammar conjugations, and journal corrections so learning is never interrupted.
+
+---
+
 ## 🛠️ Architecture & Tech Stack
 
 ```
