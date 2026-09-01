@@ -76,9 +76,8 @@ const STORAGE_KEY_DECKS = "frequency_srs_decks_v1";
 const STORAGE_KEY_ACTIVE_DECK = "frequency_srs_active_deck_id_v1";
 
 function sanitizeDeckCards(decksList: Deck[]): Deck[] {
-  return decksList.map((deck) => ({
-    ...deck,
-    cards: deck.cards.map((card) => {
+  return decksList.map((deck) => {
+    let cards = (deck.cards || []).map((card) => {
       let cleanedTargetItem = card.targetItem || "";
       // Strip parenthetical readings like "是 (shì)" -> "是", "友達 (ともだち)" -> "友達"
       cleanedTargetItem = cleanedTargetItem
@@ -89,8 +88,38 @@ function sanitizeDeckCards(decksList: Deck[]): Deck[] {
         ...card,
         targetItem: cleanedTargetItem || card.targetItem,
       };
-    }),
-  }));
+    });
+
+    // If deck has fewer than 300 cards, backfill from DEFAULT_DECKS catalog
+    if (cards.length < 300) {
+      const match = DEFAULT_DECKS.find(
+        (d) => d.targetLangCode === deck.targetLangCode || d.targetLang === deck.targetLang
+      );
+      if (match && match.cards && match.cards.length > cards.length) {
+        const existingItems = new Set(cards.map((c) => (c.targetItem || "").trim().toLowerCase()));
+        for (const catCard of match.cards) {
+          if (cards.length >= 300) break;
+          const key = (catCard.targetItem || "").trim().toLowerCase();
+          if (!existingItems.has(key)) {
+            existingItems.add(key);
+            cards.push({
+              ...catCard,
+              id: `${deck.id}-card-${cards.length + 1}`,
+              deckId: deck.id,
+              frequencyRank: cards.length + 1,
+            });
+          }
+        }
+      }
+    }
+
+    return {
+      ...deck,
+      title: deck.title.replace("Top 20", "Top 300").replace("Top 15", "Top 300"),
+      description: deck.description.replace("Top 20", "Top 300").replace("Top 15", "Top 300"),
+      cards,
+    };
+  });
 }
 
 export default function App() {

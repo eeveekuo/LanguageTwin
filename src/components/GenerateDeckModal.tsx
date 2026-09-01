@@ -29,7 +29,7 @@ export const GenerateDeckModal: React.FC<GenerateDeckModalProps> = ({
   const [level, setLevel] = useState("A1 - Beginner");
   const [topic, setTopic] = useState("Top 20 Most Frequent Core Vocabulary & Connectors");
   const [customTopic, setCustomTopic] = useState("");
-  const [count, setCount] = useState<number>(15);
+  const [count, setCount] = useState<number>(300);
   const [startRank, setStartRank] = useState<number>(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -227,9 +227,11 @@ export const GenerateDeckModal: React.FC<GenerateDeckModalProps> = ({
                 onChange={(e) => setCount(Number(e.target.value))}
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-medium focus:bg-white focus:outline-none focus:border-indigo-400"
               >
-                <option value={10}>10 Flashcards</option>
-                <option value={15}>15 Flashcards</option>
+                <option value={300}>300 Flashcards (Complete Track)</option>
+                <option value={100}>100 Flashcards</option>
+                <option value={50}>50 Flashcards</option>
                 <option value={20}>20 Flashcards</option>
+                <option value={15}>15 Flashcards</option>
               </select>
             </div>
           </div>

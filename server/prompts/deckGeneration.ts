@@ -96,7 +96,7 @@ export interface CalibratedDeckPromptOptions {
 }
 
 export function getCalibratedDeckSystemInstruction(options: CalibratedDeckPromptOptions): string {
-  const { targetLanguage, knownLanguage, cefrLevel = "B1", assessedLevel = cefrLevel, recommendedStartingRank = 1, cardCount = 15, identifiedErrors = [] } = options;
+  const { targetLanguage, knownLanguage, cefrLevel = "B1", assessedLevel = cefrLevel, recommendedStartingRank = 1, cardCount = 300, identifiedErrors = [] } = options;
 
   const isKorean = (targetLanguage || "").toLowerCase().includes("korean") || (targetLanguage || "").toLowerCase().includes("한국어");
   const isTraditionalChinese =

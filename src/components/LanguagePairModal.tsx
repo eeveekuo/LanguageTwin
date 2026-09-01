@@ -87,9 +87,9 @@ export const LanguagePairModal: React.FC<LanguagePairModalProps> = ({
 
   // Generator form state (pre-filled and bound to current selection)
   const [level, setLevel] = useState("A1 - Beginner");
-  const [topic, setTopic] = useState("Top 20 Most Frequent Core Vocabulary & Connectors");
+  const [topic, setTopic] = useState("Top 300 Most Frequent Core Vocabulary & Connectors");
   const [customTopic, setCustomTopic] = useState("");
-  const [count, setCount] = useState<number>(15);
+  const [count, setCount] = useState<number>(300);
   const [startRank, setStartRank] = useState<number>(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -814,7 +814,7 @@ export const LanguagePairModal: React.FC<LanguagePairModalProps> = ({
                     Number of Cards:
                   </label>
                   <div className="grid grid-cols-4 gap-1.5">
-                    {[10, 15, 20, 25].map((num) => (
+                    {[300, 100, 50, 20].map((num) => (
                       <button
                         key={num}
                         type="button"

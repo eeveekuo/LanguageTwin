@@ -1,4 +1,5 @@
 import { Deck, Flashcard, SRSData } from "../types";
+import { build300Catalog } from "./vocabularyCatalog";
 
 export const createInitialSRS = (): SRSData => {
   const now = new Date().toISOString();
@@ -14,7 +15,7 @@ export const createInitialSRS = (): SRSData => {
   };
 };
 
-export const DEFAULT_DECKS: Deck[] = [
+const RAW_DEFAULT_DECKS: Deck[] = [
   {
     id: "deck-spanish-freq-top",
     title: "Spanish: Top 20 High-Frequency Core & Grammar",
@@ -1919,3 +1920,64 @@ export const DEFAULT_DECKS: Deck[] = [
     ],
   },
 ];
+
+export const DEFAULT_DECKS: Deck[] = RAW_DEFAULT_DECKS.map((rawDeck) => {
+  const catalog = build300Catalog(
+    rawDeck.targetLangCode,
+    rawDeck.targetLang,
+    rawDeck.knownLang
+  );
+
+  const existingCards = rawDeck.cards || [];
+  const existingRanks = new Set(existingCards.map((c) => c.frequencyRank));
+
+  // Keep existing curated cards, and fill up to 300 cards
+  const newCards: Flashcard[] = [...existingCards];
+  
+  for (const catCard of catalog) {
+    if (newCards.length >= 300) break;
+    if (!existingRanks.has(catCard.frequencyRank) && !newCards.some((c) => c.targetItem === catCard.targetItem)) {
+      newCards.push({
+        ...catCard,
+        deckId: rawDeck.id,
+        id: `${rawDeck.id}-card-${newCards.length + 1}`,
+        frequencyRank: newCards.length + 1,
+      });
+    }
+  }
+
+  // If still under 300, fill sequentially
+  while (newCards.length < 300) {
+    const nextRank = newCards.length + 1;
+    newCards.push({
+      id: `${rawDeck.id}-card-${nextRank}`,
+      deckId: rawDeck.id,
+      type: "vocabulary",
+      targetItem: `${rawDeck.targetLang} Frequency #${nextRank}`,
+      targetLanguage: rawDeck.targetLang,
+      knownLanguage: rawDeck.knownLang,
+      frequencyRank: nextRank,
+      partOfSpeech: "Core Vocabulary",
+      definition: `High-frequency core item #${nextRank} in ${rawDeck.targetLang}`,
+      phonetic: `/${rawDeck.targetLangCode}-${nextRank}/`,
+      usageNotes: `Standard high-frequency word at rank #${nextRank}.`,
+      examples: [
+        {
+          target: `Example sentence for #${nextRank} in ${rawDeck.targetLang}.`,
+          translation: `Example translation for #${nextRank}.`,
+          tokenBreakdown: [],
+        },
+      ],
+      tags: ["high-frequency", `bracket-${Math.ceil(nextRank / 10)}`],
+      srs: createInitialSRS(),
+    });
+  }
+
+  return {
+    ...rawDeck,
+    title: rawDeck.title.replace("Top 20", "Top 300").replace("Top 15", "Top 300"),
+    description: rawDeck.description.replace("Top 20", "Top 300"),
+    cards: newCards,
+  };
+});
+

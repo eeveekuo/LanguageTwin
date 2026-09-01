@@ -202,7 +202,7 @@ export const LanguagePlacementModal: React.FC<LanguagePlacementModalProps> = ({
             cefrLevel: result.overallCEFR,
             recommendedStartingRank: result.recommendedStartingRank || 1,
             identifiedErrors: result.identifiedErrors || [],
-            cardCount: 15,
+            cardCount: 300,
           }),
         });
 

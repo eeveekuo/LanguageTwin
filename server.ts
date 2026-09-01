@@ -349,7 +349,7 @@ app.post("/api/generate-deck", async (req, res) => {
       knownLanguage,
       topic,
       level,
-      count = 15,
+      count = 300,
       startFrequencyRank = 1,
     } = req.body;
 
@@ -1085,7 +1085,7 @@ app.post("/api/regenerate-level-deck", async (req, res) => {
       cefrLevel,
       recommendedStartingRank = 1,
       identifiedErrors = [],
-      cardCount = 15,
+      cardCount = 300,
     } = req.body;
 
     if (!targetLanguage || !knownLanguage) {
