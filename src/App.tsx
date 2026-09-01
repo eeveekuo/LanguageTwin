@@ -252,12 +252,18 @@ export default function App() {
               saveDailyProgress(cloudData.dailyProgress);
             }
 
-            // Restore / merge user decks
-            if (Array.isArray(cloudData.decks) && cloudData.decks.length > 0) {
-              const sanitizedCloudDecks = sanitizeDeckCards(cloudData.decks);
-              setDecks((prevDecks) => {
-                // Keep default decks + merge with cloud decks
-                const merged = [...prevDecks];
+            // Restore / merge user decks and card SRS progression
+            const cardSRSMap = cloudData.cardSRSMap || {};
+            const cloudDecks = Array.isArray(cloudData.customDecks) && cloudData.customDecks.length > 0
+              ? cloudData.customDecks
+              : Array.isArray(cloudData.decks)
+              ? cloudData.decks
+              : [];
+
+            setDecks((prevDecks) => {
+              let merged = [...prevDecks];
+              if (cloudDecks.length > 0) {
+                const sanitizedCloudDecks = sanitizeDeckCards(cloudDecks);
                 sanitizedCloudDecks.forEach((cd: Deck) => {
                   const existingIdx = merged.findIndex((d) => d.id === cd.id);
                   if (existingIdx >= 0) {
@@ -266,9 +272,30 @@ export default function App() {
                     merged.push(cd);
                   }
                 });
-                return sanitizeDeckCards(merged);
-              });
-            }
+              }
+
+              // Apply card SRS progression map
+              if (Object.keys(cardSRSMap).length > 0) {
+                merged = merged.map((d) => ({
+                  ...d,
+                  cards: (d.cards || []).map((card) => {
+                    const srs = cardSRSMap[card.id];
+                    if (srs) {
+                      return {
+                        ...card,
+                        srs: {
+                          ...card.srs,
+                          ...srs,
+                        },
+                      };
+                    }
+                    return card;
+                  }),
+                }));
+              }
+
+              return sanitizeDeckCards(merged);
+            });
 
             if (cloudData.activeDeckId) {
               setActiveDeckId(cloudData.activeDeckId);

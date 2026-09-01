@@ -199,8 +199,20 @@ export async function fetchCloudDecks(targetLangCode?: string): Promise<any[]> {
   }
 }
 
+const DEFAULT_BUILTIN_DECK_IDS = new Set([
+  "deck-spanish-freq-top",
+  "deck-korean-freq-top",
+  "deck-japanese-freq-top",
+  "deck-chinese-freq-top",
+  "deck-french-freq-top",
+  "deck-german-freq-top",
+  "deck-italian-freq-top",
+  "deck-hokkien-freq-top",
+]);
+
 /**
- * Save user study state and progress to their private cloud profile
+ * Save user study state and progress to their private cloud profile.
+ * Optimized with compact cardSRSMap to prevent exceeding Firestore's 1MB document limit.
  */
 export async function saveUserProgressToCloud(
   userId: string,
@@ -224,6 +236,135 @@ export async function saveUserProgressToCloud(
   const path = `${USERS_COLLECTION}/${userId}`;
   try {
     const userDocRef = doc(db, USERS_COLLECTION, userId);
+
+    // 1. Extract compact SRS progress for all cards
+    const cardSRSMap: Record<string, any> = {};
+    (progressData.decks || []).forEach((deck: any) => {
+      (deck.cards || []).forEach((card: any) => {
+        if (card && card.id && card.srs) {
+          const s = card.srs;
+          // Store whenever card has review history or non-initial state
+          if (
+            s.repetitions > 0 ||
+            s.state !== "new" ||
+            s.lapses > 0 ||
+            s.lastReviewed ||
+            (s.interval && s.interval > 1)
+          ) {
+            cardSRSMap[card.id] = {
+              interval: s.interval ?? 1,
+              repetitions: s.repetitions ?? 0,
+              easeFactor: Number(s.easeFactor) || 2.5,
+              dueDate: s.dueDate || new Date().toISOString(),
+              state: s.state || "new",
+              lapses: Number(s.lapses) || 0,
+              lastReviewed: s.lastReviewed ?? null,
+            };
+          }
+        }
+      });
+    });
+
+    // 2. Separate user-created custom decks from built-in 300-word catalog decks
+    const customDecks: any[] = [];
+    const defaultDeckSummaries: any[] = [];
+
+    (progressData.decks || []).forEach((d: any) => {
+      const isCustom = d.isCustom === true || !DEFAULT_BUILTIN_DECK_IDS.has(d.id);
+      if (isCustom) {
+        // Save full custom deck to decks collection independently
+        saveDeckToCloud(d, auth.currentUser).catch((e) =>
+          console.warn("Auto-saving custom deck to library:", e)
+        );
+
+        // Keep lightweight custom deck inside user document
+        customDecks.push({
+          id: d.id,
+          title: d.title || "Custom Deck",
+          description: d.description || "",
+          targetLang: d.targetLang || "Language",
+          targetLangCode: d.targetLangCode || "es",
+          knownLang: d.knownLang || "English",
+          knownLangCode: d.knownLangCode || "en",
+          level: d.level || "Beginner",
+          isCustom: true,
+          cardsCount: d.cards?.length || 0,
+          cards: (d.cards || []).slice(0, 100).map((c: any) => ({
+            id: c.id,
+            deckId: d.id,
+            type: c.type || "vocabulary",
+            targetItem: c.targetItem,
+            targetLanguage: c.targetLanguage,
+            knownLanguage: c.knownLanguage,
+            frequencyRank: c.frequencyRank,
+            partOfSpeech: c.partOfSpeech ?? null,
+            definition: c.definition,
+            phonetic: c.phonetic ?? null,
+            usageNotes: c.usageNotes ?? null,
+            examples: c.examples || [],
+            tags: c.tags || [],
+            srs: c.srs || null,
+          })),
+        });
+      } else {
+        defaultDeckSummaries.push({
+          id: d.id,
+          title: d.title,
+          targetLangCode: d.targetLangCode,
+          level: d.level,
+          cardsCount: d.cards?.length || 300,
+        });
+      }
+    });
+
+    // 3. Sanitize journal entries (safeguard against huge voice note base64 blobs)
+    const sanitizedJournal = (progressData.journalEntries || []).map((entry: any) => ({
+      id: entry.id,
+      title: entry.title || "Untitled Entry",
+      content: entry.content || "",
+      date: entry.date || new Date().toISOString().split("T")[0],
+      createdAt: entry.createdAt || new Date().toISOString(),
+      updatedAt: entry.updatedAt || new Date().toISOString(),
+      targetLangCode: entry.targetLangCode || "es",
+      targetLangName: entry.targetLangName || "Spanish",
+      knownLangCode: entry.knownLangCode || "en",
+      knownLangName: entry.knownLangName || "English",
+      tags: entry.tags || [],
+      wordCount: Number(entry.wordCount) || 0,
+      characterCount: Number(entry.characterCount) || 0,
+      promptTopic: entry.promptTopic ?? null,
+      mood: entry.mood ?? null,
+      emoji: entry.emoji ?? null,
+      // Avoid storing massive audio base64 inside single user document
+      voiceNoteAudioBase64:
+        typeof entry.voiceNoteAudioBase64 === "string" && entry.voiceNoteAudioBase64.length < 50000
+          ? entry.voiceNoteAudioBase64
+          : null,
+      voiceNoteDuration: entry.voiceNoteDuration ?? null,
+      isFavorite: Boolean(entry.isFavorite),
+      isExample: Boolean(entry.isExample),
+      correctionResult: entry.correctionResult ? {
+        overallScore: Number(entry.correctionResult.overallScore) || 0,
+        estimatedCEFR: entry.correctionResult.estimatedCEFR || "A2",
+        fluencyRating: entry.correctionResult.fluencyRating || "intermediate",
+        summaryFeedback: entry.correctionResult.summaryFeedback || "",
+        correctedText: entry.correctionResult.correctedText || "",
+        translatedText: entry.correctionResult.translatedText || "",
+        grammarScore: Number(entry.correctionResult.grammarScore) || 0,
+        vocabularyScore: Number(entry.correctionResult.vocabularyScore) || 0,
+        naturalnessScore: Number(entry.correctionResult.naturalnessScore) || 0,
+        errors: entry.correctionResult.errors || [],
+        positiveHighlights: entry.correctionResult.positiveHighlights || [],
+        naturalPhrasings: entry.correctionResult.naturalPhrasings || [],
+        extractedVocabulary: entry.correctionResult.extractedVocabulary || [],
+        suggestedTags: entry.correctionResult.suggestedTags || [],
+        suggestedEmoji: entry.correctionResult.suggestedEmoji ?? null,
+        suggestedMood: entry.correctionResult.suggestedMood ?? null,
+        checkedAt: entry.correctionResult.checkedAt || new Date().toISOString(),
+      } : null,
+    }));
+
+    // 4. Construct compact user payload
     const rawPayload = {
       uid: userId,
       displayName: progressData.userProfile?.displayName ?? null,
@@ -240,70 +381,10 @@ export async function saveUserProgressToCloud(
       targetLangCode: progressData.targetLangCode || "es",
       knownLangCode: progressData.knownLangCode || "en",
       streak: Number(progressData.streak ?? progressData.dailyProgress?.streak) || 1,
-      decks: (progressData.decks || []).map((d) => ({
-        id: d.id,
-        title: d.title || "Custom Deck",
-        description: d.description || "",
-        targetLang: d.targetLang || "Language",
-        targetLangCode: d.targetLangCode || "es",
-        knownLang: d.knownLang || "English",
-        knownLangCode: d.knownLangCode || "en",
-        level: d.level || "Beginner",
-        isCustom: Boolean(d.isCustom),
-        cardsCount: d.cards?.length || 0,
-        cards: (d.cards || []).map((c: any) => ({
-          ...c,
-          phonetic: c.phonetic ?? null,
-          partOfSpeech: c.partOfSpeech ?? null,
-          exampleSentence: c.exampleSentence ?? null,
-          exampleTranslation: c.exampleTranslation ?? null,
-          grammarTip: c.grammarTip ?? null,
-          mnemonic: c.mnemonic ?? null,
-          lastReviewed: c.lastReviewed ?? null,
-          nextReviewDate: c.nextReviewDate ?? null,
-        })),
-      })),
-      journalEntries: (progressData.journalEntries || []).map((entry: any) => ({
-        id: entry.id,
-        title: entry.title || "Untitled Entry",
-        content: entry.content || "",
-        date: entry.date || new Date().toISOString().split("T")[0],
-        createdAt: entry.createdAt || new Date().toISOString(),
-        updatedAt: entry.updatedAt || new Date().toISOString(),
-        targetLangCode: entry.targetLangCode || "es",
-        targetLangName: entry.targetLangName || "Spanish",
-        knownLangCode: entry.knownLangCode || "en",
-        knownLangName: entry.knownLangName || "English",
-        tags: entry.tags || [],
-        wordCount: Number(entry.wordCount) || 0,
-        characterCount: Number(entry.characterCount) || 0,
-        promptTopic: entry.promptTopic ?? null,
-        mood: entry.mood ?? null,
-        emoji: entry.emoji ?? null,
-        voiceNoteAudioBase64: entry.voiceNoteAudioBase64 ?? null,
-        voiceNoteDuration: entry.voiceNoteDuration ?? null,
-        isFavorite: Boolean(entry.isFavorite),
-        isExample: Boolean(entry.isExample),
-        correctionResult: entry.correctionResult ? {
-          overallScore: Number(entry.correctionResult.overallScore) || 0,
-          estimatedCEFR: entry.correctionResult.estimatedCEFR || "A2",
-          fluencyRating: entry.correctionResult.fluencyRating || "intermediate",
-          summaryFeedback: entry.correctionResult.summaryFeedback || "",
-          correctedText: entry.correctionResult.correctedText || "",
-          translatedText: entry.correctionResult.translatedText || "",
-          grammarScore: Number(entry.correctionResult.grammarScore) || 0,
-          vocabularyScore: Number(entry.correctionResult.vocabularyScore) || 0,
-          naturalnessScore: Number(entry.correctionResult.naturalnessScore) || 0,
-          errors: entry.correctionResult.errors || [],
-          positiveHighlights: entry.correctionResult.positiveHighlights || [],
-          naturalPhrasings: entry.correctionResult.naturalPhrasings || [],
-          extractedVocabulary: entry.correctionResult.extractedVocabulary || [],
-          suggestedTags: entry.correctionResult.suggestedTags || [],
-          suggestedEmoji: entry.correctionResult.suggestedEmoji ?? null,
-          suggestedMood: entry.correctionResult.suggestedMood ?? null,
-          checkedAt: entry.correctionResult.checkedAt || new Date().toISOString(),
-        } : null,
-      })),
+      cardSRSMap,
+      customDecks,
+      defaultDeckSummaries,
+      journalEntries: sanitizedJournal,
       errorRemedyDeck: progressData.errorRemedyDeck ? {
         ...progressData.errorRemedyDeck,
         cards: (progressData.errorRemedyDeck.cards || []).map((c: any) => ({
@@ -339,7 +420,36 @@ export async function loadUserProgressFromCloud(userId: string): Promise<any | n
     const userDocRef = doc(db, USERS_COLLECTION, userId);
     const docSnap = await getDoc(userDocRef);
     if (docSnap.exists()) {
-      return docSnap.data();
+      const data = docSnap.data();
+
+      // Also try to retrieve any custom decks created by this user
+      try {
+        const decksQuery = query(
+          collection(db, DECKS_COLLECTION),
+          where("creatorId", "==", userId),
+          limit(50)
+        );
+        const decksSnap = await getDocs(decksQuery);
+        const cloudCustomDecks: any[] = [];
+        decksSnap.forEach((dSnap) => {
+          cloudCustomDecks.push(dSnap.data());
+        });
+
+        if (cloudCustomDecks.length > 0) {
+          const existingCustomIds = new Set((data.customDecks || []).map((d: any) => d.id));
+          const mergedCustom = [...(data.customDecks || [])];
+          cloudCustomDecks.forEach((cd) => {
+            if (!existingCustomIds.has(cd.id)) {
+              mergedCustom.push(cd);
+            }
+          });
+          data.customDecks = mergedCustom;
+        }
+      } catch (deckFetchErr) {
+        console.warn("Could not query individual user custom decks from collection:", deckFetchErr);
+      }
+
+      return data;
     }
     return null;
   } catch (err) {

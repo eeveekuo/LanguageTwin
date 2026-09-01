@@ -1,8 +1,8 @@
 {
   "entities": {
     "Deck": {
-      "title": "Shared and Generated Decks",
-      "description": "Shared library of AI generated and custom decks available for all users to study and reuse",
+      "title": "Shared and Custom Flashcard Decks",
+      "description": "Shared and user-created custom flashcard decks with frequency rankings and rich example sentences",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
@@ -19,13 +19,13 @@
         "creatorName": { "type": "string" },
         "creatorPhoto": { "type": "string" },
         "isCustom": { "type": "boolean" },
-        "usageCount": { "type": "number" }
+        "cardsCount": { "type": "number" }
       },
-      "required": ["id", "title", "targetLangCode", "cards"]
+      "required": ["id", "title", "targetLangCode"]
     },
     "UserProfile": {
       "title": "User Study Progress",
-      "description": "Individual learner profile, daily streak, active deck, and SM-2 spaced repetition state",
+      "description": "Individual learner profile, daily streak, active deck, compact card SRS states, and custom decks",
       "type": "object",
       "properties": {
         "uid": { "type": "string" },
@@ -36,10 +36,12 @@
         "knownLangCode": { "type": "string" },
         "activeDeckId": { "type": "string" },
         "dailyProgress": { "type": "object" },
-        "progressHistory": { "type": "array" },
+        "streak": { "type": "number" },
+        "cardSRSMap": { "type": "object" },
+        "customDecks": { "type": "array" },
         "errorRemedyDeck": { "type": "object" },
         "journalEntries": { "type": "array" },
-        "updatedAt": { "type": "string" }
+        "lastSyncedAt": { "type": "string" }
       },
       "required": ["uid"]
     },
@@ -70,6 +72,13 @@
     }
   },
   "firestore": {
-    "rules": "firestore.rules"
+    "/decks/{deckId}": {
+      "schema": "Deck",
+      "description": "Shared and user-created custom flashcard decks"
+    },
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile, daily streak, active settings, compact card SRS states, and custom decks"
+    }
   }
 }
