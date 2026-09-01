@@ -14,6 +14,7 @@ import {
 import { createInitialSRS } from "../data/defaultDecks";
 import { playTextAloud } from "../utils/speech";
 import { formatPronunciation } from "../utils/pronunciation";
+import { AiEngineBadge } from "./AiEngineBadge";
 import {
   Volume2,
   Sparkles,
@@ -365,6 +366,12 @@ export function ConjugationLookup({
                   }`}>
                     {conjugationData.regularity}
                   </span>
+                  <AiEngineBadge
+                    isFallback={conjugationData.isFallback}
+                    engineSource={conjugationData.engineSource}
+                    modelUsed={conjugationData.modelUsed}
+                    compact
+                  />
                 </div>
                 <p className="text-xs text-slate-600 font-medium mt-0.5">
                   <span className="font-semibold text-slate-800">Meaning:</span> {conjugationData.translation}

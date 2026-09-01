@@ -17,6 +17,7 @@ import {
 } from "../utils/savedConversationsStorage";
 import { SavedConversationsModal } from "./SavedConversationsModal";
 import { LinguisticCopilot, CopilotTriggerButton } from "./LinguisticCopilot";
+import { AiEngineBadge } from "./AiEngineBadge";
 import {
   Send,
   Mic,
@@ -287,6 +288,9 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
         role: "model",
         text: data.reply,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        isFallback: data.isFallback,
+        engineSource: data.engineSource,
+        modelUsed: data.modelUsed,
       };
 
       setMessages((prev) => [...prev, modelReply]);
@@ -686,7 +690,17 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
                         isUser ? "text-indigo-200" : "text-slate-400"
                       }`}
                     >
-                      <span>{isUser ? "You" : `AI ${targetLang.name} Tutor`}</span>
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span>{isUser ? "You" : `AI ${targetLang.name} Tutor`}</span>
+                        {!isUser && msg.engineSource && (
+                          <AiEngineBadge
+                            isFallback={msg.isFallback}
+                            engineSource={msg.engineSource}
+                            modelUsed={msg.modelUsed}
+                            compact
+                          />
+                        )}
+                      </div>
                       <span>{msg.timestamp}</span>
                     </div>
 

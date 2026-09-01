@@ -22,6 +22,7 @@ import { SupportedLanguage, Flashcard } from "../types";
 import { AlignedTranslation } from "./AlignedTranslation";
 import { formatPronunciation, getPronunciationOptions } from "../utils/pronunciation";
 import { playTextAloud } from "../utils/speech";
+import { AiEngineBadge } from "./AiEngineBadge";
 
 interface TranslationResult {
   translatedText: string;
@@ -50,6 +51,9 @@ interface TranslationResult {
     };
   }>;
   culturalOrIdiomNote?: string;
+  isFallback?: boolean;
+  engineSource?: "gemini" | "fallback" | string;
+  modelUsed?: string;
 }
 
 interface TranslationHistoryItem {
@@ -436,11 +440,19 @@ export const TranslateAndExplain: React.FC<TranslateAndExplainProps> = ({
         <div className="space-y-6">
           {/* Main Aligned Translation Display Card */}
           <div className="bg-white rounded-3xl p-6 sm:p-8 border-2 border-indigo-600 shadow-md space-y-6">
-            <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-100">
+            <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-100 flex-wrap">
               <div className="space-y-1">
-                <span className="px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[10px] font-bold uppercase tracking-wider">
-                  Interactive Word-by-Word Translation Alignment
-                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="px-2.5 py-0.5 rounded-full bg-indigo-100 text-indigo-800 text-[10px] font-bold uppercase tracking-wider">
+                    Interactive Word-by-Word Translation Alignment
+                  </span>
+                  <AiEngineBadge
+                    isFallback={result.isFallback}
+                    engineSource={result.engineSource}
+                    modelUsed={result.modelUsed}
+                    compact
+                  />
+                </div>
                 <p className="text-xs text-slate-400">
                   Hover your cursor over any word in the top or bottom sentence to see the linked part highlighted automatically in both languages.
                 </p>

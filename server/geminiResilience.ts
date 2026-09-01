@@ -38,7 +38,12 @@ export async function generateWithFallback(
         });
 
         if (response && (response.text || response.candidates?.length)) {
-          return response;
+          return {
+            ...response,
+            text: response.text,
+            candidates: response.candidates,
+            modelUsed: model,
+          };
         }
       } catch (err: any) {
         lastError = err;

@@ -187,6 +187,9 @@ export interface EvaluationResult {
     translation: string;
     explanation: string;
   }>;
+  isFallback?: boolean;
+  engineSource?: "gemini" | "fallback" | string;
+  modelUsed?: string;
 }
 
 export interface CardExplanation {
@@ -199,6 +202,9 @@ export interface CardExplanation {
   collocations: string[];
   mnemonicTip: string;
   commonMistakes: string[];
+  isFallback?: boolean;
+  engineSource?: "gemini" | "fallback" | string;
+  modelUsed?: string;
 }
 
 export interface ChatMessage {
@@ -208,6 +214,9 @@ export interface ChatMessage {
   timestamp: string;
   targetWordHighlights?: string[];
   evaluatedItems?: EvaluatedItemInChat[];
+  isFallback?: boolean;
+  engineSource?: "gemini" | "fallback" | string;
+  modelUsed?: string;
 }
 
 export interface StudySessionStats {
@@ -239,6 +248,9 @@ export interface TextSelectionExplanation {
   translation: string;
   grammaticalContext: string;
   concepts: ReadingArticleConcept[];
+  isFallback?: boolean;
+  engineSource?: "gemini" | "fallback" | string;
+  modelUsed?: string;
 }
 
 export interface ReadingArticleParagraph {
@@ -276,6 +288,9 @@ export interface VerbConjugationTable {
   regularity: "regular" | "irregular" | "stem-changing" | string;
   stemNotes?: string;
   forms: ConjugationFormGroup[];
+  isFallback?: boolean;
+  engineSource?: "gemini" | "fallback" | string;
+  modelUsed?: string;
 }
 
 export interface ReadingFollowUpQuestion {
@@ -298,6 +313,9 @@ export interface ReadingQuestionEvaluation {
   correctedTranslation: string;
   identifiedErrors: IdentifiedError[];
   suggestedRemedyCards: Partial<Flashcard>[];
+  isFallback?: boolean;
+  engineSource?: "gemini" | "fallback" | string;
+  modelUsed?: string;
 }
 
 export interface ReadingArticle {
@@ -316,6 +334,9 @@ export interface ReadingArticle {
   summary: string;
   followUpQuestions?: ReadingFollowUpQuestion[];
   createdAt: string;
+  isFallback?: boolean;
+  engineSource?: "gemini" | "fallback" | string;
+  modelUsed?: string;
 }
 
 export interface PlacementQuestion {
@@ -366,6 +387,9 @@ export interface PlacementTestResult {
     idealAnswer: string;
   }>;
   completedAt: string;
+  isFallback?: boolean;
+  engineSource?: "gemini" | "fallback" | string;
+  modelUsed?: string;
 }
 
 export interface JournalErrorDetail {
@@ -405,6 +429,9 @@ export interface JournalCorrectionResult {
   suggestedEmoji?: string;
   suggestedMood?: string;
   checkedAt?: string;
+  isFallback?: boolean;
+  engineSource?: "gemini" | "fallback" | string;
+  modelUsed?: string;
 }
 
 export interface JournalEntry {
@@ -448,6 +475,9 @@ export interface ScenarioData {
   targetWordsToUse: string[];
   openingGreeting: string;
   openingGreetingTranslation: string;
+  isFallback?: boolean;
+  engineSource?: "gemini" | "fallback" | string;
+  modelUsed?: string;
 }
 
 export interface SavedConversation {
@@ -503,5 +533,8 @@ export interface QuickAssistResult {
   conjugationAnalysis?: ConjugationAnalysis;
   grammarNote?: string;
   nuanceTip?: string;
+  isFallback?: boolean;
+  engineSource?: "gemini" | "fallback" | string;
+  modelUsed?: string;
 }
 

@@ -3,6 +3,7 @@ import { SupportedLanguage, QuickAssistResult, QuickAssistQueryType } from "../t
 import { playTextAloud } from "../utils/speech";
 import { formatPronunciation } from "../utils/pronunciation";
 import { AlignedTranslation } from "./AlignedTranslation";
+import { AiEngineBadge } from "./AiEngineBadge";
 import {
   Bot,
   Search,
@@ -506,9 +507,17 @@ export const LinguisticCopilot: React.FC<LinguisticCopilotProps> = ({
           <div className="p-4 rounded-2xl bg-gradient-to-br from-indigo-50/90 to-slate-50 border border-indigo-200 shadow-2xs space-y-2.5">
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-0.5 flex-1 min-w-0">
-                <span className="text-[10px] font-black uppercase text-indigo-600 tracking-wider block">
-                  {result.conjugationAnalysis ? "Conjugated / Analyzed Form" : "Recommended Expression"}
-                </span>
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <span className="text-[10px] font-black uppercase text-indigo-600 tracking-wider">
+                    {result.conjugationAnalysis ? "Conjugated / Analyzed Form" : "Recommended Expression"}
+                  </span>
+                  <AiEngineBadge
+                    isFallback={result.isFallback}
+                    engineSource={result.engineSource}
+                    modelUsed={result.modelUsed}
+                    compact
+                  />
+                </div>
                 <h4 className="text-base sm:text-lg font-black text-slate-900 leading-snug">
                   {result.targetExpression}
                 </h4>

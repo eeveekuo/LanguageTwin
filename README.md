@@ -3,7 +3,8 @@
 > **Intelligent Multi-Language Acquisition Platform powered by Frequency-Ranked SRS, Active Sentence Production, Graded Immersion, and Gemini AI.**
 
 🔗 **Live App Link**: [https://ais-pre-fcvezsmnsjhdwdw4zeiyuf-666974423825.us-west2.run.app](https://ais-pre-fcvezsmnsjhdwdw4zeiyuf-666974423825.us-west2.run.app)  
-🛠️ **Dev Preview**: [https://ais-dev-fcvezsmnsjhdwdw4zeiyuf-666974423825.us-west2.run.app](https://ais-dev-fcvezsmnsjhdwdw4zeiyuf-666974423825.us-west2.run.app)
+🛠️ **Dev Preview**: [https://ais-dev-fcvezsmnsjhdwdw4zeiyuf-666974423825.us-west2.run.app](https://ais-dev-fcvezsmnsjhdwdw4zeiyuf-666974423825.us-west2.run.app)  
+🧠 **Architecture Guide**: [Jump to LLM Architecture & Multi-Tier Resilience Engine](#-llm-architecture--multi-tier-resilience-engine)
 
 ---
 
@@ -152,6 +153,18 @@ LanguageTwin implements a resilient, server-side multi-tier LLM architecture uti
 1. **Zero Secret Leakage**: All Gemini API keys are strictly confined to server-side Node execution (`server.ts`, `server/geminiResilience.ts`), proxying evaluated payloads to the browser.
 2. **Dynamic Model Cascading (`generateWithFallback`)**: On high demand or rate limits (429/503), the proxy cascades automatically between `gemini-3.7-flash`, `gemini-3.1-flash-lite`, and `gemini-flash-latest` with exponential backoff and jitter.
 3. **Graceful Degradation via Heuristic Fallbacks**: If remote network connectivity or API quotas are completely severed, the system executes deterministic offline fallbacks for reading articles, sentence evaluation, placement testing, grammar conjugations, and journal corrections so learning is never interrupted.
+4. **Transparent Engine Indicators (`AiEngineBadge`)**: Every AI-powered response clearly visualizes whether it was generated live via Gemini or synthesised via the deterministic fallback engine, maintaining complete learner transparency.
+
+### 🛡️ High-Level Breakdown of Linguistic Fallback Functions:
+
+| Fallback Function | What It Does & What It Checks |
+| :--- | :--- |
+| **`getFallbackReadingArticle`** | • Inspects the learner's current target language and active vocabulary items.<br>• Selects or generates a level-calibrated reading passage from curated bilingual corpora.<br>• Computes structured paragraph tokens, target vocabulary highlighting, and follow-up comprehension questions with answer keys without requiring an active LLM call. |
+| **`getFallbackSentenceEvaluation`** | • Checks whether the learner's submitted sentence contains the mandatory target item.<br>• Validates sentence length, capitalization, and punctuation standards.<br>• Computes heuristic semantic and grammar scores (e.g. 85-90% if word is used accurately in reasonable length; 50-60% if missing or too brief).<br>• Synthesizes actionable grammatical feedback and structured error remedies. |
+| **`getFallbackTranslateAndExplain`** | • Performs heuristic translation matching against built-in language dictionaries and frequency corpora.<br>• Extracts grammatical morphology, part-of-speech, and token-by-token aligned translations for instant breakdown. |
+| **`getFallbackPlacementEvaluation`** | • Evaluates answer correctness across multi-choice and open-ended diagnostic items against a standardized proficiency matrix.<br>• Calculates CEFR level (A1 to C2), ACTFL equivalent, and recommended frequency deck starting rank based on demonstrated lexical coverage. |
+| **`getFallbackConjugationLookup`** | • Checks language-specific inflection paradigms (regular `-ar`/`-er`/`-ir` in Spanish, `五段`/`一段` in Japanese, `하다` patterns in Korean).<br>• Assembles full indicative, subjunctive, and imperative tables with subject-pronoun mappings deterministically. |
+| **`getFallbackJournalCorrection`** | • Analyzes journal entry word counts, structural complexity, and target language character sets.<br>• Produces CEFR estimate, fluency ratings, sentence polish recommendations, and suggested hashtags. |
 
 ---
 

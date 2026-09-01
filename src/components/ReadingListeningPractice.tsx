@@ -24,6 +24,7 @@ import {
   loadSavedArticles,
 } from "../utils/savedArticlesStorage";
 import { SavedArticlesModal } from "./SavedArticlesModal";
+import { AiEngineBadge } from "./AiEngineBadge";
 import {
   BookOpen,
   Headphones,
@@ -763,6 +764,12 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
               <span className="text-xs text-slate-400 font-medium">
                 {targetLang.flag} {targetLang.name}
               </span>
+              <AiEngineBadge
+                isFallback={article.isFallback}
+                engineSource={article.engineSource}
+                modelUsed={article.modelUsed}
+                compact
+              />
             </div>
             <h2 className="text-2xl font-black text-slate-900 tracking-tight">
               {article.title}
@@ -1481,6 +1488,17 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
                 {/* Evaluation Result Feedback */}
                 {qEval && (
                   <div className="mt-4 p-5 rounded-2xl bg-white border border-slate-200 shadow-xs space-y-4">
+                    <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-100 flex-wrap">
+                      <span className="text-xs font-black uppercase tracking-wider text-slate-700">
+                        Comprehension & Grammar Assessment
+                      </span>
+                      <AiEngineBadge
+                        isFallback={qEval.isFallback}
+                        engineSource={qEval.engineSource}
+                        modelUsed={qEval.modelUsed}
+                        compact
+                      />
+                    </div>
                     {/* Score Bar */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-between">

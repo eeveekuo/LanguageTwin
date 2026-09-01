@@ -57,6 +57,7 @@ import {
 } from "../utils/journalStorage";
 import { playTextAloud, stopSpeech } from "../utils/speech";
 import { LinguisticCopilot, CopilotTriggerButton } from "./LinguisticCopilot";
+import { AiEngineBadge } from "./AiEngineBadge";
 
 interface LanguageJournalProps {
   targetLang: SupportedLanguage;
@@ -1536,17 +1537,25 @@ ${entry.correctionResult.errors
               <div className="bg-white rounded-3xl p-6 border border-slate-200/80 shadow-xs space-y-5">
                 {/* Score & CEFR Level Card */}
                 <div className="bg-linear-to-br from-indigo-50 to-indigo-100/50 rounded-2xl p-4 border border-indigo-100 space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <div>
-                      <div className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">
-                        Prose Evaluation
+                      <div className="flex items-center gap-2 flex-wrap mb-1">
+                        <span className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">
+                          Prose Evaluation
+                        </span>
+                        <AiEngineBadge
+                          isFallback={correctionResult.isFallback}
+                          engineSource={correctionResult.engineSource}
+                          modelUsed={correctionResult.modelUsed}
+                          compact
+                        />
                       </div>
-                      <div className="text-xl font-black text-slate-900 mt-0.5">
+                      <div className="text-xl font-black text-slate-900">
                         {correctionResult.overallScore}/100 Overall
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <span className="px-3 py-1 rounded-full bg-indigo-600 text-white font-extrabold text-xs shadow-xs">
                         CEFR {correctionResult.estimatedCEFR}
                       </span>

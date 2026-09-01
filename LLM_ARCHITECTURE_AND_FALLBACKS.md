@@ -277,8 +277,53 @@ Below is the complete architectural map of all 9 LLM-invoked capabilities across
 
 ---
 
-## 4. Summary of Verification & Guarantees
+## 4. High-Level Explanation of Fallback Mechanisms
+
+Below is the comprehensive matrix detailing each fallback mechanism, its inspection criteria, and the deterministic linguistic output generated:
+
+| Feature & Fallback Function | What It Checks & Evaluates | Deterministic Output Synthesized |
+| :--- | :--- | :--- |
+| **Active Sentence Evaluation**<br>`getFallbackSentenceEvaluation` | • Checks presence of target word or root stem.<br>• Validates sentence length and capitalization/punctuation.<br>• Detects syntax errors, missing particles, and conjugation mistakes. | • Accurate heuristic score (85-90% for clean usage; 50-60% for partial; 20-30% for omitted).<br>• Corrected sentence and natural alternatives.<br>• Granular grammar breakdown tokens and error remedy flashcards. |
+| **Placement Diagnostic Evaluation**<br>`evaluatePlacementTestLocally` / `evaluateDiagnosticAnswer` | • Exact & normalized string matching.<br>• Language-specific morphosyntactic rules (e.g. Korean `-았습니다/었습니다`, Spanish subjunctive triggers, Japanese `-て` forms).<br>• Real vs. counterfactual conditional mood checks. | • Standardized CEFR level determination (A1 to C2).<br>• Estimated active vocabulary count and recommended starting frequency rank.<br>• Error inventory for automated remedy deck construction. |
+| **Reading & Listening Immersion**<br>`getFallbackReadingArticle` | • Target language code and CEFR level.<br>• Active focus words from user deck.<br>• Cultural context and thematic corpus matching. | • Leveled bilingual reading story.<br>• Token-aligned sentence pairs.<br>• 3 comprehension questions with answer keys and phonetic annotations. |
+| **AI Tutor Socratic Chat**<br>`getFallbackTutorResponse` | • User intent classification (greeting, grammar inquiry, translation request, practice turn).<br>• Learner level and conversation history context. | • Socratic target-language reply with English grammar hints.<br>• Pedagogical follow-up questions to prompt production. |
+| **Translate & Syntactic Breakdown**<br>`getFallbackTranslation` | • Dictionary corpus lookup and frequency rank indexing.<br>• Word boundary tokenization and phonetic generation. | • Aligned word-by-word token mappings.<br>• Lemma and part-of-speech annotations.<br>• Usage notes and formal vs. informal register indicators. |
+| **Verb Conjugation Lookup**<br>`getFallbackConjugationLookup` | • Language inflection classes (Spanish `-ar`/`-er`/`-ir`, Korean `하다`/regular/irregular, Japanese Godan/Ichidan).<br>• Stem change patterns. | • Complete conjugation tables across Indicative, Subjunctive, Imperative, and Conditional moods.<br>• Pronoun-aligned example sentences. |
+| **Language Journal Prose Checker**<br>`getFallbackJournalCorrection` | • Word count, sentence boundaries, and punctuation.<br>• Script validity and linguistic character sets.<br>• Paragraph structure and fluency metrics. | • CEFR level score and readability metric.<br>• Line-by-line polished corrections.<br>• Contextual hashtags and sentiment tags. |
+| **Card & Concept Deep Dive**<br>`getFallbackExplainCard` | • Part of speech and lexical category.<br>• Target vs known language grammar typology. | • Grammatical formula / sentence template.<br>• 3 authentic example sentences with phonetics.<br>• Common pitfalls, false friends, and mnemonic hooks. |
+
+---
+
+## 5. Visual Distinction: LLM vs. Fallback Indicator (`AiEngineBadge`)
+
+Every AI-powered surface in the application renders an **`AiEngineBadge`** giving learners real-time visibility into the generation source:
+
+- 🟢 **Gemini AI Active**:
+  - Emerald / Indigo styled pill with sparkle icon.
+  - Displays the active model name (e.g. `Gemini 3.7 Flash`, `Gemini 3.1 Flash-Lite`).
+  - Tooltip: *"Live Generative AI active: Response generated using Google Gemini."*
+
+- 🟡 **Deterministic Fallback Engine**:
+  - Warm amber styled pill with CPU / shield icon.
+  - Displays `Deterministic Fallback Engine` / `Rules`.
+  - Tooltip: *"Offline resilience engine: Generated instantly via deterministic linguistic rules and frequency tables (zero API latency or downtime)."*
+
+### Visual Badge Placement Locations:
+1. **Sentence Production Scorecards**: Displayed in the evaluation header alongside mastery grade.
+2. **AI Tutor Messages**: Rendered next to the AI Tutor name and timestamp on every assistant reply.
+3. **Smart Translation Bar**: Shown on the interactive aligned translation card header.
+4. **Linguistic Co-Pilot Drawer**: Rendered on recommended expressions and conjugated forms.
+5. **Graded Reading Articles**: Displayed on article story header and question evaluation scorecards.
+6. **Writing Journal**: Rendered in the prose evaluation score card.
+7. **Conjugation Explorer**: Rendered in the verb regularity and paradigm header.
+8. **Placement Test Diagnostic**: Rendered in the CEFR result banner.
+
+---
+
+## 6. Summary of Verification & Guarantees
 
 1. **300-Word Deck Initialization**: All default decks and newly calibrated/generated decks default to 300 words with sequential frequency rankings (1 to 300).
 2. **Placement Test Grading Accuracy**: Exact matches (e.g. `"먹었습니다"`) and valid grammatical variations score 100%, while genuine errors (e.g. `"재주도애"` and real-conditional slips in counterfactual questions) are properly flagged with detailed feedback and converted into targeted error-remedy flashcards.
 3. **Cascading Resilience**: The application operates continuously even in fully offline environments or under API quota constraints without crashing or degrading user progress.
+4. **Zero Silent Failures**: All LLM and Fallback pathways provide transparent UI indicators (`AiEngineBadge`).
+

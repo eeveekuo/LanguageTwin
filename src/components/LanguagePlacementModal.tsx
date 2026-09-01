@@ -12,6 +12,7 @@ import {
   getDiagnosticPlacementEvaluation,
   getDiagnosticCalibratedDeck,
 } from "../utils/placementFallback";
+import { AiEngineBadge } from "./AiEngineBadge";
 import {
   GraduationCap,
   Sparkles,
@@ -585,13 +586,19 @@ export const LanguagePlacementModal: React.FC<LanguagePlacementModalProps> = ({
             <div className="p-6 rounded-3xl bg-gradient-to-r from-indigo-50 via-white to-indigo-50 border border-indigo-100 shadow-sm space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-1">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="px-3 py-1 rounded-full bg-indigo-600 text-white text-xs font-black uppercase tracking-wider">
                       CEFR Level {result.overallCEFR || "A2"}
                     </span>
                     <span className="text-xs font-bold text-slate-700">
                       Score: {result.percentageScore ?? 0}%
                     </span>
+                    <AiEngineBadge
+                      isFallback={result.isFallback}
+                      engineSource={result.engineSource}
+                      modelUsed={result.modelUsed}
+                      compact
+                    />
                   </div>
                   <h3 className="text-xl font-extrabold text-slate-900">
                     {result.standardizedEquivalency?.estimatedScoreOrGrade || `CEFR Level ${result.overallCEFR || "A2"}`}

@@ -41,6 +41,7 @@ import {
 } from "lucide-react";
 import { formatPronunciation } from "../utils/pronunciation";
 import { LinguisticCopilot, CopilotTriggerButton } from "./LinguisticCopilot";
+import { AiEngineBadge } from "./AiEngineBadge";
 import { AlignedTranslation } from "./AlignedTranslation";
 
 interface StudySessionProps {
@@ -1502,9 +1503,17 @@ export const StudySession: React.FC<StudySessionProps> = ({
                       {evaluation.score}%
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-900 capitalize">
-                        {evaluation.masteryLevel} Production Mastery
-                      </p>
+                      <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                        <p className="text-sm font-bold text-slate-900 capitalize">
+                          {evaluation.masteryLevel} Production Mastery
+                        </p>
+                        <AiEngineBadge
+                          isFallback={evaluation.isFallback}
+                          engineSource={evaluation.engineSource}
+                          modelUsed={evaluation.modelUsed}
+                          compact
+                        />
+                      </div>
                       <p className="text-xs text-slate-600">{evaluation.feedbackSummary}</p>
                     </div>
                   </div>
@@ -1701,12 +1710,20 @@ export const StudySession: React.FC<StudySessionProps> = ({
           ) : (
             /* REVEALED STATE: Full Definition, Usage notes, and Audio Example Sentences */
             <div className="space-y-6">
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-                <div className="flex items-center gap-2">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3 flex-wrap gap-2">
+                <div className="flex items-center gap-2 flex-wrap">
                   <BookOpen className="w-4 h-4 text-indigo-600" />
                   <h3 className="text-sm font-extrabold text-slate-900 uppercase tracking-wider">
                     Definition, Usage Format & Audio Examples
                   </h3>
+                  {explanationData && (
+                    <AiEngineBadge
+                      isFallback={explanationData.isFallback}
+                      engineSource={explanationData.engineSource}
+                      modelUsed={explanationData.modelUsed}
+                      compact
+                    />
+                  )}
                 </div>
                 <span className="text-xs text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-full font-bold border border-emerald-100">
                   Unlocked Reference

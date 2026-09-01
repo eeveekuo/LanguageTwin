@@ -232,7 +232,12 @@ app.post("/api/evaluate-sentence", async (req, res) => {
     });
 
     const parsed = safeParseJson(response.text);
-    res.json(parsed);
+    res.json({
+      ...parsed,
+      isFallback: false,
+      engineSource: "gemini",
+      modelUsed: response.modelUsed || "gemini-3.7-flash",
+    });
   } catch (error: any) {
     console.error("Sentence evaluation error, using fallback:", error);
     const fallback = getFallbackSentenceEvaluation({
@@ -242,7 +247,12 @@ app.post("/api/evaluate-sentence", async (req, res) => {
       knownLanguage: req.body?.knownLanguage || "English",
       definition: req.body?.definition,
     });
-    res.json(fallback);
+    res.json({
+      ...fallback,
+      isFallback: true,
+      engineSource: "fallback",
+      modelUsed: "deterministic-rules",
+    });
   }
 });
 
@@ -327,7 +337,12 @@ app.post("/api/explain-card", async (req, res) => {
     });
 
     const parsed = safeParseJson(response.text);
-    res.json(parsed);
+    res.json({
+      ...parsed,
+      isFallback: false,
+      engineSource: "gemini",
+      modelUsed: response.modelUsed || "gemini-3.7-flash",
+    });
   } catch (error: any) {
     console.error("Explain card error, using fallback:", error);
     const fallback = getFallbackExplainCard({
@@ -337,7 +352,12 @@ app.post("/api/explain-card", async (req, res) => {
       partOfSpeech: req.body?.partOfSpeech,
       definition: req.body?.definition,
     });
-    res.json(fallback);
+    res.json({
+      ...fallback,
+      isFallback: true,
+      engineSource: "fallback",
+      modelUsed: "deterministic-rules",
+    });
   }
 });
 
@@ -378,6 +398,8 @@ app.post("/api/generate-deck", async (req, res) => {
     });
 
     let parsed: any;
+    let isFallback = false;
+    let modelUsed = "gemini-3.7-flash";
     try {
       const response = await generateWithFallback(ai, {
         primaryModel: "gemini-3.7-flash",
@@ -441,12 +463,20 @@ app.post("/api/generate-deck", async (req, res) => {
       if (!parsed.cards || !Array.isArray(parsed.cards) || parsed.cards.length === 0) {
         throw new Error("No cards in AI response");
       }
+      modelUsed = response.modelUsed || "gemini-3.7-flash";
     } catch (aiErr) {
       console.warn("AI generation failed, providing rich fallback deck:", aiErr);
       parsed = getFallbackDeck(targetLanguage, knownLanguage, topic, level, count, startFrequencyRank);
+      isFallback = true;
+      modelUsed = "deterministic-rules";
     }
 
-    res.json(parsed);
+    res.json({
+      ...parsed,
+      isFallback,
+      engineSource: isFallback ? "fallback" : "gemini",
+      modelUsed,
+    });
   } catch (error: any) {
     console.error("Deck generation error:", error);
     const fallback = getFallbackDeck(
@@ -457,7 +487,12 @@ app.post("/api/generate-deck", async (req, res) => {
       req.body?.count || 15,
       req.body?.startFrequencyRank || 1
     );
-    res.json(fallback);
+    res.json({
+      ...fallback,
+      isFallback: true,
+      engineSource: "fallback",
+      modelUsed: "deterministic-rules",
+    });
   }
 });
 
@@ -548,6 +583,9 @@ app.post("/api/ai-tutor-chat", async (req, res) => {
     res.json({
       reply: parsed.reply || "",
       evaluatedItems: parsed.evaluatedItems || [],
+      isFallback: false,
+      engineSource: "gemini",
+      modelUsed: response.modelUsed || "gemini-3.7-flash",
     });
   } catch (error: any) {
     console.error("Tutor chat error, using fallback:", error);
@@ -558,7 +596,12 @@ app.post("/api/ai-tutor-chat", async (req, res) => {
       targetLanguage: req.body?.targetLanguage || "Spanish",
       knownLanguage: req.body?.knownLanguage || "English",
     });
-    res.json(fallback);
+    res.json({
+      ...fallback,
+      isFallback: true,
+      engineSource: "fallback",
+      modelUsed: "deterministic-rules",
+    });
   }
 });
 
@@ -663,7 +706,12 @@ app.post("/api/quick-assist", async (req, res) => {
     });
 
     const parsed = safeParseJson(response.text);
-    res.json(parsed);
+    res.json({
+      ...parsed,
+      isFallback: false,
+      engineSource: "gemini",
+      modelUsed: response.modelUsed || "gemini-3.7-flash",
+    });
   } catch (error: any) {
     console.error("Quick assist error, using fallback:", error);
     const fallback = getFallbackQuickAssist({
@@ -671,7 +719,12 @@ app.post("/api/quick-assist", async (req, res) => {
       targetLanguage: req.body?.targetLanguage || "Spanish",
       knownLanguage: req.body?.knownLanguage || "English",
     });
-    res.json(fallback);
+    res.json({
+      ...fallback,
+      isFallback: true,
+      engineSource: "fallback",
+      modelUsed: "deterministic-rules",
+    });
   }
 });
 
@@ -723,7 +776,12 @@ app.post("/api/generate-scenario", async (req, res) => {
     });
 
     const parsed = safeParseJson(response.text);
-    res.json(parsed);
+    res.json({
+      ...parsed,
+      isFallback: false,
+      engineSource: "gemini",
+      modelUsed: response.modelUsed || "gemini-3.7-flash",
+    });
   } catch (error: any) {
     console.error("Scenario generation error, using fallback:", error);
     const fallback = getFallbackScenario({
@@ -732,7 +790,12 @@ app.post("/api/generate-scenario", async (req, res) => {
       theme: req.body?.theme,
       level: req.body?.level,
     });
-    res.json(fallback);
+    res.json({
+      ...fallback,
+      isFallback: true,
+      engineSource: "fallback",
+      modelUsed: "deterministic-rules",
+    });
   }
 });
 
@@ -760,6 +823,8 @@ app.post("/api/generate-placement-test", async (req, res) => {
     });
 
     let parsed: any;
+    let isFallback = false;
+    let modelUsed = "gemini-3.7-flash";
     try {
       const response = await generateWithFallback(ai, {
         primaryModel: "gemini-3.7-flash",
@@ -817,16 +882,29 @@ app.post("/api/generate-placement-test", async (req, res) => {
       if (!parsed.questions || parsed.questions.length === 0) {
         throw new Error("Empty questions returned from model.");
       }
+      modelUsed = response.modelUsed || "gemini-3.7-flash";
     } catch (aiErr) {
       console.warn("AI generation failed, using rich diagnostic fallback:", aiErr);
       parsed = getFallbackPlacementQuestions(targetLanguage, knownLanguage, testType);
+      isFallback = true;
+      modelUsed = "deterministic-rules";
     }
 
-    res.json(parsed);
+    res.json({
+      ...parsed,
+      isFallback,
+      engineSource: isFallback ? "fallback" : "gemini",
+      modelUsed,
+    });
   } catch (error: any) {
     console.error("Placement test generation error:", error);
     const fallback = getFallbackPlacementQuestions(req.body.targetLanguage || "Spanish", req.body.knownLanguage || "English", req.body.testType || "comprehensive");
-    res.json(fallback);
+    res.json({
+      ...fallback,
+      isFallback: true,
+      engineSource: "fallback",
+      modelUsed: "deterministic-rules",
+    });
   }
 });
 
@@ -854,6 +932,8 @@ app.post("/api/evaluate-placement-test", async (req, res) => {
     });
 
     let rawParsed: any;
+    let evalIsFallback = false;
+    let evalModel = "gemini-3.7-flash";
     try {
       const response = await generateWithFallback(ai, {
         primaryModel: "gemini-3.7-flash",
@@ -939,9 +1019,12 @@ app.post("/api/evaluate-placement-test", async (req, res) => {
       });
 
       rawParsed = safeParseJson(response.text);
+      evalModel = response.modelUsed || "gemini-3.7-flash";
     } catch (aiErr) {
       console.warn("AI evaluation failed, using resilience fallback:", aiErr);
       rawParsed = getFallbackPlacementEvaluation(targetLanguage, knownLanguage, submissions, testQuestions);
+      evalIsFallback = true;
+      evalModel = "deterministic-rules";
     }
 
     // Comprehensive normalizer to guarantee rock-solid UI rendering
@@ -1068,11 +1151,21 @@ app.post("/api/evaluate-placement-test", async (req, res) => {
       completedAt: new Date().toISOString(),
     };
 
-    res.json(normalizedResult);
+    res.json({
+      ...normalizedResult,
+      isFallback: evalIsFallback,
+      engineSource: evalIsFallback ? "fallback" : "gemini",
+      modelUsed: evalModel,
+    });
   } catch (error: any) {
     console.error("Placement test evaluation error:", error);
     const fallback = getFallbackPlacementEvaluation(req.body.targetLanguage || "Spanish", req.body.knownLanguage || "English", req.body.submissions || [], req.body.testQuestions || []);
-    res.json(fallback);
+    res.json({
+      ...fallback,
+      isFallback: true,
+      engineSource: "fallback",
+      modelUsed: "deterministic-rules",
+    });
   }
 });
 
@@ -1167,7 +1260,12 @@ app.post("/api/regenerate-level-deck", async (req, res) => {
     });
 
     const parsed = safeParseJson(response.text);
-    res.json(parsed);
+    res.json({
+      ...parsed,
+      isFallback: false,
+      engineSource: "gemini",
+      modelUsed: response.modelUsed || "gemini-3.7-flash",
+    });
   } catch (error: any) {
     console.error("Calibrated deck generation error, using fallback:", error);
     const fallback = getFallbackDeck(
@@ -1178,7 +1276,12 @@ app.post("/api/regenerate-level-deck", async (req, res) => {
       req.body?.cardCount || 15,
       req.body?.recommendedStartingRank || 1
     );
-    res.json(fallback);
+    res.json({
+      ...fallback,
+      isFallback: true,
+      engineSource: "fallback",
+      modelUsed: "deterministic-rules",
+    });
   }
 });
 
@@ -1290,7 +1393,12 @@ app.post("/api/generate-reading-article", async (req, res) => {
     });
 
     const parsed = safeParseJson(response.text);
-    res.json(parsed);
+    res.json({
+      ...parsed,
+      isFallback: false,
+      engineSource: "gemini",
+      modelUsed: response.modelUsed || "gemini-3.7-flash",
+    });
   } catch (error: any) {
     console.error("Reading generation error, using fallback:", error);
     const fallback = getFallbackReadingArticle({
@@ -1299,7 +1407,12 @@ app.post("/api/generate-reading-article", async (req, res) => {
       level: req.body?.cefrLevel || req.body?.level || "A2",
       topic: req.body?.topic || "Culture & Daily Life",
     });
-    res.json(fallback);
+    res.json({
+      ...fallback,
+      isFallback: true,
+      engineSource: "fallback",
+      modelUsed: "deterministic-rules",
+    });
   }
 });
 
@@ -1377,7 +1490,12 @@ app.post("/api/explain-reading-text", async (req, res) => {
     });
 
     const parsed = safeParseJson(response.text);
-    res.json(parsed);
+    res.json({
+      ...parsed,
+      isFallback: false,
+      engineSource: "gemini",
+      modelUsed: response.modelUsed || "gemini-3.7-flash",
+    });
   } catch (error: any) {
     console.error("Text explanation error, using fallback:", error);
     const fallback = getFallbackReadingTextExplanation({
@@ -1385,7 +1503,12 @@ app.post("/api/explain-reading-text", async (req, res) => {
       targetLanguage: req.body?.targetLanguage || "Traditional Chinese",
       knownLanguage: req.body?.knownLanguage || "English",
     });
-    res.json(fallback);
+    res.json({
+      ...fallback,
+      isFallback: true,
+      engineSource: "fallback",
+      modelUsed: "deterministic-rules",
+    });
   }
 });
 
@@ -1488,7 +1611,12 @@ app.post("/api/grade-reading-response", async (req, res) => {
     });
 
     const parsed = safeParseJson(response.text);
-    res.json(parsed);
+    res.json({
+      ...parsed,
+      isFallback: false,
+      engineSource: "gemini",
+      modelUsed: response.modelUsed || "gemini-3.7-flash",
+    });
   } catch (error: any) {
     console.error("Reading response grade error, using fallback:", error);
     const fallback = getFallbackGradeReadingResponse({
@@ -1496,7 +1624,12 @@ app.post("/api/grade-reading-response", async (req, res) => {
       userResponse: req.body?.userResponse || "",
       targetLanguage: req.body?.targetLanguage || "Spanish",
     });
-    res.json(fallback);
+    res.json({
+      ...fallback,
+      isFallback: true,
+      engineSource: "fallback",
+      modelUsed: "deterministic-rules",
+    });
   }
 });
 
@@ -1588,7 +1721,12 @@ app.post("/api/conjugation-lookup", async (req, res) => {
     });
 
     const parsed = safeParseJson(response.text);
-    res.json(parsed);
+    res.json({
+      ...parsed,
+      isFallback: false,
+      engineSource: "gemini",
+      modelUsed: response.modelUsed || "gemini-3.7-flash",
+    });
   } catch (error: any) {
     console.error("Conjugation lookup error, using fallback:", error);
     const fallback = getFallbackConjugationLookup({
@@ -1597,7 +1735,12 @@ app.post("/api/conjugation-lookup", async (req, res) => {
       targetLanguageCode: req.body?.targetLanguageCode || "es",
       knownLanguage: req.body?.knownLanguage || "English",
     });
-    res.json(fallback);
+    res.json({
+      ...fallback,
+      isFallback: true,
+      engineSource: "fallback",
+      modelUsed: "deterministic-rules",
+    });
   }
 });
 
@@ -1719,7 +1862,12 @@ app.post("/api/check-journal-prose", async (req, res) => {
 
       const parsed = safeParseJson(response.text);
       if (parsed && typeof parsed.overallScore === "number") {
-        return res.json(parsed);
+        return res.json({
+          ...parsed,
+          isFallback: false,
+          engineSource: "gemini",
+          modelUsed: response.modelUsed || "gemini-3.7-flash",
+        });
       }
     } catch (aiErr: any) {
       console.warn("AI journal check failed, using fallback resilience:", aiErr?.message || aiErr);
@@ -1731,7 +1879,12 @@ app.post("/api/check-journal-prose", async (req, res) => {
       targetLanguage: tLang,
       knownLanguage: kLang,
     });
-    return res.json(fallback);
+    return res.json({
+      ...fallback,
+      isFallback: true,
+      engineSource: "fallback",
+      modelUsed: "deterministic-rules",
+    });
   } catch (error: any) {
     console.error("Journal prose check error:", error);
     res.status(500).json({ error: error.message || "Failed to check journal prose" });
@@ -1835,7 +1988,12 @@ app.post("/api/translate-and-explain", async (req, res) => {
 
       const parsed = safeParseJson(response.text);
       if (parsed && parsed.translatedText) {
-        return res.json(parsed);
+        return res.json({
+          ...parsed,
+          isFallback: false,
+          engineSource: "gemini",
+          modelUsed: response.modelUsed || "gemini-3.7-flash",
+        });
       }
     } catch (aiErr: any) {
       console.warn("AI translation & explain failed, using fallback resilience:", aiErr?.message || aiErr);
@@ -1847,7 +2005,12 @@ app.post("/api/translate-and-explain", async (req, res) => {
       targetLanguage: tLang,
       pronunciationAid,
     });
-    return res.json(fallback);
+    return res.json({
+      ...fallback,
+      isFallback: true,
+      engineSource: "fallback",
+      modelUsed: "deterministic-rules",
+    });
   } catch (error: any) {
     console.error("Translate and explain error:", error);
     res.status(500).json({ error: error.message || "Failed to translate and explain text" });
