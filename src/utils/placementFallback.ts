@@ -538,6 +538,280 @@ export function getDiagnosticPlacementQuestions(
 }
 
 /**
+ * Intelligent Linguistic Placement Question Grader
+ */
+export function evaluateDiagnosticAnswer(
+  targetLanguage: string,
+  question: {
+    id?: string;
+    prompt?: string;
+    targetItem?: string;
+    questionType?: string;
+    cefrLevel?: string;
+    correctAnswerSample?: string;
+    contextOrAudioText?: string;
+  },
+  userAnswer: string
+): {
+  isCorrect: boolean;
+  feedback: string;
+  idealAnswer: string;
+  errors: IdentifiedError[];
+} {
+  const rawAnswer = (userAnswer || "").trim();
+  const sample = (question.correctAnswerSample || "").trim();
+  const prompt = (question.prompt || "").toLowerCase();
+  const targetItem = (question.targetItem || "").toLowerCase();
+  const cefr = (question.cefrLevel || "A2").toUpperCase();
+  const langLower = (targetLanguage || "").toLowerCase();
+
+  const normalize = (s: string) =>
+    s
+      .replace(/[.,/#!$%^&*;:{}=\-_`~()?"'「」『』·•]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
+
+  const normUser = normalize(rawAnswer);
+  const normSample = normalize(sample);
+
+  const errors: IdentifiedError[] = [];
+
+  if (!rawAnswer || rawAnswer.length === 0) {
+    return {
+      isCorrect: false,
+      feedback: "No response was provided for this question.",
+      idealAnswer: sample || `Standard ${targetLanguage} expression`,
+      errors: [],
+    };
+  }
+
+  // Exact match (or exact match across alternative sample options)
+  const sampleOptions = sample.split(/[/;,]/).map((p) => normalize(p)).filter(Boolean);
+  if (normUser === normSample || sampleOptions.includes(normUser)) {
+    return {
+      isCorrect: true,
+      feedback: "Excellent! Exact grammatical conjugation and accurate native formulation.",
+      idealAnswer: sample || rawAnswer,
+      errors: [],
+    };
+  }
+
+  // Korean-specific linguistic rules
+  if (langLower.includes("korean") || langLower.includes("한국어") || langLower === "ko") {
+    // Q2 / Conjugation: Past tense formal polite (했습니다 style) for 먹다
+    if (prompt.includes("먹다") || prompt.includes("to eat") || targetItem.includes("past tense formal") || prompt.includes("했습니다")) {
+      if (rawAnswer.includes("먹었습니다")) {
+        return {
+          isCorrect: true,
+          feedback: "Perfect! '먹었습니다' is the exact formal polite past tense conjugation (했습니다 style) of 먹다.",
+          idealAnswer: "먹었습니다",
+          errors: [],
+        };
+      } else if (rawAnswer.includes("먹었어요")) {
+        errors.push({
+          originalMistake: "먹었어요",
+          correctedForm: "먹었습니다",
+          errorType: "register",
+          explanation: "'먹었어요' is informal polite (해요체). The question requested formal polite style (했습니다 style: '먹었습니다').",
+        });
+        return {
+          isCorrect: false,
+          feedback: "Good attempt, but '먹었어요' is in the informal polite style (해요체). The question requested formal polite style (했습니다 style: '먹었습니다').",
+          idealAnswer: "먹었습니다",
+          errors,
+        };
+      } else if (rawAnswer.includes("먹었다")) {
+        errors.push({
+          originalMistake: "먹었다",
+          correctedForm: "먹었습니다",
+          errorType: "register",
+          explanation: "'먹었다' is plain/informal non-polite (해라체). Formal polite is '먹었습니다'.",
+        });
+        return {
+          isCorrect: false,
+          feedback: "'먹었다' is plain non-polite form. The formal polite ending is '먹었습니다'.",
+          idealAnswer: "먹었습니다",
+          errors,
+        };
+      }
+    }
+
+    // A2 Sequential connector (-아서/어서): 어제 친구를 만나서 같이 영화를 봤어요
+    if (prompt.includes("만나") || prompt.includes("영화") || prompt.includes("-아서/어서") || targetItem.includes("sequential time connector")) {
+      if (rawAnswer.includes("만나서") && (rawAnswer.includes("봤어요") || rawAnswer.includes("보았습니다"))) {
+        return {
+          isCorrect: true,
+          feedback: "Great job! Accurate use of the sequential connector (-아서/어서) and past tense conjugation.",
+          idealAnswer: sample || "어제 친구를 만나서 같이 영화를 봤어요.",
+          errors: [],
+        };
+      }
+    }
+
+    // B2: Hypothetical counterfactual conditional ("If I had more time, I would travel to Jeju Island" / "시간이 더 있다면 제주도로 여행을 갈 텐데")
+    if (prompt.includes("jeju") || prompt.includes("제주") || prompt.includes("hypothetical") || prompt.includes("가정") || prompt.includes("재주")) {
+      let isFlawed = false;
+      const detectedErrors: typeof errors = [];
+
+      // 1. Check spelling of Jeju: "재주도" -> "제주도"
+      if (rawAnswer.includes("재주도") || rawAnswer.includes("재주")) {
+        isFlawed = true;
+        detectedErrors.push({
+          originalMistake: "재주도",
+          correctedForm: "제주도",
+          errorType: "spelling",
+          explanation: "Jeju Island is spelled '제주도' (with ㅔ), not '재주도'.",
+        });
+      }
+
+      // 2. Check particle typo: "재주도애" or "도애" -> "제주도에" / "제주도로"
+      if (rawAnswer.includes("도애") || rawAnswer.includes("재주도애") || rawAnswer.includes("제주도애")) {
+        isFlawed = true;
+        detectedErrors.push({
+          originalMistake: "도애",
+          correctedForm: "도에 (or 도로)",
+          errorType: "particle_spelling",
+          explanation: "The directional particle is '에' or '(으)로', not '애'.",
+        });
+      }
+
+      // 3. Check conditional mood: simple real conditional ("있으면") vs hypothetical/counterfactual ("있다면" / "있었더라면")
+      const hasHypotheticalIf = rawAnswer.includes("있다면") || rawAnswer.includes("있었더라면") || rawAnswer.includes("있었으면");
+      const hasHypotheticalThen =
+        rawAnswer.includes("갈 텐데") ||
+        rawAnswer.includes("갔을 텐데") ||
+        rawAnswer.includes("갈 텐데요") ||
+        rawAnswer.includes("갔을 텐데요") ||
+        rawAnswer.includes("갈 것입니다");
+
+      if (rawAnswer.includes("있으면") && !hasHypotheticalIf) {
+        isFlawed = true;
+        detectedErrors.push({
+          originalMistake: "시간이 더 있으면",
+          correctedForm: "시간이 더 있다면 (or 있었더라면)",
+          errorType: "grammar_mood",
+          explanation: "In B2 hypothetical/counterfactual statements ('If I had...'), Korean uses '-(으)ㄴ다면' or '-았/었더라면' rather than simple real conditional '-(으)면'.",
+        });
+      }
+
+      // 4. Check verb ending: "갈 거에요" -> "갈 텐데"
+      if (rawAnswer.includes("갈 거에요") || rawAnswer.includes("갈 거예요") || rawAnswer.includes("갈거에요")) {
+        isFlawed = true;
+        detectedErrors.push({
+          originalMistake: "갈 거에요",
+          correctedForm: "갈 텐데 (or 갔을 텐데)",
+          errorType: "grammar_ending",
+          explanation: "Hypothetical counterfactual outcomes require the modal prospective ending '-(으)ㄹ 텐데' rather than simple indicative future '-(으)ㄹ 거예요'.",
+        });
+      }
+
+      if (isFlawed || detectedErrors.length > 0) {
+        return {
+          isCorrect: false,
+          feedback: `Needs refinement for B2 hypothetical precision: ${detectedErrors.map((e) => e.explanation).join(" ")}`,
+          idealAnswer: sample || "시간이 더 있다면 제주도로 여행을 갈 텐데.",
+          errors: detectedErrors,
+        };
+      }
+
+      if (hasHypotheticalIf && (hasHypotheticalThen || rawAnswer.includes("여행"))) {
+        return {
+          isCorrect: true,
+          feedback: "Excellent! Accurate B2 hypothetical conditional formulation using authentic mood markers.",
+          idealAnswer: sample || "시간이 더 있다면 제주도로 여행을 갈 텐데.",
+          errors: [],
+        };
+      }
+    }
+
+    // B2 / C1 Listening Comprehension (Q6)
+    if (question.questionType === "listening" || prompt.includes("listen") || prompt.includes("듣고") || prompt.includes("advice")) {
+      const containsAdviceCore =
+        rawAnswer.includes("협의") ||
+        rawAnswer.includes("사전에") ||
+        rawAnswer.includes("단계적") ||
+        rawAnswer.includes("의논") ||
+        rawAnswer.includes("상의") ||
+        rawAnswer.includes("팀원") ||
+        rawAnswer.includes("조언");
+
+      if (containsAdviceCore && rawAnswer.length >= 8) {
+        return {
+          isCorrect: true,
+          feedback: "Great comprehension! You accurately captured the speaker's advice regarding team consultation and phased progression.",
+          idealAnswer: sample || "일정에 차질이 있어도 팀원들과 사전에 긴밀히 협의하며 단계적으로 진행하라고 조언했습니다.",
+          errors: [],
+        };
+      } else {
+        return {
+          isCorrect: false,
+          feedback: "The response did not capture the core recommendation from the audio: to consult closely with team members beforehand and progress in structured phases.",
+          idealAnswer: sample || "일정에 차질이 있어도 팀원들과 사전에 협의하며 단계적으로 진행하라고 조언했습니다.",
+          errors: [
+            {
+              originalMistake: rawAnswer || "(Incomplete comprehension)",
+              correctedForm: "팀원들과 사전에 긴밀히 협의하여 단계적으로 진행",
+              errorType: "listening_comprehension",
+              explanation: "Focus on formal discourse markers like '사전에 협의하여' and '단계적으로 진행'.",
+            },
+          ],
+        };
+      }
+    }
+  }
+
+  // Sub-phrase matching across sample options
+  for (const part of sampleOptions) {
+    if (part.length >= 4 && (normUser.includes(part) || part.includes(normUser))) {
+      return {
+        isCorrect: true,
+        feedback: "Good formulation matching the core grammatical target and vocabulary.",
+        idealAnswer: sample,
+        errors: [],
+      };
+    }
+  }
+
+  // Token similarity
+  const userTokens = normUser.split(" ").filter((t) => t.length > 1);
+  const sampleTokens = normSample.split(" ").filter((t) => t.length > 1);
+
+  if (sampleTokens.length > 0) {
+    let matchCount = 0;
+    for (const ut of userTokens) {
+      if (sampleTokens.some((st) => st === ut || (st.length > 3 && (st.includes(ut) || ut.includes(st))))) {
+        matchCount++;
+      }
+    }
+    const tokenSimilarity = matchCount / Math.max(sampleTokens.length, 1);
+
+    if (tokenSimilarity >= 0.7 && userTokens.length >= Math.max(2, Math.floor(sampleTokens.length * 0.6))) {
+      return {
+        isCorrect: true,
+        feedback: "Well done! Your sentence expresses the target concept with accurate vocabulary and syntax.",
+        idealAnswer: sample,
+        errors: [],
+      };
+    }
+  }
+
+  return {
+    isCorrect: false,
+    feedback: `Consider reviewing the required grammatical structure and sentence patterns for ${cefr}.`,
+    idealAnswer: sample || `Standard ${targetLanguage} expression`,
+    errors: [
+      {
+        originalMistake: rawAnswer,
+        correctedForm: sample || "Target sentence structure",
+        errorType: "grammar",
+        explanation: `Refine grammatical accuracy and lexical choice for ${cefr} benchmarks.`,
+      },
+    ],
+  };
+}
+
+/**
  * Intelligent Local Placement Evaluation Engine
  */
 export function getDiagnosticPlacementEvaluation(
@@ -547,7 +821,6 @@ export function getDiagnosticPlacementEvaluation(
   testQuestions: PlacementQuestion[]
 ): PlacementTestResult {
   let correctCount = 0;
-  let attemptedCount = 0;
   const errorList: IdentifiedError[] = [];
 
   const perQuestionReview = submissions.map((sub, idx) => {
@@ -560,39 +833,27 @@ export function getDiagnosticPlacementEvaluation(
       explanation: "Grammar & vocabulary assessment",
     };
 
-    const answer = (sub.userAnswer || "").trim();
-    const len = answer.length;
-    const hasContent = len >= 3;
-    const isReasonable = len >= 8;
+    const evalRes = evaluateDiagnosticAnswer(targetLanguage, q, sub.userAnswer);
+
+    if (evalRes.isCorrect) {
+      correctCount++;
+    } else if (evalRes.errors && evalRes.errors.length > 0) {
+      errorList.push(...evalRes.errors);
+    }
 
     const validatedCefr: CEFRLevel =
       q.cefrLevel === "A1" || q.cefrLevel === "A2" || q.cefrLevel === "B1" || q.cefrLevel === "B2" || q.cefrLevel === "C1" || q.cefrLevel === "C2"
         ? q.cefrLevel
         : "A2";
 
-    if (hasContent) attemptedCount++;
-    if (isReasonable) correctCount++;
-    else if (hasContent && len < 8) {
-      errorList.push({
-        originalMistake: answer,
-        correctedForm: q.correctAnswerSample || "Complete sentence structure",
-        errorType: "grammar",
-        explanation: `Formulate a more complete sentence incorporating the target grammatical structure for ${q.cefrLevel || "this level"}.`,
-      });
-    }
-
     return {
       questionId: sub.questionId,
       cefrLevel: validatedCefr,
       prompt: q.prompt || `Question ${idx + 1}`,
-      userAnswer: answer || "(No response provided)",
-      isCorrect: isReasonable,
-      feedback: isReasonable
-        ? `Solid sentence production demonstrating active comprehension of ${q.targetItem || "core grammar"}.`
-        : hasContent
-        ? `Good attempt! Try to expand with full subject-verb-object agreement and target inflection.`
-        : `Unanswered item. Reviewing ${q.targetItem || "this concept"} will strengthen your confidence.`,
-      idealAnswer: q.correctAnswerSample || `Standard ${targetLanguage} sentence structure`,
+      userAnswer: sub.userAnswer || "(No response provided)",
+      isCorrect: evalRes.isCorrect,
+      feedback: evalRes.feedback,
+      idealAnswer: evalRes.idealAnswer,
     };
   });
 
@@ -640,7 +901,7 @@ export function getDiagnosticPlacementEvaluation(
     ],
     identifiedErrors:
       errorList.length > 0
-        ? errorList.slice(0, 3)
+        ? errorList.slice(0, 4)
         : [
             {
               originalMistake: "Subordinate clause agreement",

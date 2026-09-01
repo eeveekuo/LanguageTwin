@@ -8,6 +8,7 @@ import {
   generateWithFallback,
   getFallbackPlacementQuestions,
   getFallbackPlacementEvaluation,
+  evaluateDiagnosticAnswer,
   safeParseJson,
   getFallbackDeck,
   getFallbackSentenceEvaluation,
@@ -984,22 +985,42 @@ app.post("/api/evaluate-placement-test", async (req, res) => {
       ? rawParsed.questionAssessments
       : [];
 
+    let correctItemCount = 0;
+
     const perQuestionReview = submissions.map((sub: any, idx: number) => {
       const q = (testQuestions || []).find((item: any) => item.id === sub.questionId) || testQuestions?.[idx] || {};
       const foundRev = rawReviews.find((r: any) => r.questionId === sub.questionId) || rawReviews[idx] || {};
+
+      // Linguistic verification
+      const diag = evaluateDiagnosticAnswer(targetLanguage, q, sub.userAnswer);
+
+      let isCorrect = typeof foundRev.isCorrect === "boolean" ? foundRev.isCorrect : diag.isCorrect;
+
+      // Exact match protection: If exact match/conjugation, never mark false
+      if (diag.isCorrect && (sub.userAnswer || "").trim().length > 0) {
+        isCorrect = true;
+      }
+      // Error pattern protection: If explicit flaws identified and foundRev didn't have a boolean
+      if (!diag.isCorrect && diag.errors && diag.errors.length > 0 && typeof foundRev.isCorrect !== "boolean") {
+        isCorrect = false;
+      }
+
+      if (isCorrect) {
+        correctItemCount++;
+      }
 
       return {
         questionId: sub.questionId || `q-${idx + 1}`,
         cefrLevel: sub.cefrLevel || q.cefrLevel || foundRev.cefrLevel || "A2",
         prompt: q.prompt || foundRev.prompt || `Question ${idx + 1}`,
         userAnswer: sub.userAnswer || foundRev.userAnswer || "(No response provided)",
-        isCorrect: typeof foundRev.isCorrect === "boolean" ? foundRev.isCorrect : (sub.userAnswer || "").trim().length >= 8,
-        feedback: foundRev.feedback || "Evaluated response for grammatical accuracy and vocabulary precision.",
-        idealAnswer: foundRev.idealAnswer || q.correctAnswerSample || `Standard ${targetLanguage} form`,
+        isCorrect,
+        feedback: foundRev.feedback || diag.feedback || "Evaluated response for grammatical accuracy and vocabulary precision.",
+        idealAnswer: foundRev.idealAnswer || q.correctAnswerSample || diag.idealAnswer || `Standard ${targetLanguage} form`,
       };
     });
 
-    const identifiedErrors = Array.isArray(rawParsed.identifiedErrors)
+    let identifiedErrors = Array.isArray(rawParsed.identifiedErrors)
       ? rawParsed.identifiedErrors.map((e: any) => ({
           originalMistake: e.originalMistake || e.mistake || "Formulation slip",
           correctedForm: e.correctedForm || e.correction || "Accurate native form",
@@ -1008,10 +1029,30 @@ app.post("/api/evaluate-placement-test", async (req, res) => {
         }))
       : [];
 
+    // Augment with errors detected by diagnostic grader
+    for (const sub of submissions) {
+      const q = (testQuestions || []).find((item: any) => item.id === sub.questionId);
+      if (q) {
+        const diag = evaluateDiagnosticAnswer(targetLanguage, q, sub.userAnswer);
+        if (!diag.isCorrect && diag.errors && diag.errors.length > 0) {
+          for (const err of diag.errors) {
+            if (!identifiedErrors.some((e: any) => e.originalMistake === err.originalMistake)) {
+              identifiedErrors.push(err);
+            }
+          }
+        }
+      }
+    }
+
+    const calculatedRatio = submissions.length > 0 ? correctItemCount / submissions.length : 0.7;
+    const finalScorePct = typeof rawParsed.percentageScore === "number" && !isNaN(rawParsed.percentageScore)
+      ? rawParsed.percentageScore
+      : Math.round(calculatedRatio * 100);
+
     const normalizedResult = {
       overallCEFR: validCefr,
       cefrDescription: rawParsed.cefrDescription || `Demonstrates ${validCefr} language proficiency in ${targetLanguage}.`,
-      percentageScore: scorePct,
+      percentageScore: finalScorePct,
       estimatedActiveVocabularySize: typeof rawParsed.estimatedActiveVocabularySize === "number"
         ? rawParsed.estimatedActiveVocabularySize
         : validCefr === "C1" ? 7500 : validCefr === "B2" ? 4000 : validCefr === "B1" ? 2200 : validCefr === "A2" ? 1000 : 400,
@@ -1020,7 +1061,7 @@ app.post("/api/evaluate-placement-test", async (req, res) => {
         : validCefr === "C1" ? 3000 : validCefr === "B2" ? 1500 : validCefr === "B1" ? 650 : validCefr === "A2" ? 250 : 1,
       strengths,
       weaknesses,
-      identifiedErrors,
+      identifiedErrors: identifiedErrors.slice(0, 6),
       standardizedEquivalency: stdEquiv,
       detailedFeedback: rawParsed.detailedFeedback || `Great job completing the placement test! Your diagnostic shows active foundation in ${targetLanguage}. We recommend starting your frequency track around Rank #${rawParsed.recommendedStartingRank || 1}.`,
       perQuestionReview,
