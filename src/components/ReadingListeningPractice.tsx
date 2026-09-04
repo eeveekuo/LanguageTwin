@@ -121,7 +121,6 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
   // Article generation state
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [customTopic, setCustomTopic] = useState<string>("");
-  const [selectedCEFR, setSelectedCEFR] = useState<string>("A2");
 
   // Selection & Explanation State
   const [selectedText, setSelectedText] = useState<string>("");
@@ -672,7 +671,7 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
           targetLanguageCode: targetLang.code,
           knownLanguageCode: knownLang.code,
           topic: customTopic || `Daily conversational adventures incorporating today's key words`,
-          cefrLevel: selectedCEFR,
+          cefrLevel: userAssessment.cefrLevel || "A2",
           targetWords: targetWordsForToday,
         }),
       });
@@ -1776,7 +1775,7 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
               <span>Generate New Practice Article with Today's Study Items</span>
             </h3>
             <p className="text-xs text-slate-500">
-              AI seamlessly crafts a new immersive story containing your deck's upcoming vocabulary and grammar patterns.
+              AI seamlessly crafts an immersive story containing your deck's upcoming study items, precisely tailored to your evaluated level (<strong className="text-slate-700">CEFR {userAssessment.cefrLevel}</strong>).
             </p>
           </div>
         </div>
@@ -1798,19 +1797,20 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
 
           <div>
             <label className="block text-[11px] font-bold text-slate-500 mb-1">
-              Target Level
+              Calibrated Level
             </label>
-            <select
-              value={selectedCEFR}
-              onChange={(e) => setSelectedCEFR(e.target.value)}
-              className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 font-bold focus:outline-none focus:border-indigo-400 cursor-pointer"
-            >
-              <option value="A1">A1 - Beginner Breakthrough</option>
-              <option value="A2">A2 - Elementary Waystage</option>
-              <option value="B1">B1 - Intermediate Threshold</option>
-              <option value="B2">B2 - Vantage Advanced</option>
-              <option value="C1">C1 - Effective Proficiency</option>
-            </select>
+            <div className="w-full bg-white border border-indigo-200 rounded-xl px-3 py-2 text-xs text-indigo-950 font-bold flex items-center justify-between shadow-xs">
+              <span className="flex items-center gap-1.5 truncate">
+                <span className="inline-block w-2 h-2 rounded-full bg-indigo-600 shrink-0 animate-pulse" />
+                <span>CEFR {userAssessment.cefrLevel}</span>
+                <span className="text-[11px] font-medium text-indigo-600 truncate hidden md:inline">
+                  • {userAssessment.cefrTitle.replace(/^[A-Z0-9]+\s+/, "")}
+                </span>
+              </span>
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-100 shrink-0">
+                Evaluated
+              </span>
+            </div>
           </div>
         </div>
 

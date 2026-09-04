@@ -1038,6 +1038,7 @@ export default function App() {
             deck={activeDeck}
             targetLang={targetLang}
             knownLang={knownLang}
+            learnerErrors={learnerErrors}
             onTutorItemsEvaluated={handleTutorItemsEvaluated}
             pronunciationAid={currentPronunciationAid}
           />

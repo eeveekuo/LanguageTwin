@@ -96,7 +96,8 @@ export interface CalibratedDeckPromptOptions {
 }
 
 export function getCalibratedDeckSystemInstruction(options: CalibratedDeckPromptOptions): string {
-  const { targetLanguage, knownLanguage, cefrLevel = "B1", assessedLevel = cefrLevel, recommendedStartingRank = 1, cardCount = 300, identifiedErrors = [] } = options;
+  const { targetLanguage, knownLanguage, cefrLevel = "B1", assessedLevel = cefrLevel, recommendedStartingRank = 1, cardCount = 30, identifiedErrors = [] } = options;
+  const targetAiCards = Math.min(30, cardCount || 30);
 
   const isKorean = (targetLanguage || "").toLowerCase().includes("korean") || (targetLanguage || "").toLowerCase().includes("한국어");
   const isTraditionalChinese =
@@ -122,11 +123,10 @@ TRADITIONAL CHINESE SCRIPT RULES:
 Generate a custom-calibrated spaced repetition deck for learning ${targetLanguage} (for ${knownLanguage} speakers).
 Diagnosed Level: ${assessedLevel}
 Starting Frequency Rank: #${recommendedStartingRank}
-Card Count: ${cardCount}
 Learner Test Slips / Errors to Remedy: ${JSON.stringify(identifiedErrors.slice(0, 5))}${languageDirectives}
 
 Requirements:
-1. Generate ${Math.max(8, cardCount - identifiedErrors.length)} frequency-ranked cards appropriate for CEFR ${assessedLevel}, starting from frequency rank #${recommendedStartingRank}. Skip basic words already mastered.
+1. Generate ${Math.max(8, targetAiCards - identifiedErrors.length)} prioritized frequency-ranked cards appropriate for CEFR ${assessedLevel}, starting from frequency rank #${recommendedStartingRank}. Skip basic words already mastered. These form the primary targeted active tier of the learner's 300-card calibrated curriculum.
 2. For each identified error, generate a dedicated "common_error" remedy flashcard with:
    - type: "common_error"
    - isCommonError: true

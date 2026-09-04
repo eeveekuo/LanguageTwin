@@ -104,6 +104,42 @@ export function estimateStandardizedProficiency(
     recommendedFocus = "Conquer past and future tense active production, object pronouns, and frequency tiers #50–#200.";
   }
 
+  // If the deck itself has an evaluated/calibrated CEFR level (e.g. from placement diagnostic), anchor it as baseline
+  const cefrOrder: Record<CEFRLevel, number> = { A1: 1, A2: 2, B1: 3, B2: 4, C1: 5, C2: 6 };
+  let baselineLevel: CEFRLevel | null = null;
+  const levelMatch = (deck.level || "").match(/\b(A1|A2|B1|B2|C1|C2)\b/i);
+  if (levelMatch) {
+    baselineLevel = levelMatch[1].toUpperCase() as CEFRLevel;
+  }
+  if (baselineLevel && cefrOrder[baselineLevel] > cefrOrder[cefrLevel]) {
+    cefrLevel = baselineLevel;
+    if (cefrLevel === "C1") {
+      cefrTitle = "C1 Operational Proficiency";
+      cefrDescription = "Advanced: Expresses ideas fluently and spontaneously with complex structures, idioms, and high grammatical nuance.";
+      nextLevel = "C2";
+      targetMasteryForNext = 180;
+      recommendedFocus = "Master rare stylistic collocations, literary registers, and culture-specific idioms.";
+    } else if (cefrLevel === "B2") {
+      cefrTitle = "B2 Vantage";
+      cefrDescription = "Upper Intermediate: Can produce clear, detailed sentences on a wide range of subjects, explaining viewpoints with complex subordinate clauses.";
+      nextLevel = "C1";
+      targetMasteryForNext = 100;
+      recommendedFocus = "Conquer high-register frequency tiers (Ranks #1500–#3000) and eliminate subtle false friend slips.";
+    } else if (cefrLevel === "B1") {
+      cefrTitle = "B1 Threshold";
+      cefrDescription = "Intermediate: Understands main points of clear standard input. Can produce simple connected text on topics of personal interest or reasonings.";
+      nextLevel = "B2";
+      targetMasteryForNext = 60;
+      recommendedFocus = "Focus on subjunctive / hypothetical moods, contrastive connectors (although, however), and past tense distinction.";
+    } else if (cefrLevel === "A2") {
+      cefrTitle = "A2 Waystage";
+      cefrDescription = "Elementary: Can communicate in simple routine tasks requiring a direct exchange of information on familiar topics and past events.";
+      nextLevel = "B1";
+      targetMasteryForNext = 30;
+      recommendedFocus = "Conquer past and future tense active production, object pronouns, and frequency tiers #50–#200.";
+    }
+  }
+
   // Calculate progress % towards next CEFR milestone
   const prevThreshold = cefrLevel === "A1" ? 0 : cefrLevel === "A2" ? 12 : cefrLevel === "B1" ? 30 : cefrLevel === "B2" ? 60 : 100;
   const span = targetMasteryForNext - prevThreshold;

@@ -7,6 +7,7 @@ import {
   Flashcard,
 } from "../types";
 import { playTextAloud } from "../utils/speech";
+import { DEFAULT_DECKS } from "../data/defaultDecks";
 import {
   getDiagnosticPlacementQuestions,
   getDiagnosticPlacementEvaluation,
@@ -211,7 +212,7 @@ export const LanguagePlacementModal: React.FC<LanguagePlacementModalProps> = ({
           const data = await response.json();
           const newDeckId = `deck-${targetLang.code}-calibrated-${result.overallCEFR.toLowerCase()}-${Date.now()}`;
 
-          const formattedCards: Flashcard[] = (data.cards || []).map((c: any, idx: number) => ({
+          let formattedCards: Flashcard[] = (data.cards || []).map((c: any, idx: number) => ({
             ...c,
             id: `card-${newDeckId}-${idx + 1}`,
             deckId: newDeckId,
@@ -228,10 +229,44 @@ export const LanguagePlacementModal: React.FC<LanguagePlacementModalProps> = ({
             },
           }));
 
+          // Ensure calibrated deck delivers a complete 300-card curriculum
+          if (formattedCards.length < 300) {
+            const match = DEFAULT_DECKS.find(
+              (d) => d.targetLangCode === targetLang.code || d.targetLang.toLowerCase().includes(targetLang.name.toLowerCase())
+            );
+            if (match && match.cards && match.cards.length > 0) {
+              const existingItems = new Set(formattedCards.map((c) => (c.targetItem || "").trim().toLowerCase()));
+              let rankOffset = result.recommendedStartingRank + formattedCards.filter(c => !c.isCommonError).length;
+              for (const catCard of match.cards) {
+                if (formattedCards.length >= 300) break;
+                const key = (catCard.targetItem || "").trim().toLowerCase();
+                if (!existingItems.has(key)) {
+                  existingItems.add(key);
+                  formattedCards.push({
+                    ...catCard,
+                    id: `card-${newDeckId}-${formattedCards.length + 1}`,
+                    deckId: newDeckId,
+                    frequencyRank: rankOffset++,
+                    srs: {
+                      repetition: 0,
+                      interval: 0,
+                      easeFactor: 2.5,
+                      dueDate: new Date().toISOString(),
+                      history: [],
+                      masteryScore: 0,
+                      status: "new",
+                      consecutiveSuccesses: 0,
+                    },
+                  });
+                }
+              }
+            }
+          }
+
           newDeck = {
             id: newDeckId,
-            title: data.deckTitle || `${targetLang.name} — CEFR ${result.overallCEFR} Calibrated Track`,
-            description: data.deckDescription || `Calibrated placement deck starting at rank #${result.recommendedStartingRank} with error remediation.`,
+            title: data.deckTitle || `${targetLang.name} — CEFR ${result.overallCEFR} Calibrated Track (Top 300)`,
+            description: data.deckDescription || `Calibrated 300-card frequency curriculum starting from Rank #${result.recommendedStartingRank} with dedicated error remediation.`,
             targetLang: targetLang.name,
             targetLangCode: targetLang.code,
             knownLang: knownLang.name,
@@ -484,12 +519,12 @@ export const LanguagePlacementModal: React.FC<LanguagePlacementModalProps> = ({
                 </div>
               )}
 
-              {currentQuestion.targetItem && (
-                <div className="text-xs text-slate-600 font-medium">
-                  <span className="text-slate-400 font-bold">Concept Focus: </span>
-                  <span className="font-bold text-indigo-700">"{currentQuestion.targetItem}"</span>
-                </div>
-              )}
+              <div className="text-xs text-slate-500 font-medium flex items-center gap-1.5">
+                <span className="text-slate-400 font-bold">Assessment Type: </span>
+                <span className="font-semibold text-slate-700 capitalize">
+                  {currentQuestion.questionType.replace("_", " ")}
+                </span>
+              </div>
             </div>
 
             {/* Answer Input Area */}
@@ -711,6 +746,12 @@ export const LanguagePlacementModal: React.FC<LanguagePlacementModalProps> = ({
                             Q{i + 1} (CEFR {rev.cefrLevel || "A2"})
                           </span>
                           <p className="font-bold text-slate-900">{rev.prompt}</p>
+                          {(rev.conceptFocus || rev.targetItem) && (
+                            <p className="text-[11px] text-indigo-700 font-semibold pt-0.5">
+                              <span className="text-slate-400 font-bold">Concept Focus: </span>
+                              {rev.conceptFocus || rev.targetItem}
+                            </p>
+                          )}
                         </div>
                         <span
                           className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold shrink-0 ${
@@ -751,7 +792,7 @@ export const LanguagePlacementModal: React.FC<LanguagePlacementModalProps> = ({
                     Calibrate Deck to CEFR {result.overallCEFR} (Starting Rank #{result.recommendedStartingRank})
                   </h4>
                   <p className="text-xs text-indigo-100 leading-relaxed">
-                    Instantly synthesizes 15 targeted practice cards starting at rank #{result.recommendedStartingRank}, plus dedicated remedy flashcards for any slips you made during this test.
+                    Instantly synthesizes a 300-card calibrated curriculum starting at frequency rank #{result.recommendedStartingRank}, plus dedicated remedy flashcards for any slips diagnosed during this test.
                   </p>
                 </div>
                 <Zap className="w-6 h-6 text-amber-300 shrink-0" />
@@ -766,12 +807,12 @@ export const LanguagePlacementModal: React.FC<LanguagePlacementModalProps> = ({
                   {isRegeneratingDeck ? (
                     <>
                       <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin" />
-                      <span>Calibrating & Synthesizing Deck...</span>
+                      <span>Calibrating & Synthesizing 300-Card Deck...</span>
                     </>
                   ) : (
                     <>
                       <Sparkles className="w-4 h-4" />
-                      <span>Regenerate & Start Level {result.overallCEFR} Track</span>
+                      <span>Start Calibrated Level {result.overallCEFR} Track (300 Cards)</span>
                     </>
                   )}
                 </button>

@@ -502,11 +502,16 @@ app.post("/api/ai-tutor-chat", async (req, res) => {
     const {
       messages,
       scenario,
+      scenarioPrompt,
       targetLanguage,
       knownLanguage,
       deckKeywords = [],
       targetDeckCards = [],
+      deckCards = [],
       learnerErrors = [],
+      userProficiency,
+      level,
+      cefrLevel,
     } = req.body;
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
@@ -515,11 +520,16 @@ app.post("/api/ai-tutor-chat", async (req, res) => {
 
     const ai = getGeminiClient();
 
+    const effectiveCards = targetDeckCards && targetDeckCards.length > 0 ? targetDeckCards : deckCards;
+    const effectiveLevel = cefrLevel || level || userProficiency || "Intermediate";
+    const effectiveScenario = scenario || (scenarioPrompt ? { title: "Conversation", setting: scenarioPrompt, scenarioPrompt } : undefined);
+
     const systemInstruction = getAiTutorSystemInstruction({
       targetLanguage,
       knownLanguage,
-      scenario,
-      targetDeckCards,
+      level: effectiveLevel,
+      scenario: effectiveScenario,
+      targetDeckCards: effectiveCards,
       learnerErrors,
     });
 
@@ -731,7 +741,8 @@ app.post("/api/quick-assist", async (req, res) => {
 // Generate Random Conversation Scenario
 app.post("/api/generate-scenario", async (req, res) => {
   try {
-    const { targetLanguage, knownLanguage, theme = "any", level = "A2/B1" } = req.body;
+    const { targetLanguage, knownLanguage, theme = "any", level = "A2/B1", cefrLevel } = req.body;
+    const effectiveLevel = cefrLevel || level || "A2/B1";
 
     const ai = getGeminiClient();
 
@@ -739,14 +750,14 @@ app.post("/api/generate-scenario", async (req, res) => {
       targetLanguage,
       knownLanguage,
       theme,
-      level,
+      level: effectiveLevel,
     });
 
     const prompt = getScenarioGenerationUserPrompt({
       targetLanguage,
       knownLanguage,
       theme,
-      level,
+      level: effectiveLevel,
     });
 
     const response = await generateWithFallback(ai, {

@@ -7,7 +7,9 @@ import {
   Flashcard,
   SavedConversation,
   ScenarioData,
+  LearnerError,
 } from "../types";
+import { estimateStandardizedProficiency } from "../utils/proficiencyEstimation";
 import { playTextAloud, stopSpeech, isSpeechRecognitionSupported, createSpeechRecognizer } from "../utils/speech";
 import { formatPronunciation } from "../utils/pronunciation";
 import {
@@ -52,6 +54,7 @@ interface AITutorChatProps {
   deck: Deck;
   targetLang: SupportedLanguage;
   knownLang: SupportedLanguage;
+  learnerErrors?: LearnerError[];
   onTutorItemsEvaluated?: (evaluatedItems: EvaluatedItemInChat[], userMessage: string) => void;
   pronunciationAid?: string;
 }
@@ -70,9 +73,14 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
   deck,
   targetLang,
   knownLang,
+  learnerErrors = [],
   onTutorItemsEvaluated,
   pronunciationAid = "none",
 }) => {
+  // Evaluated user level
+  const userAssessment = estimateStandardizedProficiency(deck, targetLang, learnerErrors);
+  const evaluatedLevel = userAssessment.cefrLevel;
+
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [inputVal, setInputVal] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -160,7 +168,7 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
       {
         id: "welcome-" + Date.now(),
         role: "model",
-        text: `👋 Hello! I am your AI ${targetLang.name} language tutor. Let's practice conversing! As we chat, I evaluate your usage and update your flashcard mastery scores. Try using items from your deck like ${topWords}. How is your day going?`,
+        text: `👋 Hello! I am your AI ${targetLang.name} conversation tutor, tailored to your evaluated level (${userAssessment.cefrLevel} — ${userAssessment.cefrTitle.replace(/^[A-Z0-9]+\s+/, "")}). Let's practice conversing! As we chat, I will adapt my vocabulary and sentence complexity to your level, evaluate your usage, and update your flashcard mastery scores. Try using items from your deck like ${topWords}. How is your day going?`,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       },
     ]);
@@ -180,12 +188,12 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
         {
           id: "welcome-1",
           role: "model",
-          text: `👋 Hello! I am your AI ${targetLang.name} language tutor. Let's practice conversing! As we chat, I evaluate your usage and update your flashcard mastery scores. Try using items from your deck like ${topWords}. How is your day going?`,
+          text: `👋 Hello! I am your AI ${targetLang.name} conversation tutor, tailored to your evaluated level (${userAssessment.cefrLevel} — ${userAssessment.cefrTitle.replace(/^[A-Z0-9]+\s+/, "")}). Let's practice conversing! As we chat, I will adapt my vocabulary and sentence complexity to your level, evaluate your usage, and update your flashcard mastery scores. Try using items from your deck like ${topWords}. How is your day going?`,
           timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
         },
       ]);
     }
-  }, [deck.id, targetLang.name]);
+  }, [deck.id, targetLang.name, evaluatedLevel]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -272,9 +280,14 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
           knownLanguage: knownLang.name,
           activeDeckTitle: deck.title,
           recentTargetWords: deck.cards.slice(0, 10).map((c) => c.targetItem),
-          userProficiency: deck.level,
+          userProficiency: `CEFR ${evaluatedLevel} (${userAssessment.cefrTitle})`,
+          level: evaluatedLevel,
+          cefrLevel: evaluatedLevel,
           scenarioPrompt: scenarioPrompt.trim() || undefined,
+          scenario: activeScenario || (scenarioPrompt.trim() ? { title: "Custom Scenario", setting: scenarioPrompt.trim(), scenarioPrompt: scenarioPrompt.trim() } : undefined),
+          targetDeckCards: deckItemsPayload,
           deckCards: deckItemsPayload,
+          learnerErrors: (learnerErrors || []).slice(0, 8),
         }),
       });
 
@@ -329,7 +342,8 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
         body: JSON.stringify({
           targetLanguage: targetLang.name,
           knownLanguage: knownLang.name,
-          level: deck.level || "A2/B1",
+          level: evaluatedLevel,
+          cefrLevel: evaluatedLevel,
           theme,
         }),
       });
@@ -409,12 +423,16 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="text-lg font-bold text-slate-900">Conversation & Roleplay ({targetLang.name})</h2>
-              <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold border border-indigo-100">
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-bold border border-indigo-100 flex items-center gap-1.5 shadow-2xs">
+                <span className="w-1.5 h-1.5 rounded-full bg-indigo-600 animate-pulse" />
+                <span>Tailored to CEFR {evaluatedLevel}</span>
+              </span>
+              <span className="text-xs px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-700 font-bold border border-slate-200">
                 SRS Live Cross-Evaluation
               </span>
             </div>
             <p className="text-xs text-slate-500 mt-0.5">
-              Chat naturally in {targetLang.name} with realistic scenarios. Use the side Co-Pilot to look up phrases without interrupting conversation!
+              Chat naturally in {targetLang.name} with realistic scenarios adapted to your evaluated level (<strong className="text-slate-700">CEFR {evaluatedLevel} — {userAssessment.cefrTitle.replace(/^[A-Z0-9]+\s+/, "")}</strong>).
             </p>
           </div>
         </div>
