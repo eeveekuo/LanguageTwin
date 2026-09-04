@@ -90,7 +90,6 @@ export const StudySession: React.FC<StudySessionProps> = ({
 
   // Study Mode: "production" (AI sentence evaluation) vs "self_report" (Direct SM-2 mastery self-rating)
   const [studyMode, setStudyMode] = useState<"production" | "self_report">("production");
-  const [showDirectSelfRate, setShowDirectSelfRate] = useState<boolean>(false);
 
   // Reveal-on-demand state: initially false (definition, usage format & examples are hidden until requested or evaluated)
   const [isRevealed, setIsRevealed] = useState<boolean>(false);
@@ -139,7 +138,6 @@ export const StudySession: React.FC<StudySessionProps> = ({
     setEvaluation(null);
     setIsRevealed(false);
     setShowRecallHint(false);
-    setShowDirectSelfRate(false);
     setExplanationData(null);
     setErrorMsg(null);
     setNextDueNotice("");
@@ -730,7 +728,7 @@ export const StudySession: React.FC<StudySessionProps> = ({
   // Check frequency bracket status for progression
   const fullDeckCards = allDeckCards.length > 0 ? allDeckCards : cards;
   const { currentBracket, nextBracketStart, nextBracketEnd, isCurrentTierMastered, needsNextBatchGeneration } =
-    getActiveFrequencyBracket(fullDeckCards, 10);
+    getActiveFrequencyBracket(fullDeckCards);
 
   // Session Completed View
   if (sessionCompleted) {
@@ -893,7 +891,7 @@ export const StudySession: React.FC<StudySessionProps> = ({
               }`}
             >
               <Sparkles className="w-3 h-3 text-indigo-500" />
-              <span>✍️ Sentence Production (AI)</span>
+              <span>✍️ AI Evaluated Mastery</span>
             </button>
             <button
               type="button"
@@ -906,7 +904,7 @@ export const StudySession: React.FC<StudySessionProps> = ({
               }`}
             >
               <Zap className="w-3 h-3 text-amber-500" />
-              <span>⚡ Quick Self-Assessment (SM-2)</span>
+              <span>⚡ Self-Assessed Mastery</span>
             </button>
           </div>
 
@@ -1420,33 +1418,21 @@ export const StudySession: React.FC<StudySessionProps> = ({
             {/* Study Input / Self-Report Mastery Controls: Shown when NOT evaluated and NOT in dontKnowMode */}
             {!evaluation && !isDontKnowMode && (
               <div className="w-full max-w-xl text-left space-y-4 mt-2">
-                {/* QUICK SELF-ASSESSMENT MODE */}
-                {studyMode === "self_report" || showDirectSelfRate ? (
+                {/* SELF-ASSESSED MASTERY MODE */}
+                {studyMode === "self_report" ? (
                   <div className="p-5 bg-gradient-to-br from-slate-50 to-indigo-50/40 rounded-3xl border border-indigo-100/80 shadow-xs space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <div className="w-7 h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
-                          <Zap className="w-4 h-4" />
-                        </div>
-                        <div>
-                          <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">
-                            Self-Reported Mastery (SM-2 SRS)
-                          </h4>
-                          <p className="text-[11px] text-slate-500">
-                            Rate your recall accuracy to update card spacing immediately without waiting for AI.
-                          </p>
-                        </div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-7 h-7 rounded-xl bg-amber-500 text-white flex items-center justify-center shadow-xs">
+                        <Zap className="w-4 h-4" />
                       </div>
-
-                      {studyMode === "production" && showDirectSelfRate && (
-                        <button
-                          type="button"
-                          onClick={() => setShowDirectSelfRate(false)}
-                          className="text-[11px] text-indigo-600 font-bold hover:underline cursor-pointer"
-                        >
-                          Back to Sentence Input
-                        </button>
-                      )}
+                      <div>
+                        <h4 className="text-xs font-black uppercase tracking-wider text-slate-900">
+                          Self-Assessed Mastery (SM-2 SRS)
+                        </h4>
+                        <p className="text-[11px] text-slate-500">
+                          Rate your recall accuracy to update card spacing immediately without waiting for AI.
+                        </p>
+                      </div>
                     </div>
 
                     {/* Reveal Definition / Examples Button if not yet revealed */}
@@ -1534,31 +1520,21 @@ export const StudySession: React.FC<StudySessionProps> = ({
                     </div>
                   </div>
                 ) : (
-                  /* STANDARD SENTENCE PRODUCTION MODE */
+                  /* AI EVALUATED SENTENCE PRODUCTION MODE */
                   <div className="space-y-3">
                     {!isOnline && (
                       <div className="p-3 bg-amber-50 border border-amber-200 rounded-2xl flex items-center justify-between text-xs text-amber-900">
                         <div className="flex items-center gap-2">
                           <span className="w-2 h-2 rounded-full bg-amber-500" />
-                          <span className="font-bold">Offline Study: Self-Reported Mastery Active</span>
+                          <span className="font-bold">Offline Study: Self-Assessed Mastery Active</span>
                         </div>
                         <span className="text-[10px] text-amber-700 font-semibold">AI evaluation offline</span>
                       </div>
                     )}
 
-                    <div className="flex items-center justify-between">
-                      <label className="block text-left text-xs font-bold text-slate-500 uppercase ml-1 tracking-wider">
-                        Your Sentence in {targetLang.name}
-                      </label>
-                      <button
-                        type="button"
-                        onClick={() => setShowDirectSelfRate(true)}
-                        className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 transition flex items-center gap-1 cursor-pointer"
-                      >
-                        <Zap className="w-3 h-3 text-amber-500" />
-                        <span>Self-Rate Mastery (Skip AI)</span>
-                      </button>
-                    </div>
+                    <label className="block text-left text-xs font-bold text-slate-500 uppercase ml-1 tracking-wider">
+                      Your Sentence in {targetLang.name}
+                    </label>
 
                     <div className="relative">
                       <textarea

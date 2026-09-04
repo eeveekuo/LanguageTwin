@@ -104,7 +104,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   const stats = getDeckStats(deck.cards);
 
   const { currentBracket, nextBracketStart, nextBracketEnd, isCurrentTierMastered, needsNextBatchGeneration } =
-    getActiveFrequencyBracket(deck.cards, 10);
+    getActiveFrequencyBracket(deck.cards);
 
   // Standardized Proficiency Assessment
   const proficiency = estimateStandardizedProficiency(deck, targetLang, learnerErrors);
@@ -344,21 +344,21 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
         </div>
       </div>
 
-      {/* Frequency Auto-Progression Banner */}
+      {/* Frequency Milestone & Focus Banner */}
       <div className="p-6 rounded-3xl bg-gradient-to-r from-indigo-50 via-white to-indigo-50/50 border border-indigo-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
           <div className="flex items-center gap-2">
             <span className="px-2.5 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-extrabold uppercase tracking-wider">
-              Frequency Progression Engine
+              Frequency Milestone Engine
             </span>
             <span className="text-xs font-bold text-slate-700">
-              Current Focus: Ranks #{currentBracket.startRank}–#{currentBracket.endRank}
+              Active Milestone: Ranks #{currentBracket.startRank}–#{currentBracket.endRank} ({currentBracket.masteredCards}/{currentBracket.totalCards} Mastered)
             </span>
           </div>
           <p className="text-xs text-slate-600">
             {currentBracket.isMastered
-              ? `🎉 Tier #${currentBracket.startRank}–#${currentBracket.endRank} is mastered! The app is now advancing you to Ranks #${nextBracketStart}–#${nextBracketEnd}.`
-              : `Focus on mastering the top ${currentBracket.endRank} words. Once ${currentBracket.startRank}–${currentBracket.endRank} are conquered (80%+ mastered), the app automatically unlocks Ranks #${nextBracketStart}–#${nextBracketEnd}.`}
+              ? `🎉 Milestone Tier #${currentBracket.startRank}–#${currentBracket.endRank} is mastered! Your active study focus is shifting forward to Ranks #${nextBracketStart}–#${nextBracketEnd}.`
+              : `Focusing on natural frequency ranks #${currentBracket.startRank}–#${currentBracket.endRank} (${currentBracket.totalCards} items in deck). Once 80%+ of this tier is mastered, active study focus advances to Ranks #${nextBracketStart}–#${nextBracketEnd}.`}
           </p>
         </div>
 
@@ -377,7 +377,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               ) : (
                 <>
                   <Zap className="w-4 h-4" />
-                  <span>Generate Next Batch (#{nextBracketStart}–#{nextBracketEnd})</span>
+                  <span>Generate Next Tier (#{nextBracketStart}–#{nextBracketEnd})</span>
                 </>
               )}
             </button>
@@ -387,7 +387,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               className="flex items-center gap-1.5 px-4 py-2 rounded-2xl bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-xs font-bold transition cursor-pointer"
             >
               <GraduationCap className="w-4 h-4" />
-              <span>Study Active Batch (#{currentBracket.startRank}–#{currentBracket.endRank})</span>
+              <span>Study Focus Tier (#{currentBracket.startRank}–#{currentBracket.endRank})</span>
             </button>
           )}
         </div>

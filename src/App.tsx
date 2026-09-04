@@ -276,18 +276,34 @@ export default function App() {
                 });
               }
 
-              // Apply card SRS progression map
+              // Apply card SRS progression map (supporting compact keys and legacy formats)
               if (Object.keys(cardSRSMap).length > 0) {
                 merged = merged.map((d) => ({
                   ...d,
                   cards: (d.cards || []).map((card) => {
                     const srs = cardSRSMap[card.id];
                     if (srs) {
+                      const interval = srs.i !== undefined ? srs.i : (srs.interval ?? card.srs?.interval ?? 0);
+                      const repetition = srs.r !== undefined ? srs.r : (srs.repetition ?? srs.repetitions ?? card.srs?.repetition ?? 0);
+                      const easeFactor = srs.e !== undefined ? srs.e : (srs.easeFactor ?? card.srs?.easeFactor ?? 2.5);
+                      const dueDate = srs.d !== undefined ? (srs.d || card.srs?.dueDate) : (srs.dueDate || card.srs?.dueDate || new Date().toISOString());
+                      const status = srs.s !== undefined ? srs.s : (srs.status || srs.state || card.srs?.status || "new");
+                      const masteryScore = srs.m !== undefined ? srs.m : (srs.masteryScore ?? card.srs?.masteryScore ?? 0);
+                      const consecutiveSuccesses = srs.c !== undefined ? srs.c : (srs.consecutiveSuccesses ?? card.srs?.consecutiveSuccesses ?? 0);
+                      const lastReviewed = srs.t !== undefined ? (srs.t || undefined) : (srs.lastReviewed || card.srs?.lastReviewed);
+
                       return {
                         ...card,
                         srs: {
                           ...card.srs,
-                          ...srs,
+                          interval,
+                          repetition,
+                          easeFactor,
+                          dueDate: dueDate || new Date().toISOString(),
+                          status,
+                          masteryScore,
+                          consecutiveSuccesses,
+                          lastReviewed,
                         },
                       };
                     }

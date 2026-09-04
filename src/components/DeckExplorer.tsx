@@ -295,11 +295,16 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
         // 4. Frequency range filter
         if (freqRangeFilter !== "all") {
           const rank = card.frequencyRank || 9999;
+          if (freqRangeFilter === "1-50" && (rank < 1 || rank > 50)) return false;
+          if (freqRangeFilter === "51-100" && (rank < 51 || rank > 100)) return false;
+          if (freqRangeFilter === "101-200" && (rank < 101 || rank > 200)) return false;
+          if (freqRangeFilter === "201-300" && (rank < 201 || rank > 300)) return false;
+          if (freqRangeFilter === "301+" && rank < 301) return false;
+          // Legacy support
           if (freqRangeFilter === "1-10" && (rank < 1 || rank > 10)) return false;
           if (freqRangeFilter === "11-20" && (rank < 11 || rank > 20)) return false;
           if (freqRangeFilter === "21-30" && (rank < 21 || rank > 30)) return false;
           if (freqRangeFilter === "31-50" && (rank < 31 || rank > 50)) return false;
-          if (freqRangeFilter === "51-100" && (rank < 51 || rank > 100)) return false;
           if (freqRangeFilter === "101+" && rank < 101) return false;
         }
 
@@ -860,12 +865,11 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
                 className="bg-slate-50 border border-slate-200 text-slate-800 text-xs font-bold rounded-xl px-3 py-1.5 focus:outline-none cursor-pointer"
               >
                 <option value="all">All Frequency Ranks</option>
-                <option value="1-10">Top 10 (#1 – #10)</option>
-                <option value="11-20">Ranks #11 – #20</option>
-                <option value="21-30">Ranks #21 – #30</option>
-                <option value="31-50">Ranks #31 – #50</option>
+                <option value="1-50">Top 50 (Ranks #1 – #50)</option>
                 <option value="51-100">Ranks #51 – #100</option>
-                <option value="101+">Ranks #101+</option>
+                <option value="101-200">Ranks #101 – #200</option>
+                <option value="201-300">Ranks #201 – #300</option>
+                <option value="301+">Ranks #301+</option>
               </select>
             </div>
           </div>

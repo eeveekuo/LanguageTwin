@@ -199,20 +199,39 @@ export async function fetchCloudDecks(targetLangCode?: string): Promise<any[]> {
   }
 }
 
-const DEFAULT_BUILTIN_DECK_IDS = new Set([
-  "deck-spanish-freq-top",
-  "deck-korean-freq-top",
-  "deck-japanese-freq-top",
-  "deck-chinese-freq-top",
-  "deck-french-freq-top",
-  "deck-german-freq-top",
-  "deck-italian-freq-top",
-  "deck-hokkien-freq-top",
-]);
+/**
+ * Check if a deck is a built-in catalog deck (e.g. bundled 300-word catalog)
+ * so we avoid storing its heavy card arrays in the user's private profile document.
+ */
+export function isBuiltinDeck(deck: any): boolean {
+  if (!deck || !deck.id) return false;
+  if (deck.isCustom === false) return true;
+  if (deck.isCustom === true) return false;
+  if (typeof deck.id === "string") {
+    if (deck.id.startsWith("deck-") && (deck.id.endsWith("-top") || deck.id.includes("-freq"))) {
+      return true;
+    }
+    const knownIds = [
+      "deck-spanish-freq-top",
+      "deck-japanese-freq-top",
+      "deck-korean-freq-top",
+      "deck-traditional-chinese-freq-top",
+      "deck-chinese-freq-top",
+      "deck-taiwanese-hokkien-freq-top",
+      "deck-hokkien-freq-top",
+      "deck-french-freq-top",
+      "deck-german-freq-top",
+      "deck-italian-freq-top",
+    ];
+    if (knownIds.includes(deck.id)) return true;
+  }
+  return false;
+}
 
 /**
  * Save user study state and progress to their private cloud profile.
- * Optimized with compact cardSRSMap to prevent exceeding Firestore's 1MB document limit.
+ * Heavily optimized with compact cardSRSMap and separated custom deck documents
+ * to strictly prevent exceeding Firestore's 1MB document limit.
  */
 export async function saveUserProgressToCloud(
   userId: string,
@@ -237,28 +256,37 @@ export async function saveUserProgressToCloud(
   try {
     const userDocRef = doc(db, USERS_COLLECTION, userId);
 
-    // 1. Extract compact SRS progress for all cards
+    // 1. Extract ultra-compact SRS progress for reviewed cards only
     const cardSRSMap: Record<string, any> = {};
     (progressData.decks || []).forEach((deck: any) => {
       (deck.cards || []).forEach((card: any) => {
         if (card && card.id && card.srs) {
           const s = card.srs;
-          // Store whenever card has review history or non-initial state
+          const rep = s.repetition ?? s.repetitions ?? 0;
+          const lapses = Number(s.lapses) || 0;
+          const status = s.status || s.state || "new";
+          const interval = s.interval ?? 0;
+          const score = Number(s.masteryScore) || 0;
+
+          // Store only if the card has non-default progress or was reviewed
           if (
-            s.repetitions > 0 ||
-            s.state !== "new" ||
-            s.lapses > 0 ||
-            s.lastReviewed ||
-            (s.interval && s.interval > 1)
+            rep > 0 ||
+            lapses > 0 ||
+            status !== "new" ||
+            interval > 0 ||
+            score > 0 ||
+            s.lastReviewed
           ) {
             cardSRSMap[card.id] = {
-              interval: s.interval ?? 1,
-              repetitions: s.repetitions ?? 0,
-              easeFactor: Number(s.easeFactor) || 2.5,
-              dueDate: s.dueDate || new Date().toISOString(),
-              state: s.state || "new",
-              lapses: Number(s.lapses) || 0,
-              lastReviewed: s.lastReviewed ?? null,
+              i: interval,
+              r: rep,
+              e: Number(s.easeFactor) || 2.5,
+              d: s.dueDate || null,
+              s: status,
+              l: lapses,
+              t: s.lastReviewed ?? null,
+              m: score,
+              c: Number(s.consecutiveSuccesses) || 0,
             };
           }
         }
@@ -270,14 +298,14 @@ export async function saveUserProgressToCloud(
     const defaultDeckSummaries: any[] = [];
 
     (progressData.decks || []).forEach((d: any) => {
-      const isCustom = d.isCustom === true || !DEFAULT_BUILTIN_DECK_IDS.has(d.id);
-      if (isCustom) {
+      const builtin = isBuiltinDeck(d);
+      if (!builtin) {
         // Save full custom deck to decks collection independently
         saveDeckToCloud(d, auth.currentUser).catch((e) =>
           console.warn("Auto-saving custom deck to library:", e)
         );
 
-        // Keep lightweight custom deck inside user document
+        // Keep only lightweight metadata inside user document (no card blobs)
         customDecks.push({
           id: d.id,
           title: d.title || "Custom Deck",
@@ -289,22 +317,8 @@ export async function saveUserProgressToCloud(
           level: d.level || "Beginner",
           isCustom: true,
           cardsCount: d.cards?.length || 0,
-          cards: (d.cards || []).slice(0, 100).map((c: any) => ({
-            id: c.id,
-            deckId: d.id,
-            type: c.type || "vocabulary",
-            targetItem: c.targetItem,
-            targetLanguage: c.targetLanguage,
-            knownLanguage: c.knownLanguage,
-            frequencyRank: c.frequencyRank,
-            partOfSpeech: c.partOfSpeech ?? null,
-            definition: c.definition,
-            phonetic: c.phonetic ?? null,
-            usageNotes: c.usageNotes ?? null,
-            examples: c.examples || [],
-            tags: c.tags || [],
-            srs: c.srs || null,
-          })),
+          createdAt: d.createdAt || new Date().toISOString(),
+          updatedAt: d.updatedAt || new Date().toISOString(),
         });
       } else {
         defaultDeckSummaries.push({
@@ -317,8 +331,8 @@ export async function saveUserProgressToCloud(
       }
     });
 
-    // 3. Sanitize journal entries (safeguard against huge voice note base64 blobs)
-    const sanitizedJournal = (progressData.journalEntries || []).map((entry: any) => ({
+    // 3. Sanitize journal entries (strip massive audio base64 blobs, retain last 50)
+    const sanitizedJournal = (progressData.journalEntries || []).slice(0, 50).map((entry: any) => ({
       id: entry.id,
       title: entry.title || "Untitled Entry",
       content: entry.content || "",
@@ -329,17 +343,12 @@ export async function saveUserProgressToCloud(
       targetLangName: entry.targetLangName || "Spanish",
       knownLangCode: entry.knownLangCode || "en",
       knownLangName: entry.knownLangName || "English",
-      tags: entry.tags || [],
+      tags: Array.isArray(entry.tags) ? entry.tags.slice(0, 8) : [],
       wordCount: Number(entry.wordCount) || 0,
       characterCount: Number(entry.characterCount) || 0,
       promptTopic: entry.promptTopic ?? null,
       mood: entry.mood ?? null,
       emoji: entry.emoji ?? null,
-      // Avoid storing massive audio base64 inside single user document
-      voiceNoteAudioBase64:
-        typeof entry.voiceNoteAudioBase64 === "string" && entry.voiceNoteAudioBase64.length < 50000
-          ? entry.voiceNoteAudioBase64
-          : null,
       voiceNoteDuration: entry.voiceNoteDuration ?? null,
       isFavorite: Boolean(entry.isFavorite),
       isExample: Boolean(entry.isExample),
@@ -353,11 +362,11 @@ export async function saveUserProgressToCloud(
         grammarScore: Number(entry.correctionResult.grammarScore) || 0,
         vocabularyScore: Number(entry.correctionResult.vocabularyScore) || 0,
         naturalnessScore: Number(entry.correctionResult.naturalnessScore) || 0,
-        errors: entry.correctionResult.errors || [],
-        positiveHighlights: entry.correctionResult.positiveHighlights || [],
-        naturalPhrasings: entry.correctionResult.naturalPhrasings || [],
-        extractedVocabulary: entry.correctionResult.extractedVocabulary || [],
-        suggestedTags: entry.correctionResult.suggestedTags || [],
+        errors: Array.isArray(entry.correctionResult.errors) ? entry.correctionResult.errors.slice(0, 8) : [],
+        positiveHighlights: Array.isArray(entry.correctionResult.positiveHighlights) ? entry.correctionResult.positiveHighlights.slice(0, 4) : [],
+        naturalPhrasings: Array.isArray(entry.correctionResult.naturalPhrasings) ? entry.correctionResult.naturalPhrasings.slice(0, 4) : [],
+        extractedVocabulary: Array.isArray(entry.correctionResult.extractedVocabulary) ? entry.correctionResult.extractedVocabulary.slice(0, 8) : [],
+        suggestedTags: Array.isArray(entry.correctionResult.suggestedTags) ? entry.correctionResult.suggestedTags.slice(0, 8) : [],
         suggestedEmoji: entry.correctionResult.suggestedEmoji ?? null,
         suggestedMood: entry.correctionResult.suggestedMood ?? null,
         checkedAt: entry.correctionResult.checkedAt || new Date().toISOString(),
@@ -386,23 +395,40 @@ export async function saveUserProgressToCloud(
       defaultDeckSummaries,
       journalEntries: sanitizedJournal,
       errorRemedyDeck: progressData.errorRemedyDeck ? {
-        ...progressData.errorRemedyDeck,
-        cards: (progressData.errorRemedyDeck.cards || []).map((c: any) => ({
-          ...c,
-          phonetic: c.phonetic ?? null,
+        id: progressData.errorRemedyDeck.id || "error-remedy-deck",
+        title: progressData.errorRemedyDeck.title || "Targeted Error Remedies",
+        cards: (progressData.errorRemedyDeck.cards || []).slice(0, 20).map((c: any) => ({
+          id: c.id,
+          targetItem: c.targetItem,
+          targetLanguage: c.targetLanguage,
+          knownLanguage: c.knownLanguage,
+          definition: c.definition,
           partOfSpeech: c.partOfSpeech ?? null,
+          phonetic: c.phonetic ?? null,
           exampleSentence: c.exampleSentence ?? null,
           exampleTranslation: c.exampleTranslation ?? null,
           grammarTip: c.grammarTip ?? null,
           mnemonic: c.mnemonic ?? null,
           lastReviewed: c.lastReviewed ?? null,
           nextReviewDate: c.nextReviewDate ?? null,
+          srs: c.srs || null,
         })),
       } : null,
       lastSyncedAt: new Date().toISOString(),
     };
 
-    const sanitized = sanitizeForFirestore(rawPayload);
+    let sanitized = sanitizeForFirestore(rawPayload);
+
+    // Size safeguard: Ensure total payload is well below 1MB (1,048,576 bytes)
+    const payloadStr = JSON.stringify(sanitized);
+    if (payloadStr.length > 700000) {
+      console.warn("User progress payload exceeds 700KB, compressing historical entries...");
+      sanitized.journalEntries = sanitized.journalEntries.slice(0, 15);
+      if (sanitized.errorRemedyDeck?.cards) {
+        sanitized.errorRemedyDeck.cards = sanitized.errorRemedyDeck.cards.slice(0, 10);
+      }
+    }
+
     await setDoc(userDocRef, sanitized, { merge: true });
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, path);
@@ -422,7 +448,7 @@ export async function loadUserProgressFromCloud(userId: string): Promise<any | n
     if (docSnap.exists()) {
       const data = docSnap.data();
 
-      // Also try to retrieve any custom decks created by this user
+      // Retrieve full custom decks created by this user from the decks collection
       try {
         const decksQuery = query(
           collection(db, DECKS_COLLECTION),
@@ -435,16 +461,25 @@ export async function loadUserProgressFromCloud(userId: string): Promise<any | n
           cloudCustomDecks.push(dSnap.data());
         });
 
-        if (cloudCustomDecks.length > 0) {
-          const existingCustomIds = new Set((data.customDecks || []).map((d: any) => d.id));
-          const mergedCustom = [...(data.customDecks || [])];
-          cloudCustomDecks.forEach((cd) => {
-            if (!existingCustomIds.has(cd.id)) {
-              mergedCustom.push(cd);
+        // Also fetch any custom deck IDs listed in user's profile metadata that weren't caught
+        const customDeckMetas = Array.isArray(data.customDecks) ? data.customDecks : [];
+        const loadedIds = new Set(cloudCustomDecks.map((d: any) => d.id));
+
+        for (const meta of customDeckMetas) {
+          if (meta.id && !loadedIds.has(meta.id)) {
+            try {
+              const singleDeckSnap = await getDoc(doc(db, DECKS_COLLECTION, meta.id));
+              if (singleDeckSnap.exists()) {
+                cloudCustomDecks.push(singleDeckSnap.data());
+                loadedIds.add(meta.id);
+              }
+            } catch (singleErr) {
+              console.warn(`Could not load individual custom deck ${meta.id}:`, singleErr);
             }
-          });
-          data.customDecks = mergedCustom;
+          }
         }
+
+        data.customDecks = cloudCustomDecks;
       } catch (deckFetchErr) {
         console.warn("Could not query individual user custom decks from collection:", deckFetchErr);
       }

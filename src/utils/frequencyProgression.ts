@@ -1,38 +1,51 @@
 import { Flashcard, FrequencyBracket, Deck } from "../types";
 
-export const BRACKET_SIZE = 10;
+export const DEFAULT_BRACKET_SIZE = 50;
 
 /**
- * Groups deck cards into logical frequency tiers of 10 (e.g. 1-10, 11-20, 21-30...)
- * and determines completion / mastery status for each bracket.
+ * Calculates adaptive bracket size based on the number of cards in the deck.
+ * For 300+ card decks, 50-item tiers (e.g. 1-50, 51-100) are optimal.
+ * For smaller decks, scales to 25 or 10.
  */
-export function getFrequencyBrackets(cards: Flashcard[], bracketSize = BRACKET_SIZE): FrequencyBracket[] {
+export function getAdaptiveBracketSize(totalCards: number): number {
+  if (totalCards >= 100) return 50;
+  if (totalCards >= 40) return 25;
+  return 10;
+}
+
+/**
+ * Groups deck cards into logical frequency tiers (e.g. 1-50, 51-100, 101-150...)
+ * and determines completion / mastery status for each milestone bracket.
+ */
+export function getFrequencyBrackets(
+  cards: Flashcard[],
+  bracketSize?: number
+): FrequencyBracket[] {
   if (!cards || cards.length === 0) return [];
 
-  const maxRank = Math.max(...cards.map((c) => c.frequencyRank || 1), 10);
-  const totalBrackets = Math.max(1, Math.ceil(maxRank / bracketSize));
+  const effectiveBracketSize = bracketSize || getAdaptiveBracketSize(cards.length);
+  const maxRank = Math.max(...cards.map((c) => c.frequencyRank || 1), effectiveBracketSize);
+  const totalBrackets = Math.max(1, Math.ceil(maxRank / effectiveBracketSize));
   const brackets: FrequencyBracket[] = [];
 
   for (let i = 0; i < totalBrackets; i++) {
-    const startRank = i * bracketSize + 1;
-    const endRank = (i + 1) * bracketSize;
+    const startRank = i * effectiveBracketSize + 1;
+    const endRank = (i + 1) * effectiveBracketSize;
 
     const bracketCards = cards
       .filter((c) => c.frequencyRank >= startRank && c.frequencyRank <= endRank)
       .sort((a, b) => a.frequencyRank - b.frequencyRank);
 
-    const masteredCards = bracketCards.filter((c) => c.srs.status === "mastered").length;
+    const masteredCards = bracketCards.filter(
+      (c) => c.srs.status === "mastered" || (c.srs.masteryScore || 0) >= 85
+    ).length;
     const totalCards = bracketCards.length;
 
-    // Mastered if there are cards and at least 80% (or all) of them are mastered
-    const isMastered = totalCards >= 5 && masteredCards / totalCards >= 0.8;
+    // Mastered if there are cards and at least 80% of them are mastered
+    const isMastered = totalCards > 0 && masteredCards / totalCards >= 0.8;
 
-    // First bracket is always unlocked; subsequent brackets are unlocked if previous is completed or has cards
-    let isUnlocked = i === 0;
-    if (i > 0) {
-      const prevBracket = brackets[i - 1];
-      isUnlocked = prevBracket?.isMastered || totalCards > 0;
-    }
+    // Any bracket that contains cards in the deck is unlocked and directly accessible
+    const isUnlocked = totalCards > 0 || i === 0 || (i > 0 && brackets[i - 1]?.isMastered);
 
     brackets.push({
       startRank,
@@ -49,23 +62,26 @@ export function getFrequencyBrackets(cards: Flashcard[], bracketSize = BRACKET_S
 }
 
 /**
- * Identifies the current active frequency bracket that the learner should focus on.
- * If 1-10 are mastered, returns 11-20.
+ * Identifies the current active frequency milestone bracket that the learner should focus on.
  */
-export function getActiveFrequencyBracket(cards: Flashcard[], bracketSize = BRACKET_SIZE): {
+export function getActiveFrequencyBracket(
+  cards: Flashcard[],
+  bracketSize?: number
+): {
   currentBracket: FrequencyBracket;
   nextBracketStart: number;
   nextBracketEnd: number;
   isCurrentTierMastered: boolean;
   needsNextBatchGeneration: boolean;
 } {
-  const brackets = getFrequencyBrackets(cards, bracketSize);
+  const effectiveBracketSize = bracketSize || getAdaptiveBracketSize(cards.length);
+  const brackets = getFrequencyBrackets(cards, effectiveBracketSize);
 
   if (brackets.length === 0) {
     return {
       currentBracket: {
         startRank: 1,
-        endRank: 10,
+        endRank: effectiveBracketSize,
         totalCards: 0,
         masteredCards: 0,
         isUnlocked: true,
@@ -73,20 +89,20 @@ export function getActiveFrequencyBracket(cards: Flashcard[], bracketSize = BRAC
         cards: [],
       },
       nextBracketStart: 1,
-      nextBracketEnd: 10,
+      nextBracketEnd: effectiveBracketSize,
       isCurrentTierMastered: false,
       needsNextBatchGeneration: true,
     };
   }
 
-  // Find first unmastered bracket
+  // Find first unmastered bracket that has cards
   let targetBracketIndex = brackets.findIndex((b) => !b.isMastered && b.totalCards > 0);
 
   if (targetBracketIndex === -1) {
     // All existing brackets are mastered!
     const lastBracket = brackets[brackets.length - 1];
     const nextStart = lastBracket.endRank + 1;
-    const nextEnd = nextStart + bracketSize - 1;
+    const nextEnd = nextStart + effectiveBracketSize - 1;
 
     return {
       currentBracket: lastBracket,
@@ -100,7 +116,7 @@ export function getActiveFrequencyBracket(cards: Flashcard[], bracketSize = BRAC
   const currentBracket = brackets[targetBracketIndex];
   const isCurrentTierMastered = currentBracket.isMastered;
   const nextBracketStart = currentBracket.endRank + 1;
-  const nextBracketEnd = nextBracketStart + bracketSize - 1;
+  const nextBracketEnd = nextBracketStart + effectiveBracketSize - 1;
 
   // Check if next tier cards already exist in deck
   const nextTierCardsCount = cards.filter(
