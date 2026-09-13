@@ -243,14 +243,36 @@ export const LanguageJournal: React.FC<LanguageJournalProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // ----------------------------------------------------
-  // Sync to LocalStorage & Cloud
+  // Sync to LocalStorage & Cloud (Stabilized & Debounced)
   // ----------------------------------------------------
+  const onSyncWithCloudRef = useRef(onSyncWithCloud);
+  useEffect(() => {
+    onSyncWithCloudRef.current = onSyncWithCloud;
+  }, [onSyncWithCloud]);
+
+  const initialJournalMountRef = useRef(true);
+  const journalDebounceRef = useRef<NodeJS.Timeout | null>(null);
+
   useEffect(() => {
     saveJournalEntriesToLocal(entries);
-    if (onSyncWithCloud) {
-      onSyncWithCloud(entries);
+
+    // Prevent cloud sync storm on first mount
+    if (initialJournalMountRef.current) {
+      initialJournalMountRef.current = false;
+      return;
     }
-  }, [entries, onSyncWithCloud]);
+
+    if (onSyncWithCloudRef.current) {
+      if (journalDebounceRef.current) clearTimeout(journalDebounceRef.current);
+      journalDebounceRef.current = setTimeout(() => {
+        onSyncWithCloudRef.current?.(entries);
+      }, 3000);
+    }
+
+    return () => {
+      if (journalDebounceRef.current) clearTimeout(journalDebounceRef.current);
+    };
+  }, [entries]);
 
   // Load active entry into editor
   useEffect(() => {

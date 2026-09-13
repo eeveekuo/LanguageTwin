@@ -69,6 +69,9 @@ export interface Deck {
   cards: Flashcard[];
   createdAt: string;
   isCustom?: boolean;
+  isCalibrated?: boolean;
+  calibratedCEFR?: string;
+  calibrationDate?: string;
   creatorId?: string;
   creatorName?: string;
   creatorPhoto?: string;

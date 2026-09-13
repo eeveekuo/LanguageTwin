@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Deck,
   Flashcard,
@@ -77,7 +77,42 @@ const STORAGE_KEY_DECKS = "frequency_srs_decks_v1";
 const STORAGE_KEY_ACTIVE_DECK = "frequency_srs_active_deck_id_v1";
 
 function sanitizeDeckCards(decksList: Deck[]): Deck[] {
-  return decksList.map((deck) => {
+  // 1. Deduplicate decks list (especially legacy timestamped calibrated decks)
+  const seenKeys = new Set<string>();
+  const deduplicatedDecks: Deck[] = [];
+
+  for (const deck of decksList) {
+    const isCalibrated =
+      deck.isCalibrated ||
+      deck.id.includes("calibrated") ||
+      deck.title.toLowerCase().includes("calibrated");
+
+    // Standardize title and calibration flag if calibrated
+    const normalizedDeck: Deck = isCalibrated
+      ? {
+          ...deck,
+          isCalibrated: true,
+          isCustom: true,
+          title: deck.title.includes("Placement Calibrated")
+            ? deck.title
+            : `${deck.targetLang}: CEFR ${deck.level.replace(/[^A-Za-z0-9]/g, "").toUpperCase() || "Calibrated"} (Placement Calibrated)`,
+        }
+      : deck;
+
+    // Deduplication key: for calibrated decks, allow only one per language + level
+    // for other decks, deduplicate by ID
+    const dedupKey = isCalibrated
+      ? `calibrated-${normalizedDeck.targetLangCode}-${(normalizedDeck.level || "B1").slice(0, 10).toLowerCase()}`
+      : `id-${normalizedDeck.id}`;
+
+    if (!seenKeys.has(dedupKey)) {
+      seenKeys.add(dedupKey);
+      deduplicatedDecks.push(normalizedDeck);
+    }
+  }
+
+  // 2. Sanitize cards for each deck
+  return deduplicatedDecks.map((deck) => {
     let cards = (deck.cards || []).map((card) => {
       let cleanedTargetItem = card.targetItem || "";
       // Strip parenthetical readings like "是 (shì)" -> "是", "友達 (ともだち)" -> "友達"
@@ -405,7 +440,7 @@ export default function App() {
       console.warn("Failed to persist decks to IndexedDB:", e)
     );
 
-    // 2. Cloud persistence if authenticated
+    // 2. Cloud persistence if authenticated (Debounced by 3000ms)
     if (currentUser) {
       if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
       syncTimeoutRef.current = setTimeout(async () => {
@@ -425,7 +460,7 @@ export default function App() {
           },
         });
         setIsSyncing(false);
-      }, 2000);
+      }, 3000);
     }
   }, [decks, dailyProgress, activeDeckId, currentUser]);
 
@@ -653,6 +688,28 @@ export default function App() {
     setDailyProgress(updated);
   };
 
+  // Stable debounced cloud sync handler for journal entries
+  const handleJournalSyncWithCloud = useCallback((entries: any[]) => {
+    if (currentUser) {
+      saveUserProgressToCloud(currentUser.uid, {
+        dailyProgress,
+        decks,
+        activeDeckId,
+        targetLangCode: targetLang.code,
+        knownLangCode: knownLang.code,
+        streak: dailyProgress.streak || 1,
+        journalEntries: entries,
+        userProfile: {
+          displayName: currentUser.displayName,
+          email: currentUser.email,
+          photoURL: currentUser.photoURL,
+        },
+      }).catch((err) =>
+        console.warn("Journal cloud sync warning:", err)
+      );
+    }
+  }, [currentUser?.uid, dailyProgress, decks, activeDeckId, targetLang.code, knownLang.code]);
+
   // Add newly generated deck and save to cloud
   const handleDeckGenerated = async (newDeck: Deck) => {
     setDecks((prev) => [newDeck, ...prev]);
@@ -665,15 +722,39 @@ export default function App() {
   };
 
   // Add newly calibrated placement deck & register error remedy cards into ledger
-  const handleDeckCalibrated = (calibratedDeck: Deck) => {
-    // 1. Add deck and set active
-    setDecks((prev) => [calibratedDeck, ...prev]);
-    setActiveDeckId(calibratedDeck.id);
+  const handleDeckCalibrated = async (calibratedDeck: Deck) => {
+    // 1. Standardize calibrated flags & labels
+    const markedDeck: Deck = {
+      ...calibratedDeck,
+      isCalibrated: true,
+      isCustom: true,
+      calibrationDate: new Date().toISOString(),
+      title: calibratedDeck.title.includes("Placement Calibrated")
+        ? calibratedDeck.title
+        : `${calibratedDeck.targetLang}: CEFR ${calibratedDeck.level.replace(/[^A-Za-z0-9]/g, "").toUpperCase() || "Calibrated"} (Placement Calibrated)`,
+    };
+
+    // 2. Replace any previous calibrated deck for this target language and level
+    setDecks((prev) => {
+      const filtered = prev.filter((d) => {
+        if (d.id === markedDeck.id) return false;
+        const isSameLangCalibrated =
+          d.targetLangCode === markedDeck.targetLangCode &&
+          (d.isCalibrated || d.id.includes("calibrated") || d.title.toLowerCase().includes("calibrated"));
+        return !isSameLangCalibrated;
+      });
+      return [markedDeck, ...filtered];
+    });
+
+    setActiveDeckId(markedDeck.id);
     setStudyFilter({ mode: "auto" });
     setActiveTab("study");
 
-    // 2. Register any common error cards from the diagnostic into the learnerErrors ledger
-    const errorCards = calibratedDeck.cards.filter(
+    // Automatically persist calibrated deck to cloud Firestore
+    await saveDeckToCloud(markedDeck, currentUser);
+
+    // 3. Register any common error cards from the diagnostic into the learnerErrors ledger
+    const errorCards = markedDeck.cards.filter(
       (c) => c.isCommonError || c.type === "common_error"
     );
     if (errorCards.length > 0) {
@@ -699,7 +780,7 @@ export default function App() {
 
     setBatchNotice(
       `🎯 Deck calibrated to ${
-        calibratedDeck.level || "Diagnosed Level"
+        markedDeck.level || "Diagnosed Level"
       }! Starting practice queue ready.`
     );
   };
@@ -1009,26 +1090,7 @@ export default function App() {
             currentUser={currentUser}
             isSyncing={isSyncing}
             onLogPracticeActivity={handleLogPracticeActivity}
-            onSyncWithCloud={(entries) => {
-              if (currentUser) {
-                saveUserProgressToCloud(currentUser.uid, {
-                  dailyProgress,
-                  decks,
-                  activeDeckId,
-                  targetLangCode: targetLang.code,
-                  knownLangCode: knownLang.code,
-                  streak: dailyProgress.streak || 1,
-                  journalEntries: entries,
-                  userProfile: {
-                    displayName: currentUser.displayName,
-                    email: currentUser.email,
-                    photoURL: currentUser.photoURL,
-                  },
-                }).catch((err) =>
-                  console.warn("Journal cloud sync warning:", err)
-                );
-              }
-            }}
+            onSyncWithCloud={handleJournalSyncWithCloud}
           />
         )}
 

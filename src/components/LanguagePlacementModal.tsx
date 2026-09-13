@@ -210,7 +210,7 @@ export const LanguagePlacementModal: React.FC<LanguagePlacementModalProps> = ({
 
         if (response.ok) {
           const data = await response.json();
-          const newDeckId = `deck-${targetLang.code}-calibrated-${result.overallCEFR.toLowerCase()}-${Date.now()}`;
+          const newDeckId = `deck-${targetLang.code}-calibrated-${result.overallCEFR.toLowerCase()}`;
 
           let formattedCards: Flashcard[] = (data.cards || []).map((c: any, idx: number) => ({
             ...c,
@@ -265,14 +265,18 @@ export const LanguagePlacementModal: React.FC<LanguagePlacementModalProps> = ({
 
           newDeck = {
             id: newDeckId,
-            title: data.deckTitle || `${targetLang.name} — CEFR ${result.overallCEFR} Calibrated Track (Top 300)`,
-            description: data.deckDescription || `Calibrated 300-card frequency curriculum starting from Rank #${result.recommendedStartingRank} with dedicated error remediation.`,
+            title: data.deckTitle || `${targetLang.name}: CEFR ${result.overallCEFR} (Placement Calibrated)`,
+            description: data.deckDescription || `Personalized 300-card frequency curriculum calibrated from CEFR ${result.overallCEFR} diagnostic placement. Starts at frequency rank #${result.recommendedStartingRank} with active error remedies.`,
             targetLang: targetLang.name,
             targetLangCode: targetLang.code,
             knownLang: knownLang.name,
             knownLangCode: knownLang.code,
             level: `CEFR ${result.overallCEFR} (Standardized)`,
             createdAt: new Date().toISOString(),
+            isCustom: true,
+            isCalibrated: true,
+            calibratedCEFR: result.overallCEFR,
+            calibrationDate: new Date().toISOString(),
             cards: formattedCards,
           };
         }

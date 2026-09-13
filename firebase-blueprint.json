@@ -19,6 +19,9 @@
         "creatorName": { "type": "string" },
         "creatorPhoto": { "type": "string" },
         "isCustom": { "type": "boolean" },
+        "isCalibrated": { "type": "boolean" },
+        "calibratedCEFR": { "type": "string" },
+        "calibrationDate": { "type": "string" },
         "cardsCount": { "type": "number" }
       },
       "required": ["id", "title", "targetLangCode"]

@@ -82,7 +82,7 @@ export const LanguagePairModal: React.FC<LanguagePairModalProps> = ({
   // Cloud decks state
   const [cloudDecks, setCloudDecks] = useState<Deck[]>([]);
   const [isLoadingCloudDecks, setIsLoadingCloudDecks] = useState<boolean>(false);
-  const [deckTab, setDeckTab] = useState<"all" | "curated" | "community">("all");
+  const [deckTab, setDeckTab] = useState<"all" | "calibrated" | "curated" | "community">("all");
   const [deckSearch, setDeckSearch] = useState("");
 
   // Generator form state (pre-filled and bound to current selection)
@@ -163,7 +163,7 @@ export const LanguagePairModal: React.FC<LanguagePairModalProps> = ({
   const targetLangObj = getLanguageByCode(selectedTarget);
   const knownLangObj = getLanguageByCode(selectedKnown);
 
-  // Combine local decks with cloud decks (prevent duplicates by ID)
+  // Combine local decks with cloud decks (prevent duplicates by ID and calibration track)
   const localMatchingDecks = allDecks.filter(
     (d) => d.targetLangCode === selectedTarget
   );
@@ -171,7 +171,36 @@ export const LanguagePairModal: React.FC<LanguagePairModalProps> = ({
   const localDeckIds = new Set(localMatchingDecks.map((d) => d.id));
   const uniqueCloudDecks = cloudDecks.filter((d) => !localDeckIds.has(d.id));
 
-  const allAvailableDecks = [...localMatchingDecks, ...uniqueCloudDecks];
+  // Consolidate and deduplicate any duplicate calibrated tracks
+  const combined = [...localMatchingDecks, ...uniqueCloudDecks];
+  const seenDeckKeys = new Set<string>();
+  const allAvailableDecks: Deck[] = [];
+
+  for (const d of combined) {
+    const isCalibrated =
+      d.isCalibrated ||
+      d.id.includes("calibrated") ||
+      d.title.toLowerCase().includes("calibrated");
+
+    const dedupKey = isCalibrated
+      ? `calibrated-${d.targetLangCode}-${(d.level || "B1").slice(0, 10).toLowerCase()}`
+      : `id-${d.id}`;
+
+    if (!seenDeckKeys.has(dedupKey)) {
+      seenDeckKeys.add(dedupKey);
+      allAvailableDecks.push(
+        isCalibrated && !d.isCalibrated
+          ? {
+              ...d,
+              isCalibrated: true,
+              title: d.title.includes("Placement Calibrated")
+                ? d.title
+                : `${d.targetLang}: CEFR ${d.level.replace(/[^A-Za-z0-9]/g, "").toUpperCase() || "Calibrated"} (Placement Calibrated)`,
+            }
+          : d
+      );
+    }
+  }
 
   const filteredDecks = allAvailableDecks.filter((d) => {
     const matchesSearch =
@@ -181,11 +210,19 @@ export const LanguagePairModal: React.FC<LanguagePairModalProps> = ({
 
     if (!matchesSearch) return false;
 
+    const isDeckCalibrated =
+      d.isCalibrated ||
+      d.id.includes("calibrated") ||
+      d.title.toLowerCase().includes("calibrated");
+
+    if (deckTab === "calibrated") {
+      return isDeckCalibrated;
+    }
     if (deckTab === "curated") {
-      return !d.isCustom;
+      return !d.isCustom && !isDeckCalibrated;
     }
     if (deckTab === "community") {
-      return d.isCustom === true;
+      return d.isCustom === true && !isDeckCalibrated;
     }
     return true;
   });
@@ -533,6 +570,18 @@ export const LanguagePairModal: React.FC<LanguagePairModalProps> = ({
                     </button>
                     <button
                       type="button"
+                      onClick={() => setDeckTab("calibrated")}
+                      className={`px-2 py-0.5 rounded-lg transition cursor-pointer flex items-center gap-1 ${
+                        deckTab === "calibrated"
+                          ? "bg-purple-100 text-purple-800 font-bold"
+                          : "text-slate-500 hover:text-slate-800"
+                      }`}
+                    >
+                      <GraduationCap className="w-2.5 h-2.5 text-purple-600" />
+                      <span>Calibrated ({allAvailableDecks.filter((d) => d.isCalibrated || d.id.includes("calibrated") || d.title.toLowerCase().includes("calibrated")).length})</span>
+                    </button>
+                    <button
+                      type="button"
                       onClick={() => setDeckTab("curated")}
                       className={`px-2 py-0.5 rounded-lg transition cursor-pointer ${
                         deckTab === "curated"
@@ -552,7 +601,7 @@ export const LanguagePairModal: React.FC<LanguagePairModalProps> = ({
                       }`}
                     >
                       <Cloud className="w-2.5 h-2.5" />
-                      <span>Generated ({allAvailableDecks.filter((d) => d.isCustom).length})</span>
+                      <span>Generated ({allAvailableDecks.filter((d) => d.isCustom && !d.isCalibrated && !d.id.includes("calibrated")).length})</span>
                     </button>
                   </div>
                 </div>
@@ -596,10 +645,19 @@ export const LanguagePairModal: React.FC<LanguagePairModalProps> = ({
                                 </span>
                               )}
 
-                              {d.isCustom && (
+                              {d.isCalibrated || d.id.includes("calibrated") || d.title.toLowerCase().includes("calibrated") ? (
+                                <span className="text-[10px] bg-purple-100 text-purple-800 border border-purple-200 font-extrabold px-2 py-0.5 rounded-md shrink-0 flex items-center gap-1 shadow-2xs">
+                                  <GraduationCap className="w-3 h-3 text-purple-600" />
+                                  <span>Placement Calibrated</span>
+                                </span>
+                              ) : d.isCustom ? (
                                 <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 font-bold px-1.5 py-0.5 rounded-md shrink-0 flex items-center gap-1">
                                   <Cloud className="w-2.5 h-2.5" />
                                   <span>AI / Cloud</span>
+                                </span>
+                              ) : (
+                                <span className="text-[10px] bg-slate-100 text-slate-600 border border-slate-200 font-medium px-1.5 py-0.5 rounded-md shrink-0">
+                                  Curated Core
                                 </span>
                               )}
                             </div>

@@ -859,6 +859,12 @@ export const StudySession: React.FC<StudySessionProps> = ({
       <div className="flex items-center justify-between text-xs font-semibold text-slate-500 gap-3 flex-wrap bg-white p-3 rounded-2xl border border-slate-200 shadow-xs">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-slate-800 font-bold">{deckTitle}</span>
+          {(deckTitle.toLowerCase().includes("calibrated") || deckTitle.toLowerCase().includes("placement")) && (
+            <span className="text-[10px] bg-purple-100 text-purple-800 border border-purple-200 font-extrabold px-2 py-0.5 rounded-md flex items-center gap-1 shadow-2xs">
+              <Target className="w-2.5 h-2.5 text-purple-600" />
+              <span>Calibrated Track</span>
+            </span>
+          )}
           <span className="text-slate-300">•</span>
           <span className="text-indigo-600 font-bold">
             Card {currentIndex + 1} of {cards.length}

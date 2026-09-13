@@ -1,12 +1,9 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Shared decks library: all users (including guests) can read shared decks; creation allowed.
+    // Shared decks library: all users (including guests) can read shared decks; creation and cleanup allowed.
     match /decks/{deckId} {
-      allow read: if true;
-      allow create: if true;
-      allow update: if request.auth != null || true;
-      allow delete: if request.auth != null && (resource.data.creatorId == request.auth.uid || !('creatorId' in resource.data));
+      allow read, write: if true;
     }
 
     // User profiles & sync data: private to the owner

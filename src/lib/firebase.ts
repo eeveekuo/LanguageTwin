@@ -93,8 +93,9 @@ export interface FirestoreErrorInfo {
 }
 
 export function handleFirestoreError(error: unknown, operationType: OperationType, path: string | null) {
+  const errMessage = error instanceof Error ? error.message : String(error);
   const errInfo: FirestoreErrorInfo = {
-    error: error instanceof Error ? error.message : String(error),
+    error: errMessage,
     authInfo: {
       userId: auth.currentUser?.uid,
       email: auth.currentUser?.email,
@@ -110,8 +111,45 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
     operationType,
     path,
   };
+
+  const lower = errMessage.toLowerCase();
+  if (
+    lower.includes("resource-exhausted") ||
+    lower.includes("write stream exhausted") ||
+    lower.includes("backoff delay") ||
+    lower.includes("too many requests")
+  ) {
+    triggerFirestoreBackoff(12000);
+  }
+
   console.error("Firestore Error:", JSON.stringify(errInfo));
   return errInfo;
+}
+
+// ----------------------------------------------------
+// Firestore Write Throttling, Mutex & Backoff Controls
+// ----------------------------------------------------
+let writeBackoffUntil = 0;
+
+export function isFirestoreBackingOff(): boolean {
+  return Date.now() < writeBackoffUntil;
+}
+
+export function triggerFirestoreBackoff(durationMs = 12000): void {
+  writeBackoffUntil = Math.max(writeBackoffUntil, Date.now() + durationMs);
+  console.warn(`[Firestore] Write stream backoff triggered for ${Math.round(durationMs / 1000)}s`);
+}
+
+// Tracks signatures of saved decks to avoid redundant duplicate writes
+const savedDeckSignatures = new Map<string, string>();
+const activeDeckSaves = new Set<string>();
+
+function computeDeckSignature(deck: any): string {
+  if (!deck) return "";
+  const cardCount = deck.cards?.length || 0;
+  const firstCardId = deck.cards?.[0]?.id || "";
+  const lastCardId = deck.cards?.[cardCount - 1]?.id || "";
+  return `${deck.id}_${deck.title || ""}_${deck.level || ""}_${cardCount}_${firstCardId}_${lastCardId}_${deck.updatedAt || ""}`;
 }
 
 /**
@@ -144,9 +182,28 @@ export function sanitizeForFirestore<T = any>(obj: T): T {
 }
 
 /**
- * Save or publish a generated deck to the central Firestore library
+ * Save or publish a generated deck to the central Firestore library.
+ * Fully throttled, deduplicated, and guarded against write-stream exhaustion.
  */
 export async function saveDeckToCloud(deck: any, user?: User | null): Promise<void> {
+  if (!deck || !deck.id) return;
+  if (isFirestoreBackingOff()) {
+    console.warn(`[Firestore] Skipping saveDeckToCloud for ${deck.id} due to active write stream backoff.`);
+    return;
+  }
+
+  const sig = computeDeckSignature(deck);
+  if (savedDeckSignatures.get(deck.id) === sig) {
+    // Already saved to Firestore with identical content
+    return;
+  }
+
+  if (activeDeckSaves.has(deck.id)) {
+    // Already in flight
+    return;
+  }
+
+  activeDeckSaves.add(deck.id);
   const path = `${DECKS_COLLECTION}/${deck.id}`;
   try {
     const deckDocRef = doc(db, DECKS_COLLECTION, deck.id);
@@ -162,15 +219,21 @@ export async function saveDeckToCloud(deck: any, user?: User | null): Promise<vo
       cards: deck.cards || [],
       createdAt: deck.createdAt || new Date().toISOString(),
       isCustom: true,
+      isCalibrated: deck.isCalibrated ?? (typeof deck.id === "string" && deck.id.includes("calibrated")),
+      calibratedCEFR: deck.calibratedCEFR || null,
+      calibrationDate: deck.calibrationDate || (deck.isCalibrated ? new Date().toISOString() : null),
       creatorId: user ? user.uid : "anonymous",
       creatorName: user?.displayName || "Community Learner",
       creatorPhoto: user?.photoURL || "",
       updatedAt: new Date().toISOString(),
     });
     await setDoc(deckDocRef, cleanDeck, { merge: true });
+    savedDeckSignatures.set(deck.id, sig);
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, path);
     console.error("Failed to save deck to cloud:", err);
+  } finally {
+    activeDeckSaves.delete(deck.id);
   }
 }
 
@@ -228,10 +291,18 @@ export function isBuiltinDeck(deck: any): boolean {
   return false;
 }
 
+// Single-flight mutex and trailing queue for user profile sync
+let isUserProgressSaving = false;
+let pendingUserProgressSave: {
+  userId: string;
+  progressData: any;
+} | null = null;
+let lastUserProgressSaveTime = 0;
+
 /**
  * Save user study state and progress to their private cloud profile.
- * Heavily optimized with compact cardSRSMap and separated custom deck documents
- * to strictly prevent exceeding Firestore's 1MB document limit.
+ * Heavily optimized with compact cardSRSMap, single-flight queuing,
+ * and rate-limiting to prevent write-stream exhaustion.
  */
 export async function saveUserProgressToCloud(
   userId: string,
@@ -252,6 +323,35 @@ export async function saveUserProgressToCloud(
   }
 ): Promise<void> {
   if (!userId) return;
+
+  if (isFirestoreBackingOff()) {
+    console.warn("[Firestore] Skipping saveUserProgressToCloud: write stream backoff active.");
+    return;
+  }
+
+  // If a save is already executing, store latest progressData to run after current save finishes
+  if (isUserProgressSaving) {
+    pendingUserProgressSave = { userId, progressData };
+    return;
+  }
+
+  // Ensure at least 1500ms between writes to the user profile document
+  const timeSinceLast = Date.now() - lastUserProgressSaveTime;
+  if (timeSinceLast < 1500) {
+    pendingUserProgressSave = { userId, progressData };
+    setTimeout(() => {
+      if (pendingUserProgressSave) {
+        const next = pendingUserProgressSave;
+        pendingUserProgressSave = null;
+        saveUserProgressToCloud(next.userId, next.progressData);
+      }
+    }, 1500 - timeSinceLast);
+    return;
+  }
+
+  isUserProgressSaving = true;
+  lastUserProgressSaveTime = Date.now();
+
   const path = `${USERS_COLLECTION}/${userId}`;
   try {
     const userDocRef = doc(db, USERS_COLLECTION, userId);
@@ -294,17 +394,14 @@ export async function saveUserProgressToCloud(
     });
 
     // 2. Separate user-created custom decks from built-in 300-word catalog decks
+    // NOTE: Custom decks are saved to /decks upon generation, calibration, or import,
+    // avoiding redundant write bursts on every progress review tick.
     const customDecks: any[] = [];
     const defaultDeckSummaries: any[] = [];
 
     (progressData.decks || []).forEach((d: any) => {
       const builtin = isBuiltinDeck(d);
       if (!builtin) {
-        // Save full custom deck to decks collection independently
-        saveDeckToCloud(d, auth.currentUser).catch((e) =>
-          console.warn("Auto-saving custom deck to library:", e)
-        );
-
         // Keep only lightweight metadata inside user document (no card blobs)
         customDecks.push({
           id: d.id,
@@ -316,6 +413,8 @@ export async function saveUserProgressToCloud(
           knownLangCode: d.knownLangCode || "en",
           level: d.level || "Beginner",
           isCustom: true,
+          isCalibrated: Boolean(d.isCalibrated),
+          calibrationDate: d.calibrationDate || null,
           cardsCount: d.cards?.length || 0,
           createdAt: d.createdAt || new Date().toISOString(),
           updatedAt: d.updatedAt || new Date().toISOString(),
@@ -433,6 +532,18 @@ export async function saveUserProgressToCloud(
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, path);
     console.error("Failed to save user progress to cloud:", err);
+  } finally {
+    isUserProgressSaving = false;
+    lastUserProgressSaveTime = Date.now();
+
+    // If a subsequent update arrived while this write was executing, run trailing save after delay
+    if (pendingUserProgressSave) {
+      const next = pendingUserProgressSave;
+      pendingUserProgressSave = null;
+      setTimeout(() => {
+        saveUserProgressToCloud(next.userId, next.progressData);
+      }, 2000);
+    }
   }
 }
 

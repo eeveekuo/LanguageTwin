@@ -935,7 +935,7 @@ export function getDiagnosticCalibratedDeck(
   recommendedStartingRank: number = 1,
   identifiedErrors: Array<{ mistake?: string; correction?: string; topic?: string }> = []
 ): Deck {
-  const newDeckId = `deck-${targetLangCode}-calibrated-${cefrLevel.toLowerCase()}-${Date.now()}`;
+  const newDeckId = `deck-${targetLangCode}-calibrated-${cefrLevel.toLowerCase()}`;
   
   // Find if a matching default deck exists in the database
   const matchingDefault = DEFAULT_DECKS.find(
@@ -1038,14 +1038,18 @@ export function getDiagnosticCalibratedDeck(
 
   return {
     id: newDeckId,
-    title: `${targetLanguage} — CEFR ${cefrLevel} Calibrated Track`,
-    description: `Custom frequency curriculum starting at Rank #${recommendedStartingRank} with error remediation.`,
+    title: `${targetLanguage}: CEFR ${cefrLevel} (Placement Calibrated)`,
+    description: `Personalized 300-card frequency curriculum calibrated from CEFR ${cefrLevel} diagnostic placement. Starts at frequency rank #${recommendedStartingRank} with active error remedies.`,
     targetLang: targetLanguage,
     targetLangCode,
     knownLang: knownLanguage,
     knownLangCode,
-    level: `CEFR ${cefrLevel} (Diagnostic Standardized)`,
+    level: `CEFR ${cefrLevel} (Standardized)`,
     createdAt: new Date().toISOString(),
+    isCustom: true,
+    isCalibrated: true,
+    calibratedCEFR: cefrLevel,
+    calibrationDate: new Date().toISOString(),
     cards: baseCards,
   };
 }

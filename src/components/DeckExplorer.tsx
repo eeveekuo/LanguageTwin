@@ -140,10 +140,33 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
     };
   }, [isOnline, showDeckPicker, deckPickerTab, targetLang.code]);
 
-  // Decks for current language
+  // Decks for current language (deduplicated by calibration track and ID)
   const currentLangDecks = useMemo(() => {
-    const combined = allDecks.length > 0 ? allDecks : [deck];
-    return combined.filter((d) => d.targetLangCode === targetLang.code);
+    const raw = allDecks.length > 0 ? allDecks : [deck];
+    const matching = raw.filter((d) => d.targetLangCode === targetLang.code);
+    const seen = new Set<string>();
+    const res: Deck[] = [];
+
+    for (const d of matching) {
+      const isCalibrated =
+        d.isCalibrated ||
+        d.id.includes("calibrated") ||
+        d.title.toLowerCase().includes("calibrated");
+
+      const key = isCalibrated
+        ? `calibrated-${d.targetLangCode}-${(d.level || "B1").slice(0, 10).toLowerCase()}`
+        : `id-${d.id}`;
+
+      if (!seen.has(key)) {
+        seen.add(key);
+        res.push(
+          isCalibrated && !d.isCalibrated
+            ? { ...d, isCalibrated: true }
+            : d
+        );
+      }
+    }
+    return res;
   }, [allDecks, deck, targetLang.code]);
 
   // Filtered decks for the picker
@@ -445,11 +468,16 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
                   {deck.level}
                 </span>
               )}
-              {deck.isCustom && (
+              {deck.isCalibrated || deck.id.includes("calibrated") || deck.title.toLowerCase().includes("calibrated") ? (
+                <span className="text-[10px] font-extrabold px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 border border-purple-200 flex items-center gap-1 shadow-2xs">
+                  <GraduationCap className="w-3 h-3 text-purple-600" />
+                  <span>Placement Calibrated</span>
+                </span>
+              ) : deck.isCustom ? (
                 <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
                   Custom
                 </span>
-              )}
+              ) : null}
             </div>
 
             {/* Deck Title & Switcher Dropdown Anchor */}
@@ -552,15 +580,23 @@ export const DeckExplorer: React.FC<DeckExplorerProps> = ({
                                     : "bg-slate-50/60 hover:bg-slate-100/80 border-slate-200/80"
                                 }`}
                               >
-                                <div className="flex items-center justify-between">
+                                <div className="flex items-center justify-between gap-2">
                                   <span className="font-bold text-slate-900 truncate">
                                     {d.title}
                                   </span>
-                                  {isCurrent && (
-                                    <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-indigo-600 text-white shrink-0">
-                                      Active
-                                    </span>
-                                  )}
+                                  <div className="flex items-center gap-1 shrink-0">
+                                    {(d.isCalibrated || d.id.includes("calibrated") || d.title.toLowerCase().includes("calibrated")) && (
+                                      <span className="text-[9px] font-extrabold px-1.5 py-0.5 rounded-md bg-purple-100 text-purple-800 border border-purple-200 flex items-center gap-0.5">
+                                        <GraduationCap className="w-2.5 h-2.5 text-purple-600" />
+                                        <span>Calibrated</span>
+                                      </span>
+                                    )}
+                                    {isCurrent && (
+                                      <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-indigo-600 text-white">
+                                        Active
+                                      </span>
+                                    )}
+                                  </div>
                                 </div>
                                 <p className="text-[11px] text-slate-500 line-clamp-1">
                                   {d.description || "Active Vocabulary and Grammar Formulas"}
