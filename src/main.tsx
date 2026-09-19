@@ -2,6 +2,10 @@ import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
+import { setupGeminiKeyInterceptor } from './utils/geminiApiKey';
+
+// Initialize global API key header interceptor for all /api/* requests
+setupGeminiKeyInterceptor();
 
 // Unregister any legacy Service Worker and clear caches to ensure pristine runtime module loading
 if (typeof window !== "undefined" && "serviceWorker" in navigator) {

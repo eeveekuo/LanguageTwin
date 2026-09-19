@@ -26,6 +26,11 @@ import {
 import { SavedArticlesModal } from "./SavedArticlesModal";
 import { AiEngineBadge } from "./AiEngineBadge";
 import {
+  checkHasGeminiApiKey,
+  getStoredGeminiApiKey,
+  notifyGeminiKeyRequired,
+} from "../utils/geminiApiKey";
+import {
   BookOpen,
   Headphones,
   Play,
@@ -366,7 +371,7 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
 
     // Call API or fallback
     try {
-      if (isOnline) {
+      if (isOnline && getStoredGeminiApiKey()) {
         const res = await fetch("/api/explain-reading-text", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -402,6 +407,11 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
             explanationRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
           }, 100);
           return;
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          if (res.status === 401 || errData.requiresApiKey) {
+            notifyGeminiKeyRequired(errData.error || "A personal Gemini API key is required for AI explanations.");
+          }
         }
       }
     } catch (err) {
@@ -507,6 +517,11 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
       return;
     }
 
+    if (!checkHasGeminiApiKey("AI Reading Response Grading")) {
+      showToast("Personal Gemini API key required to grade responses.");
+      return;
+    }
+
     setIsGrading((prev) => ({ ...prev, [q.id]: true }));
     try {
       if (isOnline) {
@@ -541,6 +556,11 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
             score: evalData.grammarScore || 85,
           });
           return;
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          if (res.status === 401 || errData.requiresApiKey) {
+            notifyGeminiKeyRequired(errData.error || "A personal Gemini API key is required to grade reading responses.");
+          }
         }
       }
     } catch (err) {
@@ -660,6 +680,11 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
       return;
     }
 
+    if (!checkHasGeminiApiKey("AI Reading Generation")) {
+      showToast("Personal Gemini API key required to generate AI articles.");
+      return;
+    }
+
     setIsGenerating(true);
     try {
       const res = await fetch("/api/generate-reading-article", {
@@ -682,6 +707,10 @@ export const ReadingListeningPractice: React.FC<ReadingListeningPracticeProps> =
         handleStopAudio();
         showToast("New reading & listening article generated!");
       } else {
+        const errData = await res.json().catch(() => ({}));
+        if (res.status === 401 || errData.requiresApiKey) {
+          notifyGeminiKeyRequired(errData.error || "A personal Gemini API key is required to generate reading articles.");
+        }
         showToast("Could not generate custom article. Please retry.");
       }
     } catch (err) {

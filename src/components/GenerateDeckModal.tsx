@@ -6,6 +6,10 @@ import {
   getLanguageByCode,
 } from "../data/languages";
 import { Sparkles, BrainCircuit, X } from "lucide-react";
+import {
+  checkHasGeminiApiKey,
+  notifyGeminiKeyRequired,
+} from "../utils/geminiApiKey";
 
 interface GenerateDeckModalProps {
   isOpen: boolean;
@@ -64,6 +68,11 @@ export const GenerateDeckModal: React.FC<GenerateDeckModalProps> = ({
       return;
     }
 
+    if (!checkHasGeminiApiKey("AI Deck Generation")) {
+      setErrorMsg("A personal Gemini API key is required to generate AI decks. Please configure your key.");
+      return;
+    }
+
     setIsGenerating(true);
     setErrorMsg(null);
 
@@ -84,7 +93,16 @@ export const GenerateDeckModal: React.FC<GenerateDeckModalProps> = ({
       });
 
       if (!response.ok) {
-        throw new Error(`Server returned status ${response.status}`);
+        const errData = await response.json().catch(() => ({}));
+        const errMsg =
+          errData.error ||
+          (response.status === 401
+            ? "A personal Gemini API key is required to generate custom decks. No shared server key is provided."
+            : `Server returned status ${response.status}`);
+        if (response.status === 401 || errData.requiresApiKey) {
+          notifyGeminiKeyRequired(errMsg);
+        }
+        throw new Error(errMsg);
       }
 
       const data = await response.json();

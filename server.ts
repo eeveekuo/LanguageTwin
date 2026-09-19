@@ -1,6 +1,7 @@
 import express from "express";
 import path from "path";
 import fs from "fs";
+import { AsyncLocalStorage } from "async_hooks";
 import { GoogleGenAI, Type } from "@google/genai";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
@@ -65,6 +66,12 @@ const PORT = 3000;
 
 app.use(express.json({ limit: "10mb" }));
 
+// Request context for async execution continuity and per-user API key propagation
+const requestContext = new AsyncLocalStorage<express.Request>();
+app.use((req, _res, next) => {
+  requestContext.run(req, next);
+});
+
 // Serve Service Worker with proper scope header
 app.get("/sw.js", (_req, res) => {
   res.setHeader("Content-Type", "application/javascript");
@@ -77,14 +84,69 @@ app.get("/sw.js", (_req, res) => {
   }
 });
 
-// Initialize Gemini SDK with User-Agent header
-const getGeminiClient = () => {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    throw new Error("GEMINI_API_KEY is not configured.");
+class MissingUserGeminiKeyError extends Error {
+  statusCode: number;
+  requiresApiKey: boolean;
+  constructor(
+    message = "No personal Gemini API key configured. You must set up your Google Gemini API key to make AI requests."
+  ) {
+    super(message);
+    this.name = "MissingUserGeminiKeyError";
+    this.statusCode = 401;
+    this.requiresApiKey = true;
   }
+}
+
+// Helper to extract user-supplied Gemini API key
+const extractUserGeminiKey = (req?: express.Request | null): string | undefined => {
+  if (!req) return undefined;
+  const fromHeader = req.headers?.["x-gemini-api-key"] as string | undefined;
+  const fromBody = req.body?.geminiApiKey as string | undefined;
+  const key = (fromHeader && fromHeader.trim()) || (fromBody && fromBody.trim());
+  return key && key.length >= 10 ? key : undefined;
+};
+
+// Express middleware that rejects any AI request if a personal Gemini API key is missing
+const requireUserGeminiKey = (
+  req: express.Request,
+  res: express.Response,
+  next: express.NextFunction
+) => {
+  const userKey = extractUserGeminiKey(req);
+  if (!userKey) {
+    return res.status(401).json({
+      ok: false,
+      error:
+        "No personal Gemini API key configured. You must add your Google Gemini API key in the top navigation bar to use AI features.",
+      requiresApiKey: true,
+    });
+  }
+  next();
+};
+
+// Initialize Gemini SDK with User-Agent header and STRICT per-user API key isolation.
+// No shared server key fallback is permitted: users must supply their personal Gemini API key.
+const getGeminiClient = (reqOrApiKey?: express.Request | string) => {
+  let userApiKey: string | undefined;
+
+  if (typeof reqOrApiKey === "string") {
+    userApiKey = reqOrApiKey.trim();
+  } else {
+    const req =
+      reqOrApiKey && typeof reqOrApiKey === "object"
+        ? reqOrApiKey
+        : requestContext.getStore();
+    userApiKey = extractUserGeminiKey(req);
+  }
+
+  if (!userApiKey || userApiKey.length < 10) {
+    throw new MissingUserGeminiKeyError(
+      "No Gemini API key configured. All AI features require a personal Google Gemini API key. Please add your key in the app to proceed."
+    );
+  }
+
   return new GoogleGenAI({
-    apiKey,
+    apiKey: userApiKey,
     httpOptions: {
       headers: {
         "User-Agent": "aistudio-build",
@@ -96,6 +158,50 @@ const getGeminiClient = () => {
 // Health check endpoint
 app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
+});
+
+// Dedicated endpoint to test and validate a user's Gemini API key
+app.post("/api/test-gemini-key", async (req, res) => {
+  try {
+    const keyToTest =
+      (req.headers["x-gemini-api-key"] as string) || req.body?.geminiApiKey;
+    if (!keyToTest || keyToTest.trim().length < 10) {
+      return res.status(400).json({
+        ok: false,
+        error: "Please provide a valid Gemini API key to test.",
+      });
+    }
+
+    const ai = getGeminiClient(keyToTest.trim());
+    const response = await generateWithFallback(ai, {
+      primaryModel: "gemini-3.7-flash",
+      contents: "Hello. Respond with the single word 'OK'.",
+    });
+
+    return res.json({
+      ok: true,
+      message: "Gemini API key is valid and connected successfully!",
+      model: response?.modelUsed || "gemini-3.7-flash",
+      testOutput: response?.text?.trim() || "OK",
+    });
+  } catch (err: any) {
+    console.error("Test Gemini Key Error:", err);
+    return res.status(400).json({
+      ok: false,
+      error:
+        err?.message ||
+        "Failed to authenticate with Gemini API using the provided key. Please ensure the key has generative language API enabled.",
+    });
+  }
+});
+
+// Enforce personal Gemini API key for all AI routes under /api/
+// Rejects requests without a key, ensuring no requests can be made until key is set up
+app.use("/api", (req, res, next) => {
+  if (req.path === "/health" || req.path === "/test-gemini-key") {
+    return next();
+  }
+  return requireUserGeminiKey(req, res, next);
 });
 
 // Evaluate User Sentence for Active Production Flashcard Mastery

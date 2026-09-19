@@ -298,6 +298,7 @@ let pendingUserProgressSave: {
   progressData: any;
 } | null = null;
 let lastUserProgressSaveTime = 0;
+let pendingUserProgressTimer: ReturnType<typeof setTimeout> | null = null;
 
 /**
  * Save user study state and progress to their private cloud profile.
@@ -315,6 +316,7 @@ export async function saveUserProgressToCloud(
     streak?: number;
     errorRemedyDeck?: any;
     journalEntries?: any[];
+    geminiApiKey?: string | null;
     userProfile?: {
       displayName?: string | null;
       email?: string | null;
@@ -335,17 +337,20 @@ export async function saveUserProgressToCloud(
     return;
   }
 
-  // Ensure at least 1500ms between writes to the user profile document
+  // Ensure at least 2000ms between writes to the user profile document
   const timeSinceLast = Date.now() - lastUserProgressSaveTime;
-  if (timeSinceLast < 1500) {
+  if (timeSinceLast < 2000) {
     pendingUserProgressSave = { userId, progressData };
-    setTimeout(() => {
-      if (pendingUserProgressSave) {
-        const next = pendingUserProgressSave;
-        pendingUserProgressSave = null;
-        saveUserProgressToCloud(next.userId, next.progressData);
-      }
-    }, 1500 - timeSinceLast);
+    if (!pendingUserProgressTimer) {
+      pendingUserProgressTimer = setTimeout(() => {
+        pendingUserProgressTimer = null;
+        if (pendingUserProgressSave) {
+          const next = pendingUserProgressSave;
+          pendingUserProgressSave = null;
+          saveUserProgressToCloud(next.userId, next.progressData);
+        }
+      }, 2000 - timeSinceLast);
+    }
     return;
   }
 
@@ -493,6 +498,8 @@ export async function saveUserProgressToCloud(
       customDecks,
       defaultDeckSummaries,
       journalEntries: sanitizedJournal,
+      geminiApiKey: progressData.geminiApiKey ?? null,
+      hasCustomGeminiApiKey: Boolean(progressData.geminiApiKey),
       errorRemedyDeck: progressData.errorRemedyDeck ? {
         id: progressData.errorRemedyDeck.id || "error-remedy-deck",
         title: progressData.errorRemedyDeck.title || "Targeted Error Remedies",
@@ -537,12 +544,15 @@ export async function saveUserProgressToCloud(
     lastUserProgressSaveTime = Date.now();
 
     // If a subsequent update arrived while this write was executing, run trailing save after delay
-    if (pendingUserProgressSave) {
-      const next = pendingUserProgressSave;
-      pendingUserProgressSave = null;
-      setTimeout(() => {
-        saveUserProgressToCloud(next.userId, next.progressData);
-      }, 2000);
+    if (pendingUserProgressSave && !pendingUserProgressTimer) {
+      pendingUserProgressTimer = setTimeout(() => {
+        pendingUserProgressTimer = null;
+        if (pendingUserProgressSave) {
+          const next = pendingUserProgressSave;
+          pendingUserProgressSave = null;
+          saveUserProgressToCloud(next.userId, next.progressData);
+        }
+      }, 2500);
     }
   }
 }
@@ -595,12 +605,40 @@ export async function loadUserProgressFromCloud(userId: string): Promise<any | n
         console.warn("Could not query individual user custom decks from collection:", deckFetchErr);
       }
 
-      return data;
+      return {
+        ...data,
+        geminiApiKey: data.geminiApiKey || null,
+        hasCustomGeminiApiKey: Boolean(data.hasCustomGeminiApiKey || data.geminiApiKey),
+      };
     }
     return null;
   } catch (err) {
     handleFirestoreError(err, OperationType.GET, path);
     console.error("Failed to load user progress from cloud:", err);
     return null;
+  }
+}
+
+/**
+ * Specifically save or update user's Gemini API key in their private Firestore document
+ */
+export async function saveUserGeminiApiKey(userId: string, apiKey: string | null): Promise<void> {
+  if (!userId) return;
+  const path = `${USERS_COLLECTION}/${userId}`;
+  try {
+    const userDocRef = doc(db, USERS_COLLECTION, userId);
+    await setDoc(
+      userDocRef,
+      {
+        geminiApiKey: apiKey ? apiKey.trim() : null,
+        hasCustomGeminiApiKey: Boolean(apiKey && apiKey.trim()),
+        geminiApiKeyUpdatedAt: new Date().toISOString(),
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, path);
+    console.error("Failed to save Gemini API key to cloud:", err);
+    throw err;
   }
 }

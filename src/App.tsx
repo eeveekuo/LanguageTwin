@@ -72,6 +72,12 @@ import { LanguagePlacementModal } from "./components/LanguagePlacementModal";
 import { SentenceStructurePrimer } from "./components/SentenceStructurePrimer";
 import { TranslateAndExplain } from "./components/TranslateAndExplain";
 import { AiBenchmarkModal } from "./components/AiBenchmarkModal";
+import { GeminiApiKeyModal } from "./components/GeminiApiKeyModal";
+import {
+  getStoredGeminiApiKey,
+  setStoredGeminiApiKey,
+  GEMINI_KEY_REQUIRED_EVENT,
+} from "./utils/geminiApiKey";
 
 const STORAGE_KEY_DECKS = "frequency_srs_decks_v1";
 const STORAGE_KEY_ACTIVE_DECK = "frequency_srs_active_deck_id_v1";
@@ -234,6 +240,28 @@ export default function App() {
   >("browse");
   const [isPlacementModalOpen, setIsPlacementModalOpen] = useState(false);
   const [isBenchmarkModalOpen, setIsBenchmarkModalOpen] = useState(false);
+  const [hasCustomGeminiApiKey, setHasCustomGeminiApiKey] = useState<boolean>(() =>
+    Boolean(getStoredGeminiApiKey())
+  );
+  const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState<boolean>(false);
+  const [apiKeyModalPrompt, setApiKeyModalPrompt] = useState<string | null>(null);
+
+  // Listen for global AI key required events (e.g. from blocked API calls or missing keys)
+  useEffect(() => {
+    const handleKeyRequired = (e: Event) => {
+      const customEvent = e as CustomEvent<{ message?: string }>;
+      const msg =
+        customEvent.detail?.message ||
+        "A personal Google Gemini API key is required to make AI requests. There is no shared server key.";
+      setApiKeyModalPrompt(msg);
+      setIsApiKeyModalOpen(true);
+    };
+
+    window.addEventListener(GEMINI_KEY_REQUIRED_EVENT, handleKeyRequired);
+    return () => {
+      window.removeEventListener(GEMINI_KEY_REQUIRED_EVENT, handleKeyRequired);
+    };
+  }, []);
 
   const activeDeck =
     decks.find((d) => d.id === activeDeckId) || decks[0] || DEFAULT_DECKS[0];
@@ -362,6 +390,15 @@ export default function App() {
               saveJournalEntriesToLocal(cloudData.journalEntries);
             }
 
+            // Restore user's Gemini API key if present in their cloud profile
+            if (cloudData.geminiApiKey) {
+              setStoredGeminiApiKey(cloudData.geminiApiKey, {
+                email: user.email,
+                displayName: user.displayName,
+              });
+              setHasCustomGeminiApiKey(true);
+            }
+
             setBatchNotice(
               `☁️ Welcome back, ${
                 user.displayName || "Learner"
@@ -377,6 +414,7 @@ export default function App() {
               knownLangCode: knownLang.code,
               streak: dailyProgress.streak || 1,
               journalEntries: loadJournalEntriesFromLocal(targetLang, knownLang),
+              geminiApiKey: getStoredGeminiApiKey(user.email),
               userProfile: {
                 displayName: user.displayName,
                 email: user.email,
@@ -453,6 +491,7 @@ export default function App() {
           knownLangCode: knownLang.code,
           streak: dailyProgress.streak || 1,
           journalEntries: loadJournalEntriesFromLocal(targetLang, knownLang),
+          geminiApiKey: getStoredGeminiApiKey(currentUser.email),
           userProfile: {
             displayName: currentUser.displayName,
             email: currentUser.email,
@@ -723,24 +762,31 @@ export default function App() {
 
   // Add newly calibrated placement deck & register error remedy cards into ledger
   const handleDeckCalibrated = async (calibratedDeck: Deck) => {
-    // 1. Standardize calibrated flags & labels
+    // 1. Standardize calibrated flags, clean ID, & labels
+    const cleanLevel = (calibratedDeck.level || "B1")
+      .replace(/[^A-Za-z0-9]/g, "")
+      .toUpperCase();
+    const standardizedId = `calibrated-${calibratedDeck.targetLangCode}-${cleanLevel.toLowerCase()}`;
+
     const markedDeck: Deck = {
       ...calibratedDeck,
+      id: standardizedId,
       isCalibrated: true,
       isCustom: true,
       calibrationDate: new Date().toISOString(),
-      title: calibratedDeck.title.includes("Placement Calibrated")
-        ? calibratedDeck.title
-        : `${calibratedDeck.targetLang}: CEFR ${calibratedDeck.level.replace(/[^A-Za-z0-9]/g, "").toUpperCase() || "Calibrated"} (Placement Calibrated)`,
+      title: `${calibratedDeck.targetLang}: CEFR ${cleanLevel} (Placement Calibrated)`,
+      description: `Targeted CEFR ${cleanLevel} vocabulary and active grammar calibrated via diagnostic placement test.`,
     };
 
-    // 2. Replace any previous calibrated deck for this target language and level
+    // 2. Replace any previous calibrated deck for this target language
     setDecks((prev) => {
       const filtered = prev.filter((d) => {
         if (d.id === markedDeck.id) return false;
         const isSameLangCalibrated =
           d.targetLangCode === markedDeck.targetLangCode &&
-          (d.isCalibrated || d.id.includes("calibrated") || d.title.toLowerCase().includes("calibrated"));
+          (d.isCalibrated ||
+            d.id.includes("calibrated") ||
+            d.title.toLowerCase().includes("calibrated"));
         return !isSameLangCalibrated;
       });
       return [markedDeck, ...filtered];
@@ -964,6 +1010,8 @@ export default function App() {
         }}
         onOpenPlacementModal={() => setIsPlacementModalOpen(true)}
         onOpenBenchmarkModal={() => setIsBenchmarkModalOpen(true)}
+        onOpenApiKeyModal={() => setIsApiKeyModalOpen(true)}
+        hasCustomApiKey={hasCustomGeminiApiKey}
         dueCount={dueCards.length}
         dailyProgress={dailyProgress}
         activeErrorsCount={activeErrorsCount}
@@ -975,6 +1023,36 @@ export default function App() {
         pronunciationAid={currentPronunciationAid}
         onChangePronunciationAid={handlePronunciationAidChange}
       />
+
+      {/* Missing Personal Gemini API Key Alert Banner */}
+      {!hasCustomGeminiApiKey && (
+        <div
+          id="missing-gemini-key-banner"
+          className="bg-rose-50 border-b border-rose-200/80 px-4 py-2 text-xs text-rose-900 shadow-2xs"
+        >
+          <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shrink-0" />
+              <span>
+                <strong>Gemini API Key Required:</strong> No shared server key is provided. All AI requests (tutoring, evaluations, deck generation) are locked until your personal key is set.
+              </span>
+            </div>
+            <button
+              id="banner-configure-key-btn"
+              type="button"
+              onClick={() => {
+                setApiKeyModalPrompt(
+                  "A personal Google Gemini API key is required to make AI requests. Please configure your key to proceed."
+                );
+                setIsApiKeyModalOpen(true);
+              }}
+              className="font-bold text-rose-700 hover:text-rose-900 underline self-start sm:self-auto cursor-pointer shrink-0"
+            >
+              Configure API Key →
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Batch Notification / Cloud Sync Toast */}
       {batchNotice && (
@@ -1164,6 +1242,17 @@ export default function App() {
         onClose={() => setIsBenchmarkModalOpen(false)}
         targetLang={targetLang}
         knownLang={knownLang}
+      />
+
+      <GeminiApiKeyModal
+        isOpen={isApiKeyModalOpen}
+        onClose={() => {
+          setIsApiKeyModalOpen(false);
+          setApiKeyModalPrompt(null);
+        }}
+        currentUser={currentUser}
+        onApiKeyChanged={(newKey) => setHasCustomGeminiApiKey(Boolean(newKey))}
+        promptMessage={apiKeyModalPrompt}
       />
     </div>
   );

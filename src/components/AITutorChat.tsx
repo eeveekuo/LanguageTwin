@@ -49,6 +49,11 @@ import {
   FolderHeart,
   Archive,
 } from "lucide-react";
+import {
+  checkHasGeminiApiKey,
+  getStoredGeminiApiKey,
+  notifyGeminiKeyRequired,
+} from "../utils/geminiApiKey";
 
 interface AITutorChatProps {
   deck: Deck;
@@ -249,6 +254,12 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
     }
 
     const userText = inputVal.trim();
+    if (!userText || isLoading) return;
+
+    if (!checkHasGeminiApiKey("AI Tutor Chat")) {
+      return;
+    }
+
     const newMsg: ChatMessage = {
       id: `msg-${Date.now()}`,
       role: "user",
@@ -292,7 +303,16 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
       });
 
       if (!response.ok) {
-        throw new Error("Chat request failed");
+        const errData = await response.json().catch(() => ({}));
+        const errMsg =
+          errData.error ||
+          (response.status === 401
+            ? "A personal Gemini API key is required to use AI Tutor. No shared server key is provided."
+            : "Chat request failed. Please check connection.");
+        if (response.status === 401 || errData.requiresApiKey) {
+          notifyGeminiKeyRequired(errMsg);
+        }
+        throw new Error(errMsg);
       }
 
       const data = await response.json();
@@ -312,13 +332,14 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
         setLastEvaluatedBatch(data.evaluatedItems);
         onTutorItemsEvaluated?.(data.evaluatedItems, userText);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Tutor chat failed:", err);
       const fallbackReply: ChatMessage = {
         id: `err-${Date.now()}`,
         role: "model",
-        text: `¡Muy bien! (Note: Could not reach evaluation server, but your practice counts!)`,
+        text: `⚠️ Request Failed: ${err?.message || "Could not reach Gemini AI"}. A personal Gemini API key is required to make AI requests.`,
         timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        isFallback: true,
       };
       setMessages((prev) => [...prev, fallbackReply]);
     } finally {
@@ -334,6 +355,10 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
 
   // Generate Random Scenario from Backend
   const handleGenerateRandomScenario = async (theme = "any") => {
+    if (!checkHasGeminiApiKey("AI Scenario Generation")) {
+      return;
+    }
+
     setIsGeneratingScenario(true);
     try {
       const res = await fetch("/api/generate-scenario", {
@@ -363,6 +388,11 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
             timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
           },
         ]);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        if (res.status === 401 || errData.requiresApiKey) {
+          notifyGeminiKeyRequired(errData.error || "A personal Gemini API key is required to generate scenarios.");
+        }
       }
     } catch (e) {
       console.error("Scenario generation failed:", e);
@@ -375,6 +405,10 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
   const handleQuickAssistLookup = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!assistQuery.trim() || isAssistLoading) return;
+
+    if (!checkHasGeminiApiKey("AI Linguistic Copilot")) {
+      return;
+    }
 
     setIsAssistLoading(true);
     setAssistResult(null);
@@ -394,6 +428,11 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
       if (res.ok) {
         const data = await res.json();
         setAssistResult(data);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        if (res.status === 401 || errData.requiresApiKey) {
+          notifyGeminiKeyRequired(errData.error || "A personal Gemini API key is required for linguistic assistance.");
+        }
       }
     } catch (e) {
       console.error("Quick assist lookup failed:", e);
@@ -502,6 +541,33 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
         <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-2xl shadow-xl border border-slate-700 text-xs font-bold flex items-center gap-2 animate-fade-in">
           <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           <span>{toastNotification}</span>
+        </div>
+      )}
+
+      {/* Missing Personal Key Warning Banner */}
+      {!getStoredGeminiApiKey() && (
+        <div
+          id="tutor-missing-key-banner"
+          className="p-4 rounded-3xl bg-rose-50 border border-rose-200 text-xs text-rose-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs"
+        >
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+            <div>
+              <span className="font-bold text-rose-950">
+                Personal Gemini API Key Required
+              </span>
+              <p className="text-[11px] text-rose-700 mt-0.5">
+                No shared server key exists. All AI tutoring dialogue, roleplays, and grammar explanations are locked until you add your key.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => notifyGeminiKeyRequired("AI Tutor Chat")}
+            className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition cursor-pointer shrink-0"
+          >
+            Configure Key →
+          </button>
         </div>
       )}
 

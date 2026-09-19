@@ -44,6 +44,9 @@
         "customDecks": { "type": "array" },
         "errorRemedyDeck": { "type": "object" },
         "journalEntries": { "type": "array" },
+        "geminiApiKey": { "type": "string" },
+        "hasCustomGeminiApiKey": { "type": "boolean" },
+        "geminiApiKeyUpdatedAt": { "type": "string" },
         "lastSyncedAt": { "type": "string" }
       },
       "required": ["uid"]

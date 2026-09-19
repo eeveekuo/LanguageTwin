@@ -25,6 +25,7 @@ import {
   RefreshCw,
   PenTool,
   Compass,
+  Key,
 } from "lucide-react";
 
 interface HeaderProps {
@@ -39,6 +40,8 @@ interface HeaderProps {
   onOpenGenerateModal: () => void;
   onOpenPlacementModal?: () => void;
   onOpenBenchmarkModal?: () => void;
+  onOpenApiKeyModal?: () => void;
+  hasCustomApiKey?: boolean;
   dueCount: number;
   dailyProgress: DailyProgress;
   activeErrorsCount?: number;
@@ -68,6 +71,8 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenGenerateModal,
   onOpenPlacementModal,
   onOpenBenchmarkModal,
+  onOpenApiKeyModal,
+  hasCustomApiKey = false,
   dueCount,
   dailyProgress,
   activeErrorsCount = 0,
@@ -201,6 +206,39 @@ export const Header: React.FC<HeaderProps> = ({
               >
                 <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
                 <span>⚡ AI Benchmark</span>
+              </button>
+            )}
+
+            {/* Personal Gemini API Key & Rate Limits Button */}
+            {onOpenApiKeyModal && (
+              <button
+                id="header-gemini-key-btn"
+                type="button"
+                onClick={onOpenApiKeyModal}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer shadow-2xs border ${
+                  hasCustomApiKey
+                    ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200"
+                    : "bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200 shadow-rose-100"
+                }`}
+                title={
+                  hasCustomApiKey
+                    ? "Gemini API Key Active: Private quota connected"
+                    : "Gemini API Key Required: AI requests are blocked until key is added"
+                }
+              >
+                <Key
+                  className={`w-3.5 h-3.5 ${
+                    hasCustomApiKey ? "text-emerald-600" : "text-rose-600"
+                  }`}
+                />
+                <span className="hidden md:inline">
+                  {hasCustomApiKey ? "API Key Active" : "Set Gemini Key"}
+                </span>
+                <span
+                  className={`w-1.5 h-1.5 rounded-full ${
+                    hasCustomApiKey ? "bg-emerald-500" : "bg-rose-500 animate-pulse"
+                  }`}
+                />
               </button>
             )}
 
@@ -342,6 +380,32 @@ export const Header: React.FC<HeaderProps> = ({
                         Your spaced repetition queue, daily progress, and custom decks are backed up to the cloud.
                       </p>
                     </div>
+
+                    {onOpenApiKeyModal && (
+                      <button
+                        id="user-menu-gemini-key-btn"
+                        type="button"
+                        onClick={() => {
+                          setShowUserMenu(false);
+                          onOpenApiKeyModal();
+                        }}
+                        className="w-full flex items-center justify-between p-2 rounded-xl text-slate-700 hover:bg-slate-100 font-semibold text-xs transition cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Key className="w-3.5 h-3.5 text-indigo-600" />
+                          <span>Gemini API Key</span>
+                        </div>
+                        <span
+                          className={`text-[10px] px-2 py-0.5 rounded font-bold ${
+                            hasCustomApiKey
+                              ? "bg-emerald-100 text-emerald-800"
+                              : "bg-rose-100 text-rose-800"
+                          }`}
+                        >
+                          {hasCustomApiKey ? "Active" : "Required"}
+                        </span>
+                      </button>
+                    )}
 
                     <button
                       id="google-sign-out-btn"

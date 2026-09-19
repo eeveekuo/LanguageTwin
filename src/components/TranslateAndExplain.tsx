@@ -23,6 +23,10 @@ import { AlignedTranslation } from "./AlignedTranslation";
 import { formatPronunciation, getPronunciationOptions } from "../utils/pronunciation";
 import { playTextAloud } from "../utils/speech";
 import { AiEngineBadge } from "./AiEngineBadge";
+import {
+  checkHasGeminiApiKey,
+  notifyGeminiKeyRequired,
+} from "../utils/geminiApiKey";
 
 interface TranslationResult {
   translatedText: string;
@@ -151,6 +155,10 @@ export const TranslateAndExplain: React.FC<TranslateAndExplainProps> = ({
     const text = (textToTranslate !== undefined ? textToTranslate : inputText).trim();
     if (!text) return;
 
+    if (!checkHasGeminiApiKey("AI Translation & Deep Linguistic Breakdown")) {
+      return;
+    }
+
     setIsLoading(true);
     setResult(null);
 
@@ -167,7 +175,16 @@ export const TranslateAndExplain: React.FC<TranslateAndExplainProps> = ({
       });
 
       if (!res.ok) {
-        throw new Error(`Server returned status ${res.status}`);
+        const errData = await res.json().catch(() => ({}));
+        const errMsg =
+          errData.error ||
+          (res.status === 401
+            ? "A personal Gemini API key is required to perform translations. No shared server key is provided."
+            : `Server returned status ${res.status}`);
+        if (res.status === 401 || errData.requiresApiKey) {
+          notifyGeminiKeyRequired(errMsg);
+        }
+        throw new Error(errMsg);
       }
 
       const data: TranslationResult = await res.json();

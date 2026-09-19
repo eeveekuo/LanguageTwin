@@ -43,6 +43,11 @@ import { formatPronunciation } from "../utils/pronunciation";
 import { LinguisticCopilot, CopilotTriggerButton } from "./LinguisticCopilot";
 import { AiEngineBadge } from "./AiEngineBadge";
 import { AlignedTranslation } from "./AlignedTranslation";
+import {
+  checkHasGeminiApiKey,
+  getStoredGeminiApiKey,
+  notifyGeminiKeyRequired,
+} from "../utils/geminiApiKey";
 
 interface StudySessionProps {
   cards: Flashcard[];
@@ -124,12 +129,22 @@ export const StudySession: React.FC<StudySessionProps> = ({
   const [sessionCompleted, setSessionCompleted] = useState<boolean>(false);
   const [sessionScoreHistory, setSessionScoreHistory] = useState<number[]>([]);
   const [nextDueNotice, setNextDueNotice] = useState<string>("");
+  const [hasKey, setHasKey] = useState<boolean>(() => !!getStoredGeminiApiKey());
 
   const activeCard: Flashcard | undefined = cards[currentIndex];
   const isConjugationLang = IS_CONJUGATION_LANGUAGE[targetLang.code] ?? false;
 
   useEffect(() => {
     setSpeechSupported(isSpeechRecognitionSupported());
+    const syncKey = () => setHasKey(!!getStoredGeminiApiKey());
+    window.addEventListener("focus", syncKey);
+    window.addEventListener("storage", syncKey);
+    window.addEventListener("languagetwin:gemini-key-changed", syncKey);
+    return () => {
+      window.removeEventListener("focus", syncKey);
+      window.removeEventListener("storage", syncKey);
+      window.removeEventListener("languagetwin:gemini-key-changed", syncKey);
+    };
   }, []);
 
   // Reset states when changing card
@@ -370,6 +385,11 @@ export const StudySession: React.FC<StudySessionProps> = ({
       setIsRecording(false);
     }
 
+    if (!checkHasGeminiApiKey("AI Sentence Evaluation")) {
+      setErrorMsg("A personal Gemini API key is required to evaluate sentences. Please configure your key.");
+      return;
+    }
+
     setIsEvaluating(true);
     setErrorMsg(null);
 
@@ -390,7 +410,16 @@ export const StudySession: React.FC<StudySessionProps> = ({
       });
 
       if (!response.ok) {
-        throw new Error(`Server returned ${response.status}`);
+        const errData = await response.json().catch(() => ({}));
+        const errMsg =
+          errData.error ||
+          (response.status === 401
+            ? "A personal Gemini API key is required to evaluate sentences. No shared server key is provided."
+            : `Server returned ${response.status}`);
+        if (response.status === 401 || errData.requiresApiKey) {
+          notifyGeminiKeyRequired(errMsg);
+        }
+        throw new Error(errMsg);
       }
 
       const result: EvaluationResult = await response.json();
@@ -479,6 +508,11 @@ export const StudySession: React.FC<StudySessionProps> = ({
     }
 
     if (isOnline) {
+      if (!checkHasGeminiApiKey("AI Detailed Card Explanation")) {
+        // Fallback local explanation is already populated above
+        return;
+      }
+
       setIsLoadingExplanation(true);
       try {
         const res = await fetch("/api/explain-card", {
@@ -497,6 +531,11 @@ export const StudySession: React.FC<StudySessionProps> = ({
         if (res.ok) {
           const data: CardExplanation = await res.json();
           setExplanationData(data);
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          if (res.status === 401 || errData.requiresApiKey) {
+            notifyGeminiKeyRequired(errData.error || "A personal Gemini API key is required for AI explanations.");
+          }
         }
       } catch (e) {
         console.warn("Could not fetch enriched explanation:", e);
@@ -934,6 +973,29 @@ export const StudySession: React.FC<StudySessionProps> = ({
           style={{ width: `${((currentIndex + 1) / cards.length) * 100}%` }}
         />
       </div>
+
+      {/* Gemini Key Required Warning Banner */}
+      {!hasKey && studyMode === "production" && (
+        <div className="bg-amber-50 border border-amber-300 p-3.5 rounded-2xl flex items-center justify-between gap-3 text-xs text-amber-900 shadow-xs flex-wrap sm:flex-nowrap">
+          <div className="flex items-center gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <span>
+              <strong>Gemini API Key Required:</strong> Sentence evaluation and linguistic feedback require your personal Gemini API key. No shared server key exists.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() =>
+              notifyGeminiKeyRequired(
+                "A personal Google Gemini API key is required to evaluate sentences. Please add your key to proceed."
+              )
+            }
+            className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 active:scale-95 text-white font-bold rounded-xl cursor-pointer shrink-0 transition text-xs shadow-xs"
+          >
+            Configure Key
+          </button>
+        </div>
+      )}
 
       {/* Overcome Celebration Alert */}
       {overcomeCelebration && (

@@ -52,6 +52,11 @@ import {
   HardDrive,
 } from "lucide-react";
 import {
+  checkHasGeminiApiKey,
+  getStoredGeminiApiKey,
+  notifyGeminiKeyRequired,
+} from "../utils/geminiApiKey";
+import {
   loadJournalEntriesFromLocal,
   saveJournalEntriesToLocal,
 } from "../utils/journalStorage";
@@ -552,6 +557,11 @@ export const LanguageJournal: React.FC<LanguageJournalProps> = ({
       return;
     }
 
+    if (!checkHasGeminiApiKey("AI Journal Grammar & Prose Analysis")) {
+      setAnalysisError("A personal Gemini API key is required to check journal grammar. Please configure your key to proceed.");
+      return;
+    }
+
     setIsAnalyzing(true);
     setAnalysisError(null);
 
@@ -569,7 +579,16 @@ export const LanguageJournal: React.FC<LanguageJournalProps> = ({
       });
 
       if (!res.ok) {
-        throw new Error(`Server returned status ${res.status}`);
+        const errData = await res.json().catch(() => ({}));
+        const errMsg =
+          errData.error ||
+          (res.status === 401
+            ? "A personal Gemini API key is required to analyze journal entries. No shared server key is provided."
+            : `Server returned status ${res.status}`);
+        if (res.status === 401 || errData.requiresApiKey) {
+          notifyGeminiKeyRequired(errMsg);
+        }
+        throw new Error(errMsg);
       }
 
       const data: JournalCorrectionResult = await res.json();

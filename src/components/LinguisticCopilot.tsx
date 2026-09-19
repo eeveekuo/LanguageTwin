@@ -5,6 +5,10 @@ import { formatPronunciation } from "../utils/pronunciation";
 import { AlignedTranslation } from "./AlignedTranslation";
 import { AiEngineBadge } from "./AiEngineBadge";
 import {
+  checkHasGeminiApiKey,
+  notifyGeminiKeyRequired,
+} from "../utils/geminiApiKey";
+import {
   Bot,
   Search,
   Sparkles,
@@ -128,6 +132,11 @@ export const LinguisticCopilot: React.FC<LinguisticCopilotProps> = ({
 
     if (!q) return;
 
+    if (!checkHasGeminiApiKey("AI Linguistic Co-Pilot")) {
+      setError("A personal Gemini API key is required to use AI Linguistic Co-Pilot. Please configure your key.");
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     setResult(null);
@@ -145,7 +154,16 @@ export const LinguisticCopilot: React.FC<LinguisticCopilotProps> = ({
       });
 
       if (!res.ok) {
-        throw new Error(`Failed to query linguistic co-pilot (${res.status})`);
+        const errData = await res.json().catch(() => ({}));
+        const errMsg =
+          errData.error ||
+          (res.status === 401
+            ? "A personal Gemini API key is required. No shared server key is provided."
+            : `Failed to query linguistic co-pilot (${res.status})`);
+        if (res.status === 401 || errData.requiresApiKey) {
+          notifyGeminiKeyRequired(errMsg);
+        }
+        throw new Error(errMsg);
       }
 
       const data: QuickAssistResult = await res.json();

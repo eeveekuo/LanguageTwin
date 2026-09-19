@@ -15,6 +15,11 @@ import {
 } from "../utils/placementFallback";
 import { AiEngineBadge } from "./AiEngineBadge";
 import {
+  checkHasGeminiApiKey,
+  getStoredGeminiApiKey,
+  notifyGeminiKeyRequired,
+} from "../utils/geminiApiKey";
+import {
   GraduationCap,
   Sparkles,
   CheckCircle2,
@@ -188,6 +193,11 @@ export const LanguagePlacementModal: React.FC<LanguagePlacementModalProps> = ({
   // 3. Regenerate & Calibrate Flashcard Deck based on Placement Results
   const handleRegenerateDeck = async () => {
     if (!result) return;
+
+    if (!checkHasGeminiApiKey("AI Deck Calibration")) {
+      return;
+    }
+
     setIsRegeneratingDeck(true);
     setErrorMessage(null);
 
@@ -279,6 +289,11 @@ export const LanguagePlacementModal: React.FC<LanguagePlacementModalProps> = ({
             calibrationDate: new Date().toISOString(),
             cards: formattedCards,
           };
+        } else {
+          const errData = await response.json().catch(() => ({}));
+          if (response.status === 401 || errData.requiresApiKey) {
+            notifyGeminiKeyRequired(errData.error || "A personal Gemini API key is required to calibrate custom decks.");
+          }
         }
       } catch (netErr) {
         console.warn("Remote deck calibration unreachable, using local calibrated deck generator:", netErr);
