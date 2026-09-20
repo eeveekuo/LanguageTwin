@@ -52,6 +52,7 @@ import {
 import {
   checkHasGeminiApiKey,
   getStoredGeminiApiKey,
+  isGeminiKeyActive,
   notifyGeminiKeyRequired,
 } from "../utils/geminiApiKey";
 
@@ -544,27 +545,27 @@ export const AITutorChat: React.FC<AITutorChatProps> = ({
         </div>
       )}
 
-      {/* Missing Personal Key Warning Banner */}
-      {!getStoredGeminiApiKey() && (
+      {/* Missing Gemini Key Warning Banner */}
+      {!isGeminiKeyActive() && (
         <div
           id="tutor-missing-key-banner"
-          className="p-4 rounded-3xl bg-rose-50 border border-rose-200 text-xs text-rose-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs"
+          className="p-4 rounded-3xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs"
         >
           <div className="flex items-center gap-2.5">
-            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
             <div>
-              <span className="font-bold text-rose-950">
-                Personal Gemini API Key Required
+              <span className="font-bold text-amber-950">
+                Gemini API Key Required
               </span>
-              <p className="text-[11px] text-rose-700 mt-0.5">
-                No shared server key exists. All AI tutoring dialogue, roleplays, and grammar explanations are locked until you add your key.
+              <p className="text-[11px] text-amber-700 mt-0.5">
+                Please configure a Google Gemini API key to unlock AI tutoring dialogue, roleplays, and grammar explanations.
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={() => notifyGeminiKeyRequired("AI Tutor Chat")}
-            className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-xs transition cursor-pointer shrink-0"
+            className="px-3.5 py-1.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-xs transition cursor-pointer shrink-0"
           >
             Configure Key →
           </button>

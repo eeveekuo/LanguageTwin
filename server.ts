@@ -97,56 +97,58 @@ class MissingUserGeminiKeyError extends Error {
   }
 }
 
-// Helper to extract user-supplied Gemini API key
+// Helper to extract user-supplied Gemini API key or fall back to default environment key
 const extractUserGeminiKey = (req?: express.Request | null): string | undefined => {
-  if (!req) return undefined;
+  if (!req) return process.env.GEMINI_API_KEY?.trim();
   const fromHeader = req.headers?.["x-gemini-api-key"] as string | undefined;
   const fromBody = req.body?.geminiApiKey as string | undefined;
-  const key = (fromHeader && fromHeader.trim()) || (fromBody && fromBody.trim());
-  return key && key.length >= 10 ? key : undefined;
+  const customKey = (fromHeader && fromHeader.trim()) || (fromBody && fromBody.trim());
+  if (customKey && customKey.length >= 10) {
+    return customKey;
+  }
+  return process.env.GEMINI_API_KEY?.trim();
 };
 
-// Express middleware that rejects any AI request if a personal Gemini API key is missing
+// Express middleware that verifies a Gemini API key is available (either custom or default environment key)
 const requireUserGeminiKey = (
   req: express.Request,
   res: express.Response,
   next: express.NextFunction
 ) => {
-  const userKey = extractUserGeminiKey(req);
-  if (!userKey) {
+  const activeKey = extractUserGeminiKey(req);
+  if (!activeKey || activeKey.length < 10) {
     return res.status(401).json({
       ok: false,
       error:
-        "No personal Gemini API key configured. You must add your Google Gemini API key in the top navigation bar to use AI features.",
+        "No Gemini API key available. Please configure GEMINI_API_KEY in the environment or set your key in the app.",
       requiresApiKey: true,
     });
   }
   next();
 };
 
-// Initialize Gemini SDK with User-Agent header and STRICT per-user API key isolation.
-// No shared server key fallback is permitted: users must supply their personal Gemini API key.
+// Initialize Gemini SDK with User-Agent header using custom user key or default environment key.
 const getGeminiClient = (reqOrApiKey?: express.Request | string) => {
-  let userApiKey: string | undefined;
+  let apiKey: string | undefined;
 
-  if (typeof reqOrApiKey === "string") {
-    userApiKey = reqOrApiKey.trim();
+  if (typeof reqOrApiKey === "string" && reqOrApiKey.trim().length >= 10) {
+    apiKey = reqOrApiKey.trim();
   } else {
     const req =
       reqOrApiKey && typeof reqOrApiKey === "object"
         ? reqOrApiKey
         : requestContext.getStore();
-    userApiKey = extractUserGeminiKey(req);
+    apiKey = extractUserGeminiKey(req);
   }
 
-  if (!userApiKey || userApiKey.length < 10) {
+  if (!apiKey || apiKey.length < 10) {
     throw new MissingUserGeminiKeyError(
-      "No Gemini API key configured. All AI features require a personal Google Gemini API key. Please add your key in the app to proceed."
+      "No Gemini API key found. Please verify GEMINI_API_KEY is configured in the environment."
     );
   }
 
   return new GoogleGenAI({
-    apiKey: userApiKey,
+    apiKey: apiKey,
     httpOptions: {
       headers: {
         "User-Agent": "aistudio-build",
@@ -160,11 +162,26 @@ app.get("/api/health", (_req, res) => {
   res.json({ status: "ok", timestamp: new Date().toISOString() });
 });
 
-// Dedicated endpoint to test and validate a user's Gemini API key
+// Gemini Key status endpoint - informs frontend that default environment key is active
+app.get("/api/gemini-key-status", (_req, res) => {
+  const envKey = process.env.GEMINI_API_KEY?.trim();
+  const hasDefaultKey = Boolean(envKey && envKey.length >= 10);
+  res.json({
+    ok: true,
+    hasDefaultKey,
+    account: "evelynkuoev@gmail.com",
+    activeModel: "gemini-3.8-flash",
+    keyPrefix: hasDefaultKey ? `${envKey!.slice(0, 6)}...` : null,
+  });
+});
+
+// Dedicated endpoint to test and validate a Gemini API key (custom or default environment key)
 app.post("/api/test-gemini-key", async (req, res) => {
   try {
     const keyToTest =
-      (req.headers["x-gemini-api-key"] as string) || req.body?.geminiApiKey;
+      (req.headers["x-gemini-api-key"] as string) ||
+      req.body?.geminiApiKey ||
+      process.env.GEMINI_API_KEY?.trim();
     if (!keyToTest || keyToTest.trim().length < 10) {
       return res.status(400).json({
         ok: false,
@@ -174,14 +191,14 @@ app.post("/api/test-gemini-key", async (req, res) => {
 
     const ai = getGeminiClient(keyToTest.trim());
     const response = await generateWithFallback(ai, {
-      primaryModel: "gemini-3.7-flash",
+      primaryModel: "gemini-3.8-flash",
       contents: "Hello. Respond with the single word 'OK'.",
     });
 
     return res.json({
       ok: true,
       message: "Gemini API key is valid and connected successfully!",
-      model: response?.modelUsed || "gemini-3.7-flash",
+      model: response?.modelUsed || "gemini-3.8-flash",
       testOutput: response?.text?.trim() || "OK",
     });
   } catch (err: any) {
@@ -195,10 +212,9 @@ app.post("/api/test-gemini-key", async (req, res) => {
   }
 });
 
-// Enforce personal Gemini API key for all AI routes under /api/
-// Rejects requests without a key, ensuring no requests can be made until key is set up
+// Enforce Gemini API key availability for all AI routes under /api/
 app.use("/api", (req, res, next) => {
-  if (req.path === "/health" || req.path === "/test-gemini-key") {
+  if (req.path === "/health" || req.path === "/test-gemini-key" || req.path === "/gemini-key-status") {
     return next();
   }
   return requireUserGeminiKey(req, res, next);
@@ -245,7 +261,7 @@ app.post("/api/evaluate-sentence", async (req, res) => {
     });
 
     const response = await generateWithFallback(ai, {
-      primaryModel: "gemini-3.7-flash",
+      primaryModel: "gemini-3.8-flash",
       contents: prompt,
       config: {
         systemInstruction,
@@ -342,7 +358,7 @@ app.post("/api/evaluate-sentence", async (req, res) => {
       ...parsed,
       isFallback: false,
       engineSource: "gemini",
-      modelUsed: response.modelUsed || "gemini-3.7-flash",
+      modelUsed: response.modelUsed || "gemini-3.8-flash",
     });
   } catch (error: any) {
     console.error("Sentence evaluation error, using fallback:", error);
@@ -389,7 +405,7 @@ app.post("/api/explain-card", async (req, res) => {
     });
 
     const response = await generateWithFallback(ai, {
-      primaryModel: "gemini-3.7-flash",
+      primaryModel: "gemini-3.8-flash",
       contents: prompt,
       config: {
         systemInstruction,
@@ -447,7 +463,7 @@ app.post("/api/explain-card", async (req, res) => {
       ...parsed,
       isFallback: false,
       engineSource: "gemini",
-      modelUsed: response.modelUsed || "gemini-3.7-flash",
+      modelUsed: response.modelUsed || "gemini-3.8-flash",
     });
   } catch (error: any) {
     console.error("Explain card error, using fallback:", error);
@@ -505,10 +521,10 @@ app.post("/api/generate-deck", async (req, res) => {
 
     let parsed: any;
     let isFallback = false;
-    let modelUsed = "gemini-3.7-flash";
+    let modelUsed = "gemini-3.8-flash";
     try {
       const response = await generateWithFallback(ai, {
-        primaryModel: "gemini-3.7-flash",
+        primaryModel: "gemini-3.8-flash",
         contents: prompt,
         config: {
           systemInstruction,
@@ -569,7 +585,7 @@ app.post("/api/generate-deck", async (req, res) => {
       if (!parsed.cards || !Array.isArray(parsed.cards) || parsed.cards.length === 0) {
         throw new Error("No cards in AI response");
       }
-      modelUsed = response.modelUsed || "gemini-3.7-flash";
+      modelUsed = response.modelUsed || "gemini-3.8-flash";
     } catch (aiErr) {
       console.warn("AI generation failed, providing rich fallback deck:", aiErr);
       parsed = getFallbackDeck(targetLanguage, knownLanguage, topic, level, count, startFrequencyRank);
@@ -646,7 +662,7 @@ app.post("/api/ai-tutor-chat", async (req, res) => {
     });
 
     const response = await generateWithFallback(ai, {
-      primaryModel: "gemini-3.7-flash",
+      primaryModel: "gemini-3.8-flash",
       contents: prompt,
       config: {
         systemInstruction,
@@ -701,7 +717,7 @@ app.post("/api/ai-tutor-chat", async (req, res) => {
       evaluatedItems: parsed.evaluatedItems || [],
       isFallback: false,
       engineSource: "gemini",
-      modelUsed: response.modelUsed || "gemini-3.7-flash",
+      modelUsed: response.modelUsed || "gemini-3.8-flash",
     });
   } catch (error: any) {
     console.error("Tutor chat error, using fallback:", error);
@@ -747,7 +763,7 @@ app.post("/api/quick-assist", async (req, res) => {
     });
 
     const response = await generateWithFallback(ai, {
-      primaryModel: "gemini-3.7-flash",
+      primaryModel: "gemini-3.8-flash",
       contents: prompt,
       config: {
         systemInstruction,
@@ -826,7 +842,7 @@ app.post("/api/quick-assist", async (req, res) => {
       ...parsed,
       isFallback: false,
       engineSource: "gemini",
-      modelUsed: response.modelUsed || "gemini-3.7-flash",
+      modelUsed: response.modelUsed || "gemini-3.8-flash",
     });
   } catch (error: any) {
     console.error("Quick assist error, using fallback:", error);
@@ -867,7 +883,7 @@ app.post("/api/generate-scenario", async (req, res) => {
     });
 
     const response = await generateWithFallback(ai, {
-      primaryModel: "gemini-3.7-flash",
+      primaryModel: "gemini-3.8-flash",
       contents: prompt,
       config: {
         systemInstruction,
@@ -897,7 +913,7 @@ app.post("/api/generate-scenario", async (req, res) => {
       ...parsed,
       isFallback: false,
       engineSource: "gemini",
-      modelUsed: response.modelUsed || "gemini-3.7-flash",
+      modelUsed: response.modelUsed || "gemini-3.8-flash",
     });
   } catch (error: any) {
     console.error("Scenario generation error, using fallback:", error);
@@ -941,10 +957,10 @@ app.post("/api/generate-placement-test", async (req, res) => {
 
     let parsed: any;
     let isFallback = false;
-    let modelUsed = "gemini-3.7-flash";
+    let modelUsed = "gemini-3.8-flash";
     try {
       const response = await generateWithFallback(ai, {
-        primaryModel: "gemini-3.7-flash",
+        primaryModel: "gemini-3.8-flash",
         contents: prompt,
         config: {
           systemInstruction,
@@ -999,7 +1015,7 @@ app.post("/api/generate-placement-test", async (req, res) => {
       if (!parsed.questions || parsed.questions.length === 0) {
         throw new Error("Empty questions returned from model.");
       }
-      modelUsed = response.modelUsed || "gemini-3.7-flash";
+      modelUsed = response.modelUsed || "gemini-3.8-flash";
     } catch (aiErr) {
       console.warn("AI generation failed, using rich diagnostic fallback:", aiErr);
       parsed = getFallbackPlacementQuestions(targetLanguage, knownLanguage, testType);
@@ -1050,10 +1066,10 @@ app.post("/api/evaluate-placement-test", async (req, res) => {
 
     let rawParsed: any;
     let evalIsFallback = false;
-    let evalModel = "gemini-3.7-flash";
+    let evalModel = "gemini-3.8-flash";
     try {
       const response = await generateWithFallback(ai, {
-        primaryModel: "gemini-3.7-flash",
+        primaryModel: "gemini-3.8-flash",
         contents: prompt,
         config: {
           systemInstruction,
@@ -1136,7 +1152,7 @@ app.post("/api/evaluate-placement-test", async (req, res) => {
       });
 
       rawParsed = safeParseJson(response.text);
-      evalModel = response.modelUsed || "gemini-3.7-flash";
+      evalModel = response.modelUsed || "gemini-3.8-flash";
     } catch (aiErr) {
       console.warn("AI evaluation failed, using resilience fallback:", aiErr);
       rawParsed = getFallbackPlacementEvaluation(targetLanguage, knownLanguage, submissions, testQuestions);
@@ -1323,7 +1339,7 @@ app.post("/api/regenerate-level-deck", async (req, res) => {
     });
 
     const response = await generateWithFallback(ai, {
-      primaryModel: "gemini-3.7-flash",
+      primaryModel: "gemini-3.8-flash",
       contents: prompt,
       config: {
         systemInstruction,
@@ -1381,7 +1397,7 @@ app.post("/api/regenerate-level-deck", async (req, res) => {
       ...parsed,
       isFallback: false,
       engineSource: "gemini",
-      modelUsed: response.modelUsed || "gemini-3.7-flash",
+      modelUsed: response.modelUsed || "gemini-3.8-flash",
     });
   } catch (error: any) {
     console.error("Calibrated deck generation error, using fallback:", error);
@@ -1439,7 +1455,7 @@ app.post("/api/generate-reading-article", async (req, res) => {
     });
 
     const response = await generateWithFallback(ai, {
-      primaryModel: "gemini-3.7-flash",
+      primaryModel: "gemini-3.8-flash",
       contents: prompt,
       config: {
         systemInstruction,
@@ -1514,7 +1530,7 @@ app.post("/api/generate-reading-article", async (req, res) => {
       ...parsed,
       isFallback: false,
       engineSource: "gemini",
-      modelUsed: response.modelUsed || "gemini-3.7-flash",
+      modelUsed: response.modelUsed || "gemini-3.8-flash",
     });
   } catch (error: any) {
     console.error("Reading generation error, using fallback:", error);
@@ -1563,7 +1579,7 @@ app.post("/api/explain-reading-text", async (req, res) => {
     });
 
     const response = await generateWithFallback(ai, {
-      primaryModel: "gemini-3.7-flash",
+      primaryModel: "gemini-3.8-flash",
       contents: prompt,
       config: {
         systemInstruction,
@@ -1611,7 +1627,7 @@ app.post("/api/explain-reading-text", async (req, res) => {
       ...parsed,
       isFallback: false,
       engineSource: "gemini",
-      modelUsed: response.modelUsed || "gemini-3.7-flash",
+      modelUsed: response.modelUsed || "gemini-3.8-flash",
     });
   } catch (error: any) {
     console.error("Text explanation error, using fallback:", error);
@@ -1663,7 +1679,7 @@ app.post("/api/grade-reading-response", async (req, res) => {
     });
 
     const response = await generateWithFallback(ai, {
-      primaryModel: "gemini-3.7-flash",
+      primaryModel: "gemini-3.8-flash",
       contents: prompt,
       config: {
         systemInstruction,
@@ -1732,7 +1748,7 @@ app.post("/api/grade-reading-response", async (req, res) => {
       ...parsed,
       isFallback: false,
       engineSource: "gemini",
-      modelUsed: response.modelUsed || "gemini-3.7-flash",
+      modelUsed: response.modelUsed || "gemini-3.8-flash",
     });
   } catch (error: any) {
     console.error("Reading response grade error, using fallback:", error);
@@ -1780,7 +1796,7 @@ app.post("/api/conjugation-lookup", async (req, res) => {
     });
 
     const response = await generateWithFallback(ai, {
-      primaryModel: "gemini-3.7-flash",
+      primaryModel: "gemini-3.8-flash",
       contents: prompt,
       config: {
         systemInstruction,
@@ -1842,7 +1858,7 @@ app.post("/api/conjugation-lookup", async (req, res) => {
       ...parsed,
       isFallback: false,
       engineSource: "gemini",
-      modelUsed: response.modelUsed || "gemini-3.7-flash",
+      modelUsed: response.modelUsed || "gemini-3.8-flash",
     });
   } catch (error: any) {
     console.error("Conjugation lookup error, using fallback:", error);
@@ -1983,7 +1999,7 @@ app.post("/api/check-journal-prose", async (req, res) => {
           ...parsed,
           isFallback: false,
           engineSource: "gemini",
-          modelUsed: response.modelUsed || "gemini-3.7-flash",
+          modelUsed: response.modelUsed || "gemini-3.8-flash",
         });
       }
     } catch (aiErr: any) {
@@ -2030,7 +2046,7 @@ app.post("/api/translate-and-explain", async (req, res) => {
       });
 
       const response = await generateWithFallback(ai, {
-        primaryModel: "gemini-3.7-flash",
+        primaryModel: "gemini-3.8-flash",
         contents: userPrompt,
         config: {
           systemInstruction,
@@ -2109,7 +2125,7 @@ app.post("/api/translate-and-explain", async (req, res) => {
           ...parsed,
           isFallback: false,
           engineSource: "gemini",
-          modelUsed: response.modelUsed || "gemini-3.7-flash",
+          modelUsed: response.modelUsed || "gemini-3.8-flash",
         });
       }
     } catch (aiErr: any) {

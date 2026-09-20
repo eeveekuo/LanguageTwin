@@ -218,17 +218,17 @@ export const Header: React.FC<HeaderProps> = ({
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer shadow-2xs border ${
                   hasCustomApiKey
                     ? "bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border-emerald-200"
-                    : "bg-rose-50 hover:bg-rose-100 text-rose-700 border-rose-200 shadow-rose-100"
+                    : "bg-amber-50 hover:bg-amber-100 text-amber-800 border-amber-200 shadow-amber-100"
                 }`}
                 title={
                   hasCustomApiKey
-                    ? "Gemini API Key Active: Private quota connected"
-                    : "Gemini API Key Required: AI requests are blocked until key is added"
+                    ? "Gemini API Key Active: Connected and ready"
+                    : "Gemini API Key Required: Click to configure key"
                 }
               >
                 <Key
                   className={`w-3.5 h-3.5 ${
-                    hasCustomApiKey ? "text-emerald-600" : "text-rose-600"
+                    hasCustomApiKey ? "text-emerald-600" : "text-amber-600"
                   }`}
                 />
                 <span className="hidden md:inline">
@@ -236,7 +236,7 @@ export const Header: React.FC<HeaderProps> = ({
                 </span>
                 <span
                   className={`w-1.5 h-1.5 rounded-full ${
-                    hasCustomApiKey ? "bg-emerald-500" : "bg-rose-500 animate-pulse"
+                    hasCustomApiKey ? "bg-emerald-500" : "bg-amber-500 animate-pulse"
                   }`}
                 />
               </button>

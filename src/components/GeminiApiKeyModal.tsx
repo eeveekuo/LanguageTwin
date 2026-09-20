@@ -49,6 +49,8 @@ export const GeminiApiKeyModal: React.FC<GeminiApiKeyModalProps> = ({
   const [apiKeyInput, setApiKeyInput] = useState("");
   const [showKey, setShowKey] = useState(false);
   const [activeKey, setActiveKey] = useState<string | null>(null);
+  const [hasServerDefaultKey, setHasServerDefaultKey] = useState(true);
+  const [serverModel, setServerModel] = useState("gemini-3.8-flash");
   const [isTesting, setIsTesting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [testResult, setTestResult] = useState<{
@@ -71,6 +73,17 @@ export const GeminiApiKeyModal: React.FC<GeminiApiKeyModalProps> = ({
       setApiKeyInput(stored || "");
       setTestResult(null);
       setNotification(null);
+
+      // Check server status for default environment key
+      fetch("/api/gemini-key-status")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.hasDefaultKey) {
+            setHasServerDefaultKey(true);
+            if (data.activeModel) setServerModel(data.activeModel);
+          }
+        })
+        .catch(() => {});
     }
   }, [isOpen, effectiveEmail]);
 
@@ -78,7 +91,7 @@ export const GeminiApiKeyModal: React.FC<GeminiApiKeyModalProps> = ({
 
   const handleTestKey = async () => {
     const keyToTest = apiKeyInput.trim();
-    if (!keyToTest) {
+    if (!keyToTest && !hasServerDefaultKey) {
       setTestResult({
         success: false,
         message: "Please enter an API key to test.",
@@ -90,20 +103,26 @@ export const GeminiApiKeyModal: React.FC<GeminiApiKeyModalProps> = ({
     setTestResult(null);
 
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (keyToTest) {
+        headers["x-gemini-api-key"] = keyToTest;
+      }
+
       const response = await fetch("/api/test-gemini-key", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "x-gemini-api-key": keyToTest,
-        },
-        body: JSON.stringify({ geminiApiKey: keyToTest }),
+        headers,
+        body: JSON.stringify(keyToTest ? { geminiApiKey: keyToTest } : {}),
       });
 
       const data = await response.json();
       if (response.ok && data.ok) {
         setTestResult({
           success: true,
-          message: "Connection verified! Key has full Gemini API access.",
+          message: keyToTest
+            ? "Connection verified! Custom key has full Gemini API access."
+            : `Connection verified! Default environment key (${data.model || serverModel}) is active and operational for your account.`,
         });
       } else {
         setTestResult({
@@ -126,7 +145,7 @@ export const GeminiApiKeyModal: React.FC<GeminiApiKeyModalProps> = ({
     if (!keyToSave) {
       setNotification({
         type: "error",
-        text: "Please enter your Gemini API key. AI requests cannot be made without a key.",
+        text: "Please enter a Gemini API key to save, or keep default environment key active.",
       });
       return;
     }
@@ -134,7 +153,7 @@ export const GeminiApiKeyModal: React.FC<GeminiApiKeyModalProps> = ({
     if (!validateGeminiKeyFormat(keyToSave)) {
       setNotification({
         type: "error",
-        text: "Please enter a valid Google Gemini API key (starts with 'AIzaSy' and is ~39 characters).",
+        text: "Please enter a valid Google Gemini API key (at least 20 characters).",
       });
       return;
     }
@@ -272,10 +291,10 @@ export const GeminiApiKeyModal: React.FC<GeminiApiKeyModalProps> = ({
             </div>
           </div>
 
-          {/* Current Status - No Shared Key Option */}
+          {/* Current Status */}
           <div
             className={`flex items-center justify-between p-3 rounded-xl border text-xs ${
-              activeKey
+              activeKey || hasServerDefaultKey
                 ? "border-emerald-200 bg-emerald-50/60"
                 : "border-rose-200 bg-rose-50/60"
             }`}
@@ -283,20 +302,32 @@ export const GeminiApiKeyModal: React.FC<GeminiApiKeyModalProps> = ({
             <div className="flex items-center gap-2">
               <span
                 className={`w-2.5 h-2.5 rounded-full ${
-                  activeKey ? "bg-emerald-500" : "bg-rose-500 animate-pulse"
+                  activeKey || hasServerDefaultKey
+                    ? "bg-emerald-500"
+                    : "bg-rose-500 animate-pulse"
                 }`}
               />
               <span
                 className={`font-bold ${
-                  activeKey ? "text-emerald-950" : "text-rose-950"
+                  activeKey || hasServerDefaultKey
+                    ? "text-emerald-950"
+                    : "text-rose-950"
                 }`}
               >
-                {activeKey ? "Personal API Key Active" : "No API Key Configured (Required)"}
+                {activeKey
+                  ? "Personal API Key Active"
+                  : hasServerDefaultKey
+                  ? `Default Environment Key Active (${serverModel})`
+                  : "No API Key Configured (Required)"}
               </span>
             </div>
             {activeKey ? (
               <span className="font-mono text-[11px] text-emerald-800 bg-white px-2 py-1 rounded-md border border-emerald-200 shadow-2xs">
                 {maskApiKey(activeKey)}
+              </span>
+            ) : hasServerDefaultKey ? (
+              <span className="text-emerald-700 text-[11px] font-bold bg-white px-2 py-0.5 rounded-md border border-emerald-200">
+                Auto-Activated (Evelyn Kuo)
               </span>
             ) : (
               <span className="text-rose-700 text-[11px] font-bold">
@@ -305,8 +336,18 @@ export const GeminiApiKeyModal: React.FC<GeminiApiKeyModalProps> = ({
             )}
           </div>
 
-          {/* Explicit Key Requirement Notice */}
-          {!activeKey && (
+          {/* Automatic Activation Notice or Required Key Notice */}
+          {!activeKey && hasServerDefaultKey ? (
+            <div className="p-3.5 rounded-xl bg-emerald-50/80 border border-emerald-200/80 text-xs text-emerald-950 space-y-1">
+              <div className="font-bold flex items-center gap-1.5 text-emerald-900">
+                <Sparkles className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span>Default Gemini Key Automatically Active</span>
+              </div>
+              <p className="text-[11px] text-emerald-800 leading-relaxed">
+                Your Evelyn Kuo account is automatically connected to Google Gemini via the environment's default key (<strong>{serverModel}</strong>). AI tutoring, interactive sentence evaluation, translations, and deck generation are unlocked with no manual entry required. You may optionally enter a personal key below to override.
+              </p>
+            </div>
+          ) : !activeKey && !hasServerDefaultKey ? (
             <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-950 space-y-1">
               <div className="font-bold flex items-center gap-1.5 text-amber-900">
                 <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
@@ -316,7 +357,7 @@ export const GeminiApiKeyModal: React.FC<GeminiApiKeyModalProps> = ({
                 To guarantee isolated rate limits and prevent shared quota throttling, <strong>no Gemini requests can be made until your personal key is configured</strong>. Free keys can be created in seconds from Google AI Studio.
               </p>
             </div>
-          )}
+          ) : null}
 
           {/* Key Input */}
           <div className="space-y-2">
@@ -325,7 +366,7 @@ export const GeminiApiKeyModal: React.FC<GeminiApiKeyModalProps> = ({
                 htmlFor="gemini-api-key-input"
                 className="text-xs font-bold text-slate-800 flex items-center gap-1.5"
               >
-                <span>Google Gemini API Key</span>
+                <span>Google Gemini API Key (Optional Override)</span>
               </label>
               <a
                 href="https://aistudio.google.com/app/apikey"
@@ -348,7 +389,7 @@ export const GeminiApiKeyModal: React.FC<GeminiApiKeyModalProps> = ({
                   setTestResult(null);
                   setNotification(null);
                 }}
-                placeholder="AIzaSy..."
+                placeholder={hasServerDefaultKey ? "Default environment key active (enter key to override)" : "AIzaSy..."}
                 className="w-full pl-3 pr-24 py-2.5 rounded-xl border border-slate-300 text-xs font-mono text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition"
               />
               <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-1">
@@ -367,9 +408,9 @@ export const GeminiApiKeyModal: React.FC<GeminiApiKeyModalProps> = ({
                 <button
                   type="button"
                   onClick={handleTestKey}
-                  disabled={isTesting || !apiKeyInput.trim()}
+                  disabled={isTesting || (!apiKeyInput.trim() && !hasServerDefaultKey)}
                   className="px-2 py-1 rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 font-sans font-semibold text-[11px] transition cursor-pointer disabled:opacity-40"
-                  title="Test connectivity to Gemini"
+                  title={apiKeyInput.trim() ? "Test entered API key" : "Test active environment key"}
                 >
                   {isTesting ? (
                     <RefreshCw className="w-3 h-3 animate-spin" />
@@ -380,7 +421,7 @@ export const GeminiApiKeyModal: React.FC<GeminiApiKeyModalProps> = ({
               </div>
             </div>
             <p className="text-[11px] text-slate-500 leading-relaxed">
-              Keys begin with <code className="font-mono bg-slate-100 px-1 py-0.5 rounded text-slate-700">AIzaSy</code>. Keys are sent securely to the server proxy for Gemini requests and never exposed to other learners.
+              Accepts Google Gemini API key strings from Google AI Studio. Keys are sent securely to the server proxy and never exposed to other learners.
             </p>
           </div>
 
@@ -461,7 +502,7 @@ export const GeminiApiKeyModal: React.FC<GeminiApiKeyModalProps> = ({
               onClick={onClose}
               className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-100 text-slate-700 font-semibold text-xs transition cursor-pointer"
             >
-              {activeKey ? "Close" : "Cancel (AI Disabled)"}
+              {activeKey || hasServerDefaultKey ? "Close" : "Cancel (AI Disabled)"}
             </button>
             <button
               id="save-api-key-btn"

@@ -76,6 +76,8 @@ import { GeminiApiKeyModal } from "./components/GeminiApiKeyModal";
 import {
   getStoredGeminiApiKey,
   setStoredGeminiApiKey,
+  isGeminiKeyActive,
+  setServerDefaultKeyAvailable,
   GEMINI_KEY_REQUIRED_EVENT,
 } from "./utils/geminiApiKey";
 
@@ -241,18 +243,42 @@ export default function App() {
   const [isPlacementModalOpen, setIsPlacementModalOpen] = useState(false);
   const [isBenchmarkModalOpen, setIsBenchmarkModalOpen] = useState(false);
   const [hasCustomGeminiApiKey, setHasCustomGeminiApiKey] = useState<boolean>(() =>
-    Boolean(getStoredGeminiApiKey())
+    isGeminiKeyActive()
   );
   const [isApiKeyModalOpen, setIsApiKeyModalOpen] = useState<boolean>(false);
   const [apiKeyModalPrompt, setApiKeyModalPrompt] = useState<string | null>(null);
 
-  // Listen for global AI key required events (e.g. from blocked API calls or missing keys)
+  // Sync server default key status on app load
+  useEffect(() => {
+    fetch("/api/gemini-key-status")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.hasDefaultKey) {
+          setServerDefaultKeyAvailable(true);
+          setHasCustomGeminiApiKey(true);
+        }
+      })
+      .catch(() => {});
+  }, []);
+
+  // Listen for key changes or user authentication updates
+  useEffect(() => {
+    const handleKeyChange = () => {
+      setHasCustomGeminiApiKey(isGeminiKeyActive(currentUser?.email));
+    };
+    window.addEventListener("languagetwin:gemini-key-changed", handleKeyChange);
+    return () => {
+      window.removeEventListener("languagetwin:gemini-key-changed", handleKeyChange);
+    };
+  }, [currentUser?.email]);
+
+  // Listen for global AI key required events (e.g. from missing keys or auth rejection)
   useEffect(() => {
     const handleKeyRequired = (e: Event) => {
       const customEvent = e as CustomEvent<{ message?: string }>;
       const msg =
         customEvent.detail?.message ||
-        "A personal Google Gemini API key is required to make AI requests. There is no shared server key.";
+        "A Google Gemini API key is required to make AI requests. Please configure your key in settings.";
       setApiKeyModalPrompt(msg);
       setIsApiKeyModalOpen(true);
     };
@@ -1024,17 +1050,17 @@ export default function App() {
         onChangePronunciationAid={handlePronunciationAidChange}
       />
 
-      {/* Missing Personal Gemini API Key Alert Banner */}
+      {/* Gemini API Key Setup Alert Banner */}
       {!hasCustomGeminiApiKey && (
         <div
           id="missing-gemini-key-banner"
-          className="bg-rose-50 border-b border-rose-200/80 px-4 py-2 text-xs text-rose-900 shadow-2xs"
+          className="bg-amber-50 border-b border-amber-200/80 px-4 py-2 text-xs text-amber-900 shadow-2xs"
         >
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div className="flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse shrink-0" />
+              <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0" />
               <span>
-                <strong>Gemini API Key Required:</strong> No shared server key is provided. All AI requests (tutoring, evaluations, deck generation) are locked until your personal key is set.
+                <strong>Gemini API Key Required:</strong> Please configure your Google Gemini API key to unlock tutoring, sentence evaluations, and custom deck generation.
               </span>
             </div>
             <button
@@ -1042,11 +1068,11 @@ export default function App() {
               type="button"
               onClick={() => {
                 setApiKeyModalPrompt(
-                  "A personal Google Gemini API key is required to make AI requests. Please configure your key to proceed."
+                  "A Google Gemini API key is required to make AI requests. Please configure your key to proceed."
                 );
                 setIsApiKeyModalOpen(true);
               }}
-              className="font-bold text-rose-700 hover:text-rose-900 underline self-start sm:self-auto cursor-pointer shrink-0"
+              className="font-bold text-amber-700 hover:text-amber-900 underline self-start sm:self-auto cursor-pointer shrink-0"
             >
               Configure API Key →
             </button>

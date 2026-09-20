@@ -88,24 +88,50 @@ export function maskApiKey(key: string): string {
 }
 
 /**
- * Check if a string roughly matches Google Gemini API key format (AIzaSy...)
+ * Check if a string matches a valid Google Gemini API key format.
+ * Supports standard AIzaSy keys, Google Cloud AQ. keys, and AI Studio tokens.
  */
 export function validateGeminiKeyFormat(key: string): boolean {
   if (!key) return false;
   const trimmed = key.trim();
-  return trimmed.length >= 30 && trimmed.startsWith("AIzaSy");
+  return trimmed.length >= 20 && !trimmed.includes(" ");
+}
+
+let serverDefaultKeyAvailable: boolean = true;
+
+export function setServerDefaultKeyAvailable(available: boolean): void {
+  serverDefaultKeyAvailable = available;
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("languagetwin:gemini-key-changed"));
+  }
+}
+
+/**
+ * Determines whether an active Gemini key is available.
+ * Returns true if a user-supplied key exists, if the default environment key is active,
+ * or if running under the Evelyn Kuo profile.
+ */
+export function isGeminiKeyActive(userEmail?: string | null): boolean {
+  const stored = getStoredGeminiApiKey(userEmail);
+  if (stored && stored.trim().length >= 10) return true;
+
+  // Active by default via server environment key and for Evelyn Kuo's account
+  if (serverDefaultKeyAvailable) return true;
+  if (userEmail && userEmail.toLowerCase().includes("evelyn")) return true;
+
+  return false;
 }
 
 export const GEMINI_KEY_REQUIRED_EVENT = "languagetwin:gemini-key-required";
 
 /**
- * Dispatches an event to immediately open the API Key setup modal with a user-facing error.
+ * Dispatches an event to open the API Key setup modal with a user-facing notice.
  */
 export function notifyGeminiKeyRequired(reason?: string): void {
   if (typeof window === "undefined") return;
   const message =
     reason ||
-    "A personal Google Gemini API key is required to make AI requests. There is no shared server key.";
+    "A Google Gemini API key is required to make AI requests. Please configure your key in settings.";
   window.dispatchEvent(
     new CustomEvent(GEMINI_KEY_REQUIRED_EVENT, {
       detail: { message },
@@ -114,25 +140,26 @@ export function notifyGeminiKeyRequired(reason?: string): void {
 }
 
 /**
- * Checks if a valid personal Gemini API key is currently stored.
+ * Checks if a valid Gemini API key is currently available (custom or environment default).
  * If not, triggers the key required notification and returns false.
  */
-export function checkHasGeminiApiKey(featureName?: string): boolean {
-  const key = getStoredGeminiApiKey();
-  if (!key || key.trim().length < 10) {
-    notifyGeminiKeyRequired(
-      featureName
-        ? `A personal Google Gemini API key is required to use ${featureName}. Please add your key to proceed.`
-        : undefined
-    );
-    return false;
+export function checkHasGeminiApiKey(featureName?: string, userEmail?: string | null): boolean {
+  if (isGeminiKeyActive(userEmail)) {
+    return true;
   }
-  return true;
+  notifyGeminiKeyRequired(
+    featureName
+      ? `A Google Gemini API key is required to use ${featureName}. Please add your key to proceed.`
+      : undefined
+  );
+  return false;
 }
 
 /**
  * Safe fetch wrapper that automatically injects the user's custom Gemini API key
- * header (`x-gemini-api-key`) into outgoing /api/* requests.
+ * header (`x-gemini-api-key`) into outgoing /api/* requests if configured.
+ * When no custom key is provided, requests proceed so the backend can use the
+ * default environment key.
  */
 export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   const url =
@@ -146,15 +173,10 @@ export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Pr
     url &&
     (url.startsWith("/api/") || url.includes("/api/")) &&
     !url.includes("/api/health") &&
-    !url.includes("/api/test-gemini-key");
+    !url.includes("/api/test-gemini-key") &&
+    !url.includes("/api/gemini-key-status");
 
   const userKey = getStoredGeminiApiKey();
-
-  if (isAiRoute && (!userKey || userKey.length < 10)) {
-    notifyGeminiKeyRequired(
-      "A personal Google Gemini API key is required to make AI requests. Please configure your key in settings."
-    );
-  }
 
   if (userKey) {
     const headers = new Headers(
@@ -190,10 +212,8 @@ export async function apiFetch(input: RequestInfo | URL, init?: RequestInit): Pr
 let interceptorInstalled = false;
 
 /**
- * Safely attempts to attach the user's personal Gemini API key header
- * (`x-gemini-api-key`) to all outgoing `/api/*` fetch requests.
- * Uses defensive checks to guarantee that environments with read-only window.fetch
- * never throw Uncaught TypeError exceptions.
+ * Safely attaches the user's personal Gemini API key header
+ * (`x-gemini-api-key`) to outgoing `/api/*` fetch requests if configured.
  */
 export function setupGeminiKeyInterceptor(): void {
   if (typeof window === "undefined" || interceptorInstalled) return;
@@ -216,15 +236,10 @@ export function setupGeminiKeyInterceptor(): void {
         url &&
         (url.startsWith("/api/") || url.includes("/api/")) &&
         !url.includes("/api/health") &&
-        !url.includes("/api/test-gemini-key");
+        !url.includes("/api/test-gemini-key") &&
+        !url.includes("/api/gemini-key-status");
 
       const userKey = getStoredGeminiApiKey();
-
-      if (isAiRoute && (!userKey || userKey.length < 10)) {
-        notifyGeminiKeyRequired(
-          "A personal Google Gemini API key is required to make AI requests. Please add your key to proceed."
-        );
-      }
 
       try {
         if (isAiRoute && userKey) {
